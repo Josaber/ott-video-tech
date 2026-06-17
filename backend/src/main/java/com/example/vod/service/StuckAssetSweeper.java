@@ -14,6 +14,7 @@ import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
@@ -89,20 +90,24 @@ public class StuckAssetSweeper {
     }
 
     private void terminateWorkflow(UUID assetId) {
+        // Fire-and-forget so a down or slow Temporal cluster cannot pin the
+        // @Transactional sweep loop (which holds a DB connection) on a 10+
+        // second gRPC timeout per stuck asset. The asset row is already
+        // FAILED at this point; even if the terminate never lands, the next
+        // triggerProcessing benefits from WorkflowIdReusePolicy.ALLOW_DUPLICATE.
         String workflowId = "publish-" + assetId;
-        try {
-            WorkflowStub stub = temporal.client().newUntypedWorkflowStub(workflowId);
-            stub.terminate("swept-by-stuck-sweeper",
-                    "asset stuck > " + stuckAfter.toMinutes() + " min");
-            log.info("terminated workflow {}", workflowId);
-        } catch (WorkflowNotFoundException ignored) {
-            // Embedded mode: the in-memory runtime forgot the workflow when the
-            // JVM died. Nothing to terminate; the sweep is still correct.
-        } catch (Exception e) {
-            // Best effort. Even if termination fails, the asset row is now FAILED,
-            // and triggerProcessing's WorkflowIdReusePolicy.ALLOW_DUPLICATE lets
-            // a closed workflow's ID be reused on re-publish.
-            log.warn("could not terminate workflow {}: {}", workflowId, e.getMessage());
-        }
+        CompletableFuture.runAsync(() -> {
+            try {
+                WorkflowStub stub = temporal.client().newUntypedWorkflowStub(workflowId);
+                stub.terminate("swept-by-stuck-sweeper",
+                        "asset stuck > " + stuckAfter.toMinutes() + " min");
+                log.info("terminated workflow {}", workflowId);
+            } catch (WorkflowNotFoundException ignored) {
+                // Embedded mode: the in-memory runtime forgot the workflow when
+                // the JVM died. Nothing to terminate; the sweep is still correct.
+            } catch (Exception e) {
+                log.warn("could not terminate workflow {}: {}", workflowId, e.getMessage());
+            }
+        });
     }
 }
