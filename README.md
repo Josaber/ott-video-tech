@@ -28,7 +28,24 @@ make install        # one-time: npm install frontend deps
 make frontend       # in shell 3: vite on :5173
 ```
 
-Open `http://127.0.0.1:5173`, create an asset, upload a raw video, click **Process & publish**, watch the workflow run, then play the resulting m3u8.
+Open `http://127.0.0.1:5173`, sign in with **`admin` / `admin`**, create an asset, upload a raw video, click **Process & publish**, watch the workflow run, then play the resulting m3u8.
+
+## Authentication
+
+Self-signed HS256 JWT verified by Spring Security's oauth2-resource-server. The default user `admin / admin` is seeded by Flyway V2 using PostgreSQL's `pgcrypto` (`crypt('admin', gen_salt('bf', 10))`); the resulting `$2a$10$…` hash is byte-compatible with `BCryptPasswordEncoder.matches()` so no separate seed script is needed.
+
+| Endpoint                              | Auth |
+| ------------------------------------- | ---- |
+| `POST /auth/login`                    | open (returns Bearer token) |
+| `GET /auth/me`                        | Bearer |
+| `GET /actuator/health`                | open |
+| `*  /api/**`                          | Bearer |
+| `GET /playback/{id}/master.m3u8`      | open (TODO: sessionize) |
+| `GET /playback/{id}/segment_*.ts`     | open (TODO: signed URL) |
+| `GET /playback/{id}/license.key`      | Bearer |
+| ad-service `/vast`, `/ads/...`        | open (browser fetches ad ts directly) |
+
+Override the secret with `JWT_SECRET=…` (must be ≥ 32 bytes) and token lifetime with `JWT_TTL_HOURS=…`. The HLS player attaches `Authorization` only to same-origin requests via hls.js `xhrSetup`, so cross-origin ad-service ts fetches don't trigger a CORS preflight per segment.
 
 ## Demo flow
 

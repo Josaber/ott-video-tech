@@ -59,6 +59,15 @@ curl_local() {
   curl --noproxy '*' -sS "$@"
 }
 
+AUTH_HEADER=""
+curl_api() {
+  if [[ -n "$AUTH_HEADER" ]]; then
+    curl_local -H "$AUTH_HEADER" "$@"
+  else
+    curl_local "$@"
+  fi
+}
+
 require() {
   command -v "$1" >/dev/null 2>&1 || { red "missing: $1"; exit 1; }
 }
@@ -120,6 +129,33 @@ for i in {1..90}; do
   if (( i == 90 )); then red "backend did not become ready"; exit 1; fi
 done
 
+# ---------- login ----------
+step "logging in as admin"
+LOGIN_JSON=$(curl_local -X POST http://127.0.0.1:8080/auth/login \
+  -H 'Content-Type: application/json' \
+  -d '{"username":"admin","password":"admin"}')
+TOKEN=$(echo "$LOGIN_JSON" | jq -r '.accessToken')
+if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
+  red "login failed: $LOGIN_JSON"; exit 1
+fi
+AUTH_HEADER="Authorization: Bearer $TOKEN"
+green "got token (${#TOKEN} chars)"
+
+step "verifying token via /auth/me"
+ME=$(curl_api http://127.0.0.1:8080/auth/me)
+echo "  $ME"
+if ! echo "$ME" | jq -e '.username == "admin"' >/dev/null; then
+  red "/auth/me did not return admin"; exit 1
+fi
+
+step "verifying /api/videos rejects no-auth"
+CODE=$(curl_local -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/videos)
+if [[ "$CODE" == "401" ]]; then
+  green "  ok: /api/videos without token -> 401"
+else
+  red "  /api/videos without token -> $CODE (expected 401)"; exit 1
+fi
+
 # ---------- sample video ----------
 step "generating sample raw video"
 ffmpeg -y -loglevel error \
@@ -131,28 +167,28 @@ ffmpeg -y -loglevel error \
 
 # ---------- demo flow ----------
 step "creating asset"
-ASSET_JSON=$(curl_local -X POST http://127.0.0.1:8080/api/videos \
+ASSET_JSON=$(curl_api -X POST http://127.0.0.1:8080/api/videos \
   -H 'Content-Type: application/json' \
   -d '{"title":"smoke","description":"e2e smoke test"}')
 ASSET_ID=$(echo "$ASSET_JSON" | jq -r '.id')
 echo "asset id: $ASSET_ID"
 
 step "uploading raw"
-curl_local -X POST "http://127.0.0.1:8080/api/videos/$ASSET_ID/upload" \
+curl_api -X POST "http://127.0.0.1:8080/api/videos/$ASSET_ID/upload" \
   -F "file=@$SAMPLE_VIDEO" >/dev/null
 
 step "triggering processing"
-curl_local -X POST "http://127.0.0.1:8080/api/videos/$ASSET_ID/process" >/dev/null
+curl_api -X POST "http://127.0.0.1:8080/api/videos/$ASSET_ID/process" >/dev/null
 
 step "polling job timeline"
 PUBLISHED=0
 for i in {1..120}; do
-  STATUS=$(curl_local "http://127.0.0.1:8080/api/videos/$ASSET_ID" | jq -r '.status')
+  STATUS=$(curl_api "http://127.0.0.1:8080/api/videos/$ASSET_ID" | jq -r '.status')
   echo "  [$i] status=$STATUS"
   if [[ "$STATUS" == "PUBLISHED" ]]; then PUBLISHED=1; break; fi
   if [[ "$STATUS" == "FAILED" ]]; then
     red "asset went FAILED"
-    curl_local "http://127.0.0.1:8080/api/videos/$ASSET_ID/jobs" | jq .
+    curl_api "http://127.0.0.1:8080/api/videos/$ASSET_ID/jobs" | jq .
     exit 1
   fi
   sleep 2
@@ -215,12 +251,20 @@ else
   red "  program segment returned $PROG_HTTP_CODE"; exit 1
 fi
 
-step "checking license.key reachable"
-KEY_HTTP_CODE=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
-if [[ "$KEY_HTTP_CODE" == "200" ]]; then
-  green "  ok: license.key → 200"
+step "checking license.key requires auth"
+NO_AUTH_CODE=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
+if [[ "$NO_AUTH_CODE" == "401" ]]; then
+  green "  ok: license.key without token -> 401"
 else
-  red "  license.key returned $KEY_HTTP_CODE"; exit 1
+  red "  license.key without token returned $NO_AUTH_CODE (expected 401)"; exit 1
+fi
+
+step "checking license.key reachable with token"
+KEY_HTTP_CODE=$(curl_api -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
+if [[ "$KEY_HTTP_CODE" == "200" ]]; then
+  green "  ok: license.key with token -> 200"
+else
+  red "  license.key with token returned $KEY_HTTP_CODE"; exit 1
 fi
 
 green ""
