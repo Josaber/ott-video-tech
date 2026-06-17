@@ -6,6 +6,7 @@ help:
 	@echo "  make install      - install frontend dependencies"
 	@echo "  make db-up        - start Postgres via docker compose"
 	@echo "  make db-down      - stop Postgres"
+	@echo "  make db-fresh     - destroy postgres volume + re-init (needed before first temporal-up if db existed)"
 	@echo "  make temporal-up  - start real Temporal cluster (:7233) + UI (:8088)"
 	@echo "  make temporal-down- stop Temporal cluster"
 	@echo "  make ad-service   - run ad-service on :8090"
@@ -25,6 +26,11 @@ db-up:
 
 db-down:
 	docker compose stop postgres
+
+db-fresh:
+	@echo "Destroying postgres + temporal data volumes. Re-runs first-boot init scripts."
+	docker compose down -v
+	docker compose up -d postgres
 
 temporal-up:
 	docker compose up -d temporal temporal-ui
