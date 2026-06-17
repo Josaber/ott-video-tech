@@ -53,15 +53,23 @@ public class PlaybackController {
         if (!Files.exists(drmManifest)) {
             throw new ResponseStatusException(HttpStatus.CONFLICT, "asset not published yet");
         }
-        String adId = asset.getAdId() != null ? asset.getAdId() : ssaiProperties.getAdId();
-        String adManifestUrl = ssaiProperties.getAdServiceBaseUrl() + "/ads/" + adId + "/master.m3u8";
 
-        String stitched = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
+        String body;
+        if (asset.getAdId() == null) {
+            // SSAI fallback: ad-service was unreachable during publish — serve the
+            // unstitched encrypted program manifest so the asset is still playable.
+            body = Files.readString(drmManifest);
+        } else {
+            String adId = asset.getAdId();
+            String adManifestUrl = ssaiProperties.getAdServiceBaseUrl()
+                    + "/ads/" + adId + "/master.m3u8";
+            body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
+        }
 
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
-                .body(stitched);
+                .body(body);
     }
 
     @GetMapping("/{assetId}/license.key")
