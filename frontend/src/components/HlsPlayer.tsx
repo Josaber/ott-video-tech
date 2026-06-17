@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import Hls from 'hls.js'
+import { getToken } from '../api/auth'
 
 interface Props {
   src: string
@@ -29,7 +30,19 @@ export function HlsPlayer({ src }: Props) {
 
     let hls: Hls | undefined
     if (Hls.isSupported()) {
-      hls = new Hls({ debug: false })
+      hls = new Hls({
+        debug: false,
+        // Attach the Bearer token only to same-origin (backend) requests so
+        // license.key is authenticated. Cross-origin requests (ad-service ts
+        // segments) get no header — they don't accept auth anyway and we
+        // avoid the CORS preflight cost.
+        xhrSetup: (xhr, url) => {
+          const token = getToken()
+          if (token && url.startsWith(window.location.origin)) {
+            xhr.setRequestHeader('Authorization', `Bearer ${token}`)
+          }
+        },
+      })
       hls.loadSource(src)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
