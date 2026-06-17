@@ -6,6 +6,7 @@ import com.example.vod.media.FfmpegMediaProcessor;
 import com.example.vod.repository.VideoAssetRepository;
 import com.example.vod.service.LicenseUrlSigner;
 import com.example.vod.service.LicenseUrlSigner.SignedLicense;
+import com.example.vod.service.NonceStore;
 import com.example.vod.ssai.AdManifestStitcher;
 import com.example.vod.ssai.AdManifestStitcher.StitchOptions;
 import java.io.IOException;
@@ -60,17 +61,20 @@ public class PlaybackController {
     private final AdManifestStitcher stitcher;
     private final SsaiProperties ssaiProperties;
     private final LicenseUrlSigner signer;
+    private final NonceStore nonceStore;
 
     public PlaybackController(VideoAssetRepository assets,
                               FfmpegMediaProcessor ffmpeg,
                               AdManifestStitcher stitcher,
                               SsaiProperties ssaiProperties,
-                              LicenseUrlSigner signer) {
+                              LicenseUrlSigner signer,
+                              NonceStore nonceStore) {
         this.assets = assets;
         this.ffmpeg = ffmpeg;
         this.stitcher = stitcher;
         this.ssaiProperties = ssaiProperties;
         this.signer = signer;
+        this.nonceStore = nonceStore;
     }
 
     @GetMapping(value = "/{assetId}/master.m3u8", produces = "application/vnd.apple.mpegurl")
@@ -105,8 +109,10 @@ public class PlaybackController {
         SignedLicense signed = signer.sign(assetId, username, Instant.now().plus(signer.ttl()));
         // Relative URI; hls.js resolves against the manifest URL.
         String replacement = "URI=\"license.key?" + signed.toQueryString() + "\"";
+        // replaceAll (not replaceFirst) so future manifests with key rotation
+        // — multiple #EXT-X-KEY lines on the program section — all get rewritten.
         Matcher m = KEY_URI.matcher(body);
-        return m.find() ? m.replaceFirst(Matcher.quoteReplacement(replacement)) : body;
+        return m.replaceAll(Matcher.quoteReplacement(replacement));
     }
 
     @GetMapping("/{assetId}/license.key")
@@ -118,6 +124,13 @@ public class PlaybackController {
         if (user == null || exp == null || nonce == null || sig == null
                 || !signer.verify(assetId, user, exp, nonce, sig)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "invalid_or_expired_license_url");
+        }
+        // Single-use: a leaked URL is unusable on second fetch even within
+        // its 10-minute TTL. Track nonces in memory with the same TTL plus
+        // a small buffer so eviction always catches up before the verify
+        // window does.
+        if (!nonceStore.claim(nonce, signer.ttl().plusMinutes(1))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "license_url_already_used");
         }
         Path key = ffmpeg.assetDir(assetId).resolve("drm").resolve("license.key");
         if (!Files.exists(key)) {
