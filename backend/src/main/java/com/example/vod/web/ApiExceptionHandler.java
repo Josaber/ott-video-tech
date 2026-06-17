@@ -2,6 +2,7 @@ package com.example.vod.web;
 
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -42,8 +43,9 @@ public class ApiExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<Map<String, Object>> generic(Exception ex) {
-        log.error("unhandled exception", ex);
+        String traceId = UUID.randomUUID().toString().substring(0, 8);
+        log.error("unhandled exception [trace={}]", traceId, ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(Map.of("error", ex.getMessage() == null ? "internal error" : ex.getMessage()));
+                .body(Map.of("error", "internal_error", "traceId", traceId));
     }
 }
