@@ -167,7 +167,22 @@ Hook lives in `.husky/commit-msg`; rules in `commitlint.config.mjs`.
 
 ## Known limitations / next steps
 
-- Player-side ad lock only; a real product needs server-side segment gating.
+Treat this project as a **reference for the publishing pipeline shape**, not as a production OTT stack. The following corners are deliberately demo-sized or missing entirely.
+
+### Architecture-level caveats (read before demoing)
+
+- **"DRM" is HLS AES-128 encryption, not real DRM.** No license server, no device binding, no Widevine/FairPlay/PlayReady. The AES key file is served unauthenticated under `/playback/{id}/license.key` — anyone who knows the asset id can decrypt the stream. A real DRM story needs Shaka Packager (or equivalent) + a license proxy + an EME-capable player.
+- **Temporal mode `embedded` is in-memory only** (`TestWorkflowEnvironment`). Workflow state is **not durable across restarts**. Switch to a real Temporal cluster (`app.temporal.mode=remote`) for any non-local use.
+- **Zero authentication or authorization.** Every endpoint — create asset, upload, process, playback, license key, ad-service — is open. Do not expose this to a public network as-is.
+- **SSAI has no ad decisioning.** A single fixed `app.ssai.ad-id` from config is used for every asset. No targeting, no auction, no frequency capping, no VMAP, no per-viewer ad rotation.
+- **No sessionized manifest.** Same asset id → same manifest forever. The ad-skip lock is enforced only on the player; `curl /playback/{id}/segment_NNN.ts` bypasses everything.
+- **Single bitrate.** No ABR ladder. The `master.m3u8` is a media playlist, not a variant playlist of multiple bitrates.
+
+### Known deferred work
+
+- Player-side ad lock only; a real product needs server-side segment gating tied to per-session manifests.
 - Single pre-roll slot; no mid-roll / post-roll yet.
-- VAST parsing is intentionally minimal (no wrappers, no tracking events).
-- Ad-service caches forever; eviction is manual (`rm -rf ad-service/data/ads/{adId}`).
+- VAST parsing is intentionally minimal (no `<Wrapper>` chains, no tracking events / quartiles / clicks).
+- Storage is local disk; no S3/GCS/Azure or CDN origin offload.
+- No metrics, no distributed tracing — only Actuator `/health`.
+- Frontend error UX is a single `<div>` with `String(error)`; no toast, no retry surface.
