@@ -1,0 +1,20 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: ott-video-tech-demo-postgres
+    environment:
+      POSTGRES_DB: ott_video_demo
+      POSTGRES_USER: ott_demo
+      POSTGRES_PASSWORD: ott_demo
+    ports:
+      - "55432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ott_demo -d ott_video_demo"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  postgres-data:

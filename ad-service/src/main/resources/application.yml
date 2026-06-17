@@ -1,0 +1,39 @@
+server:
+  port: 8090
+
+spring:
+  application:
+    name: ad-service
+
+app:
+  ad:
+    output-dir: ${AD_OUTPUT_DIR:./data/ads}
+    public-base-url: ${AD_PUBLIC_BASE_URL:http://127.0.0.1:8090}
+    ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+    segment-duration-seconds: 2
+    catalog:
+      - id: preroll-brand-a
+        title: BRAND A Pre-Roll
+        duration-seconds: 5
+        primary-color: "0x0b6e4f"
+        accent-color: "0xf5d35e"
+        tagline: "BRAND A"
+        audio-frequency: 660
+      - id: preroll-brand-b
+        title: BRAND B Pre-Roll
+        duration-seconds: 8
+        primary-color: "0x1f3a93"
+        accent-color: "0xffffff"
+        tagline: "BRAND B"
+        audio-frequency: 880
+      - id: preroll-brand-c
+        title: BRAND C Pre-Roll
+        duration-seconds: 3
+        primary-color: "0x7a1f1f"
+        accent-color: "0xfbe7c6"
+        tagline: "BRAND C"
+        audio-frequency: 440
+
+logging:
+  level:
+    com.example.adservice: INFO

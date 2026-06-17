@@ -1,0 +1,157 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1400" height="900" viewBox="0 0 1400 900" role="img" aria-labelledby="title desc">
+  <title id="title">OTT Video Tech Demo System Architecture</title>
+  <desc id="desc">Architecture diagram showing React frontend, Spring Boot backend, Flyway, Postgres, embedded Temporal workflow, FFmpeg media processing, SSAI pre-roll insertion, DRM and HLS playback.</desc>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#334155"/>
+    </marker>
+    <linearGradient id="frontend" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#dbeafe"/>
+      <stop offset="1" stop-color="#bfdbfe"/>
+    </linearGradient>
+    <linearGradient id="backend" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#dcfce7"/>
+      <stop offset="1" stop-color="#bbf7d0"/>
+    </linearGradient>
+    <linearGradient id="workflow" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#fef3c7"/>
+      <stop offset="1" stop-color="#fde68a"/>
+    </linearGradient>
+    <style>
+      .canvas { fill: #f8fafc; }
+      .title { font: 700 34px Arial, sans-serif; fill: #0f172a; }
+      .subtitle { font: 400 16px Arial, sans-serif; fill: #475569; }
+      .section-title { font: 700 18px Arial, sans-serif; fill: #0f172a; }
+      .label { font: 700 15px Arial, sans-serif; fill: #0f172a; }
+      .small { font: 400 13px Arial, sans-serif; fill: #475569; }
+      .tiny { font: 400 12px Arial, sans-serif; fill: #64748b; }
+      .box { stroke: #334155; stroke-width: 1.5; rx: 8; ry: 8; }
+      .group { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; rx: 10; ry: 10; }
+      .line { stroke: #334155; stroke-width: 2; fill: none; marker-end: url(#arrow); }
+      .dash { stroke: #64748b; stroke-width: 2; stroke-dasharray: 8 6; fill: none; marker-end: url(#arrow); }
+      .flow { fill: #ffffff; stroke: #92400e; stroke-width: 1.4; rx: 8; ry: 8; }
+      .data { fill: #eef2ff; stroke: #4338ca; stroke-width: 1.4; rx: 8; ry: 8; }
+      .storage { fill: #f1f5f9; stroke: #334155; stroke-width: 1.4; rx: 8; ry: 8; }
+    </style>
+  </defs>
+
+  <rect class="canvas" width="1400" height="900"/>
+  <text class="title" x="60" y="58">OTT Video Tech Demo Architecture</text>
+  <text class="subtitle" x="60" y="86">Metadata, raw upload, FFmpeg processing, SSAI pre-roll stitching, program-only DRM and generated m3u8 playback.</text>
+
+  <rect class="group" x="55" y="125" width="300" height="650"/>
+  <text class="section-title" x="80" y="160">Frontend</text>
+  <rect class="box" x="85" y="195" width="240" height="110" fill="url(#frontend)"/>
+  <text class="label" x="110" y="230">React Publishing Console</text>
+  <text class="small" x="110" y="255">Vite dev server</text>
+  <text class="small" x="110" y="278">/api proxy to backend</text>
+
+  <rect class="box" x="85" y="340" width="240" height="115" fill="#eff6ff"/>
+  <text class="label" x="110" y="374">User Workflow</text>
+  <text class="small" x="110" y="399">1. Enter metadata</text>
+  <text class="small" x="110" y="421">2. Upload raw video</text>
+  <text class="small" x="110" y="443">3. Process and publish</text>
+
+  <rect class="box" x="85" y="490" width="240" height="145" fill="#ecfeff"/>
+  <text class="label" x="110" y="526">HLS Playback Panel</text>
+  <text class="small" x="110" y="551">hls.js or native HLS</text>
+  <text class="small" x="110" y="573">loads generated manifest</text>
+  <text class="small" x="110" y="595">pre-roll seek lock</text>
+  <text class="small" x="110" y="617">reads ad DATERANGE</text>
+
+  <rect class="group" x="405" y="125" width="430" height="650"/>
+  <text class="section-title" x="430" y="160">Spring Boot API</text>
+  <rect class="box" x="435" y="195" width="350" height="88" fill="url(#backend)"/>
+  <text class="label" x="460" y="229">vod.web</text>
+  <text class="small" x="460" y="254">VideoWorkflowController</text>
+
+  <rect class="box" x="435" y="315" width="350" height="102" fill="#f0fdf4"/>
+  <text class="label" x="460" y="349">vod.service</text>
+  <text class="small" x="460" y="374">VideoWorkflowService</text>
+  <text class="small" x="460" y="396">VideoWorkflowStateService</text>
+
+  <rect class="box" x="435" y="450" width="350" height="112" fill="#f7fee7"/>
+  <text class="label" x="460" y="484">vod.domain / vod.dto</text>
+  <text class="small" x="460" y="509">VideoAssetEntity, ProcessingJobEntity</text>
+  <text class="small" x="460" y="531">request and response records</text>
+
+  <rect class="box" x="435" y="595" width="350" height="95" fill="#ecfdf5"/>
+  <text class="label" x="460" y="629">vod.repository</text>
+  <text class="small" x="460" y="654">Spring Data JPA repositories</text>
+
+  <rect class="box" x="435" y="710" width="350" height="48" fill="#fff7ed"/>
+  <text class="label" x="460" y="736">FfmpegMediaProcessor</text>
+  <text class="small" x="635" y="736">transcode / HLS / ad / DRM</text>
+
+  <rect class="group" x="885" y="125" width="455" height="650"/>
+  <text class="section-title" x="910" y="160">Workflow and Processing</text>
+  <rect class="box" x="915" y="195" width="375" height="98" fill="url(#workflow)"/>
+  <text class="label" x="940" y="229">Embedded Temporal Runtime</text>
+  <text class="small" x="940" y="254">local demo mode</text>
+  <text class="small" x="940" y="276">remote cluster ready via app.temporal.mode</text>
+
+  <rect class="flow" x="915" y="325" width="375" height="82"/>
+  <text class="label" x="940" y="358">VideoPublishingWorkflow</text>
+  <text class="small" x="940" y="382">orchestrates activities in order</text>
+
+  <rect class="flow" x="915" y="440" width="160" height="58"/>
+  <text class="label" x="942" y="463">Transcode</text>
+  <text class="tiny" x="945" y="486">FFmpeg MP4</text>
+  <rect class="flow" x="1130" y="440" width="160" height="58"/>
+  <text class="label" x="1174" y="463">Package</text>
+  <text class="tiny" x="1162" y="486">HLS segments</text>
+  <rect class="flow" x="915" y="530" width="160" height="58"/>
+  <text class="label" x="975" y="553">SSAI</text>
+  <text class="tiny" x="935" y="576">generated pre-roll</text>
+  <rect class="flow" x="1130" y="530" width="160" height="58"/>
+  <text class="label" x="1194" y="553">DRM</text>
+  <text class="tiny" x="1154" y="576">ad clear, program AES</text>
+  <rect class="flow" x="1022" y="620" width="160" height="58"/>
+  <text class="label" x="1078" y="643">Publish</text>
+  <text class="tiny" x="1052" y="666">m3u8 playback URL</text>
+
+  <rect class="group" x="405" y="785" width="935" height="92"/>
+  <text class="section-title" x="430" y="820">Persistence and Media Outputs</text>
+  <rect class="data" x="650" y="802" width="165" height="56"/>
+  <text class="small" x="678" y="826">Postgres 16</text>
+  <text class="tiny" x="690" y="846">port 55432</text>
+  <rect class="data" x="840" y="802" width="165" height="56"/>
+  <text class="small" x="875" y="826">Flyway</text>
+  <text class="tiny" x="872" y="846">migrations</text>
+  <rect class="storage" x="1030" y="802" width="135" height="56"/>
+  <text class="small" x="1058" y="826">uploads</text>
+  <text class="tiny" x="1055" y="846">raw video</text>
+  <rect class="storage" x="1190" y="802" width="125" height="56"/>
+  <text class="small" x="1210" y="826">processed</text>
+  <text class="tiny" x="1202" y="846">HLS + key</text>
+
+  <path class="line" d="M 325 250 L 435 240"/>
+  <text class="tiny" x="342" y="224">REST /api/videos</text>
+  <path class="line" d="M 610 283 L 610 315"/>
+  <path class="line" d="M 610 417 L 610 450"/>
+  <path class="line" d="M 610 562 L 610 595"/>
+  <path class="line" d="M 610 690 L 720 802"/>
+  <path class="dash" d="M 610 758 C 760 765 875 735 995 486"/>
+  <text class="tiny" x="642" y="776">FFmpeg commands</text>
+  <path class="dash" d="M 680 365 C 805 365 805 244 915 244"/>
+  <text class="tiny" x="728" y="331">start workflow</text>
+  <path class="line" d="M 1102 293 L 1102 325"/>
+  <path class="line" d="M 1102 407 L 995 440"/>
+  <path class="line" d="M 1075 469 L 1130 469"/>
+  <path class="line" d="M 1210 498 L 1210 530"/>
+  <path class="line" d="M 1130 559 L 1075 559"/>
+  <path class="line" d="M 995 588 L 1058 620"/>
+  <path class="dash" d="M 1022 649 C 865 650 875 815 650 830"/>
+  <text class="tiny" x="852" y="738">job status updates</text>
+  <path class="dash" d="M 1170 678 C 1260 710 1260 785 1252 802"/>
+  <text class="tiny" x="1220" y="742">processed HLS</text>
+  <path class="line" d="M 1182 649 C 1305 625 1305 540 1290 500"/>
+  <text class="tiny" x="1237" y="608">m3u8 URL</text>
+  <path class="line" d="M 1290 500 C 1340 435 1340 330 1290 270"/>
+  <text class="tiny" x="1302" y="382">HLS playback stream</text>
+  <path class="line" d="M 435 641 C 370 640 350 550 325 550"/>
+  <text class="tiny" x="338" y="620">asset status + manifest</text>
+
+  <rect class="box" x="60" y="812" width="280" height="45" fill="#fff7ed"/>
+  <text class="small" x="82" y="840">States: UNPUBLISHED -> PROCESSING -> PUBLISHED</text>
+</svg>

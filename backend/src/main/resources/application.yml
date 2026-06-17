@@ -1,0 +1,47 @@
+server:
+  port: 8080
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 512MB
+
+spring:
+  application:
+    name: ott-video-tech-demo-backend
+  datasource:
+    url: jdbc:postgresql://127.0.0.1:55432/ott_video_demo
+    username: ott_demo
+    password: ott_demo
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    properties:
+      hibernate.format_sql: true
+      hibernate.jdbc.lob.non_contextual_creation: true
+    open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+app:
+  media:
+    upload-dir: ${UPLOAD_DIR:./data/uploads}
+    processed-dir: ${PROCESSED_DIR:./data/processed}
+    ffmpeg-path: ${FFMPEG_PATH:ffmpeg}
+    hls-segment-seconds: 4
+    public-base-url: ${PUBLIC_BASE_URL:http://127.0.0.1:8080}
+  ssai:
+    ad-service-base-url: ${AD_SERVICE_BASE_URL:http://127.0.0.1:8090}
+    ad-id: ${SSAI_AD_ID:preroll-brand-a}
+  temporal:
+    mode: embedded
+    task-queue: vod-publishing
+    remote:
+      target: 127.0.0.1:7233
+      namespace: default
+
+logging:
+  level:
+    com.example.vod: INFO
+    io.temporal: WARN

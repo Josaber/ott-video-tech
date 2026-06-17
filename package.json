@@ -1,0 +1,15 @@
+{
+  "name": "ott-video-tech-demo",
+  "private": true,
+  "version": "0.0.0",
+  "description": "Monorepo tooling root: commit linting + git hooks for the OTT video tech demo.",
+  "scripts": {
+    "prepare": "husky",
+    "commitlint": "commitlint --edit"
+  },
+  "devDependencies": {
+    "@commitlint/cli": "^19.5.0",
+    "@commitlint/config-conventional": "^19.5.0",
+    "husky": "^9.1.6"
+  }
+}
