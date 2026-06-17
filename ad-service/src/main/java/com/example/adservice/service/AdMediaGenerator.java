@@ -7,9 +7,12 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.Stream;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -46,10 +49,19 @@ public class AdMediaGenerator {
         Object lock = locks.computeIfAbsent(ad.getId(), k -> new Object());
         synchronized (lock) {
             Path manifest = masterManifest(ad.getId());
-            if (Files.exists(manifest)) {
+            Path hashFile = adDir(ad.getId()).resolve(".config-hash");
+            String currentHash = configHash(ad);
+            if (Files.exists(manifest) && Files.exists(hashFile)
+                    && currentHash.equals(Files.readString(hashFile).trim())) {
                 return;
             }
+            // config changed (or first run) — wipe stale segments before regenerating
+            // so an old longer-duration ad doesn't leave segments behind a shorter one.
+            if (Files.exists(adDir(ad.getId()))) {
+                wipeDir(adDir(ad.getId()));
+            }
             generate(ad);
+            Files.writeString(hashFile, currentHash);
         }
     }
 
@@ -64,6 +76,25 @@ public class AdMediaGenerator {
         runFfmpeg(buildHlsArgs(mp4, manifest));
 
         log.info("generated ad {} at {}", ad.getId(), dir);
+    }
+
+    private static String configHash(AdEntry ad) {
+        int h = Objects.hash(
+            ad.getDurationSeconds(),
+            ad.getPrimaryColor(),
+            ad.getAccentColor(),
+            ad.getTagline(),
+            ad.getAudioFrequency()
+        );
+        return Integer.toHexString(h);
+    }
+
+    private static void wipeDir(Path dir) throws IOException {
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+            });
+        }
     }
 
     private List<String> buildMp4Args(AdEntry ad, Path mp4) {
