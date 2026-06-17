@@ -55,6 +55,8 @@ The frontend decodes the JWT `exp` claim locally and re-checks it every 30 s, tr
 
 Override the JWT secret with `JWT_SECRET=…` (must be ≥ 32 bytes — startup WARNs on the default value and fails fast when `spring.profiles.active=prod`). The license-URL HMAC uses a separate key (`LICENSE_SIGNING_SECRET`) so a leak of either side does not compromise the other. The HLS player attaches `Authorization` only to same-origin requests via hls.js `xhrSetup`, so cross-origin ad-service ts fetches don't trigger a CORS preflight per segment.
 
+**Bearer-in-localStorage caveat.** Tokens land in the response body of `/auth/login`, `/auth/register`, `/auth/refresh` and `/auth/change-password`, are stored in `localStorage`, and are visible in DevTools' Network and Application tabs. That is fine for a demo but is the well-known XSS-exposure footgun of header-based auth. The production migration path is `Secure; HttpOnly; SameSite=Strict` cookies for the refresh token plus an in-memory access token — neither piece is reachable from any JavaScript that runs in the page.
+
 ## Demo flow
 
 1. `POST /api/videos` — create metadata, status `UNPUBLISHED`.

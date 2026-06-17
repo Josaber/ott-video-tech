@@ -29,13 +29,16 @@ export default function App() {
     return () => clearInterval(t)
   }, [session])
 
-  // Re-fetch /auth/me on mount and on window focus so a role change made by
-  // an admin (e.g. demoting this user from ADMIN to VIEWER) reaches the UI
-  // before the access token's natural 15-minute refresh would refresh it.
+  // Re-fetch /auth/me on window focus so a role change made by an admin
+  // (e.g. demoting this user from ADMIN to VIEWER) reaches the UI before
+  // the access token's 15-minute refresh would propagate it. We do NOT
+  // fetch on mount: login and /auth/refresh both return the fresh role
+  // in their response body, so the session in localStorage is already
+  // up to date the first time this effect runs.
   useEffect(() => {
     if (!session) return
     let cancelled = false
-    const refreshProfile = async () => {
+    const onFocus = async () => {
       try {
         const me = await api.me()
         if (cancelled) return
@@ -47,8 +50,6 @@ export default function App() {
         /* a 401 here is handled by jsonOrThrow → clearSession */
       }
     }
-    refreshProfile()
-    const onFocus = () => refreshProfile()
     window.addEventListener('focus', onFocus)
     return () => {
       cancelled = true
