@@ -162,6 +162,26 @@ if [[ -z "$NEW_TOKEN" || "$NEW_TOKEN" == "null" || "$NEW_TOKEN" == "$TOKEN" ]]; 
 fi
 green "  ok: fresh access token (${#NEW_TOKEN} chars)"
 
+step "verifying refresh token cannot read /api as a Bearer (typ guard)"
+REFRESH_AS_BEARER=$(curl_local -o /dev/null -w '%{http_code}' \
+  -H "Authorization: Bearer $REFRESH" http://127.0.0.1:8080/api/videos)
+if [[ "$REFRESH_AS_BEARER" == "401" ]]; then
+  green "  ok: refresh token as Bearer -> 401"
+else
+  red "  refresh token as Bearer returned $REFRESH_AS_BEARER (expected 401)"; exit 1
+fi
+
+step "verifying access token cannot exchange at /auth/refresh"
+ACCESS_AT_REFRESH=$(curl_local -o /dev/null -w '%{http_code}' \
+  -X POST http://127.0.0.1:8080/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d "$(jq -n --arg t "$TOKEN" '{refreshToken:$t}')")
+if [[ "$ACCESS_AT_REFRESH" == "401" ]]; then
+  green "  ok: access token at /auth/refresh -> 401"
+else
+  red "  access token at /auth/refresh returned $ACCESS_AT_REFRESH (expected 401)"; exit 1
+fi
+
 step "verifying /api/videos rejects no-auth"
 CODE=$(curl_local -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/videos)
 if [[ "$CODE" == "401" ]]; then

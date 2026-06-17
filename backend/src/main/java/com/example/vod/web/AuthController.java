@@ -11,6 +11,7 @@ import com.example.vod.repository.UserRepository;
 import com.example.vod.service.AuthService;
 import jakarta.validation.Valid;
 import java.util.Map;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -30,12 +31,14 @@ import org.springframework.web.bind.annotation.RestController;
 public class AuthController {
 
     private final AuthService auth;
-    private final JwtDecoder jwtDecoder;
+    private final JwtDecoder refreshJwtDecoder;
     private final UserRepository users;
 
-    public AuthController(AuthService auth, JwtDecoder jwtDecoder, UserRepository users) {
+    public AuthController(AuthService auth,
+                          @Qualifier("refreshJwtDecoder") JwtDecoder refreshJwtDecoder,
+                          UserRepository users) {
         this.auth = auth;
-        this.jwtDecoder = jwtDecoder;
+        this.refreshJwtDecoder = refreshJwtDecoder;
         this.users = users;
     }
 
@@ -52,14 +55,14 @@ public class AuthController {
 
     @PostMapping("/refresh")
     public LoginResponse refresh(@Valid @RequestBody RefreshRequest req) {
+        // refreshJwtDecoder rejects anything whose typ != "refresh" (signature
+        // + exp + typ all checked at decode time), so we no longer need a
+        // separate typ check here. An access token used here surfaces as 401.
         Jwt decoded;
         try {
-            decoded = jwtDecoder.decode(req.refreshToken());
+            decoded = refreshJwtDecoder.decode(req.refreshToken());
         } catch (JwtException e) {
             throw new BadCredentialsException("invalid refresh token");
-        }
-        if (!"refresh".equals(decoded.getClaimAsString("typ"))) {
-            throw new BadCredentialsException("not a refresh token");
         }
         UserEntity user = users.findByUsername(decoded.getSubject())
                 .orElseThrow(() -> new BadCredentialsException("user not found"));

@@ -13,8 +13,14 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.core.DelegatingOAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2Error;
+import org.springframework.security.oauth2.core.OAuth2TokenValidator;
+import org.springframework.security.oauth2.core.OAuth2TokenValidatorResult;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtValidators;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -78,9 +84,45 @@ public class SecurityConfig {
 
     @Bean
     public JwtDecoder jwtDecoder() {
+        // Primary decoder used by oauth2ResourceServer for every Authorization:
+        // Bearer call. Accepts only access tokens; refresh tokens fail at the
+        // validation step and surface as 401 (not 200-with-empty-authorities).
+        NimbusJwtDecoder decoder = buildDecoder();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefault(),
+            requireTyp("access")));
+        return decoder;
+    }
+
+    @Bean(name = "refreshJwtDecoder")
+    public JwtDecoder refreshJwtDecoder() {
+        // Used only by AuthController.refresh to verify the refresh token in
+        // the request body. Symmetric algorithm + same secret as the primary
+        // decoder, but enforces typ=refresh so an access token can never be
+        // swapped for new tokens.
+        NimbusJwtDecoder decoder = buildDecoder();
+        decoder.setJwtValidator(new DelegatingOAuth2TokenValidator<>(
+            JwtValidators.createDefault(),
+            requireTyp("refresh")));
+        return decoder;
+    }
+
+    private NimbusJwtDecoder buildDecoder() {
         byte[] secret = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
         SecretKey key = new SecretKeySpec(secret, JWSAlgorithm.HS256.getName());
         return NimbusJwtDecoder.withSecretKey(key).macAlgorithm(MacAlgorithm.HS256).build();
+    }
+
+    private static OAuth2TokenValidator<Jwt> requireTyp(String expected) {
+        return jwt -> {
+            String typ = jwt.getClaimAsString("typ");
+            return expected.equals(typ)
+                ? OAuth2TokenValidatorResult.success()
+                : OAuth2TokenValidatorResult.failure(new OAuth2Error(
+                    "invalid_token",
+                    "Expected typ=" + expected + ", got typ=" + typ,
+                    null));
+        };
     }
 
     @Bean
