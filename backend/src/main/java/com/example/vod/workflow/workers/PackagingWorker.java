@@ -7,7 +7,6 @@ import java.io.IOException;
 import java.nio.file.Path;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class PackagingWorker {
@@ -20,14 +19,14 @@ public class PackagingWorker {
         this.ffmpeg = ffmpeg;
     }
 
-    @Transactional
     public void run(UUID assetId) throws IOException {
         VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
         if (asset.getTranscodedPath() == null) {
             throw new IllegalStateException("no transcoded mp4 for asset " + assetId);
         }
         Path manifest = ffmpeg.packageHls(assetId, Path.of(asset.getTranscodedPath()));
-        asset.setPackageDir(manifest.getParent().toString());
-        assets.save(asset);
+        VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
+        fresh.setPackageDir(manifest.getParent().toString());
+        assets.save(fresh);
     }
 }
