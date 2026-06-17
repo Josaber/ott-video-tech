@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClientException;
 
 /**
  * SSAI worker: calls the standalone ad-service via VAST, captures the ad's
@@ -43,8 +44,11 @@ public class SsaiWorker {
             AdResponse ad = vastClient.fetchAd(ssaiProperties.getAdId());
             asset.setAdId(ad.adId());
             asset.setAdDurationMs((long) ad.durationSeconds() * 1000);
-        } catch (IOException | RuntimeException e) {
-            log.warn("ad-service unreachable, asset {} will publish without preroll: {}",
+        } catch (IOException | RestClientException | IllegalArgumentException e) {
+            // Narrow fallback scope: IO error from the ad-service call or
+            // malformed VAST. Anything else (OOM, NPE, JPA constraint, etc.)
+            // bubbles up so the workflow can mark the asset FAILED for real.
+            log.warn("ad-service unreachable / VAST invalid; asset {} will publish without preroll: {}",
                     assetId, e.getMessage());
             asset.setAdId(null);
             asset.setAdDurationMs(null);
