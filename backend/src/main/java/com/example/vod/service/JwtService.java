@@ -51,10 +51,28 @@ public class JwtService {
         }
     }
 
-    public String issue(UserEntity user) {
+    public String issueAccessToken(UserEntity user) {
+        return sign(user, "access", accessTtlSeconds());
+    }
+
+    public String issueRefreshToken(UserEntity user) {
+        return sign(user, "refresh", refreshTtlSeconds());
+    }
+
+    public long accessTtlSeconds() {
+        // Short-lived: 15 minutes. Frontend calls /auth/refresh before expiry.
+        return 15L * 60L;
+    }
+
+    public long refreshTtlSeconds() {
+        // Long-lived: the ttlHours setting. Default 24h.
+        return properties.getTtlHours() * 3600L;
+    }
+
+    private String sign(UserEntity user, String type, long ttlSeconds) {
         try {
             Instant now = Instant.now();
-            Instant exp = now.plusSeconds(properties.getTtlHours() * 3600L);
+            Instant exp = now.plusSeconds(ttlSeconds);
             JWTClaimsSet claims = new JWTClaimsSet.Builder()
                     .subject(user.getUsername())
                     .issuer(properties.getIssuer())
@@ -62,6 +80,8 @@ public class JwtService {
                     .expirationTime(Date.from(exp))
                     .claim("uid", user.getId().toString())
                     .claim("role", user.getRole().name())
+                    .claim("tv", user.getTokenVersion())
+                    .claim("typ", type)
                     .build();
             SignedJWT signed = new SignedJWT(new JWSHeader(JWSAlgorithm.HS256), claims);
             signed.sign(new MACSigner(properties.getSecret().getBytes(StandardCharsets.UTF_8)));
@@ -69,9 +89,5 @@ public class JwtService {
         } catch (JOSEException e) {
             throw new IllegalStateException("failed to sign JWT", e);
         }
-    }
-
-    public long ttlSeconds() {
-        return properties.getTtlHours() * 3600L;
     }
 }

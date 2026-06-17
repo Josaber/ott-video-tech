@@ -28,6 +28,9 @@ public class UserEntity {
     @Column(nullable = false, length = 32)
     private UserRole role;
 
+    @Column(name = "token_version", nullable = false)
+    private long tokenVersion = 0L;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -54,6 +57,8 @@ public class UserEntity {
     public void setPasswordHash(String passwordHash) { this.passwordHash = passwordHash; }
     public UserRole getRole() { return role; }
     public void setRole(UserRole role) { this.role = role; }
+    public long getTokenVersion() { return tokenVersion; }
+    public void setTokenVersion(long tokenVersion) { this.tokenVersion = tokenVersion; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

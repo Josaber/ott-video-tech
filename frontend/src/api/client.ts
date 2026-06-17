@@ -1,4 +1,4 @@
-import { clearSession, getToken, setSession } from './auth'
+import { clearSession, getRefreshToken, getToken, setSession } from './auth'
 
 export type AssetStatus = 'UNPUBLISHED' | 'PROCESSING' | 'PUBLISHED' | 'FAILED'
 
@@ -29,8 +29,10 @@ export interface Job {
 
 export interface LoginResponse {
   accessToken: string
+  refreshToken: string
   tokenType: string
   expiresInSeconds: number
+  refreshExpiresInSeconds: number
   username: string
   role: string
 }
@@ -40,10 +42,52 @@ function authHeaders(extra: Record<string, string> = {}): Record<string, string>
   return token ? { Authorization: `Bearer ${token}`, ...extra } : extra
 }
 
+let inflightRefresh: Promise<boolean> | null = null
+
+async function tryRefresh(): Promise<boolean> {
+  if (inflightRefresh) return inflightRefresh
+  const refreshToken = getRefreshToken()
+  if (!refreshToken) return false
+  inflightRefresh = (async () => {
+    try {
+      const r = await fetch('/auth/refresh', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ refreshToken }),
+      })
+      if (!r.ok) return false
+      const body = (await r.json()) as LoginResponse
+      setSession({
+        token: body.accessToken,
+        refreshToken: body.refreshToken,
+        username: body.username,
+        role: body.role,
+      })
+      return true
+    } catch {
+      return false
+    } finally {
+      inflightRefresh = null
+    }
+  })()
+  return inflightRefresh
+}
+
+async function authedFetch(input: string, init: RequestInit = {}): Promise<Response> {
+  let r = await fetch(input, { ...init, headers: { ...(init.headers ?? {}), ...authHeaders() } })
+  if (r.status === 401 && (await tryRefresh())) {
+    r = await fetch(input, { ...init, headers: { ...(init.headers ?? {}), ...authHeaders() } })
+  }
+  return r
+}
+
 async function jsonOrThrow<T>(r: Response): Promise<T> {
   if (r.status === 401) {
     clearSession()
     throw new Error('unauthenticated')
+  }
+  if (r.status === 403) {
+    throw new Error('forbidden')
   }
   if (!r.ok) {
     const body = await r.text()
@@ -63,7 +107,12 @@ async function loginLike(endpoint: string, payload: object): Promise<LoginRespon
   if (r.status === 409) throw new Error('username_taken')
   if (!r.ok) throw new Error(await r.text())
   const body = (await r.json()) as LoginResponse
-  setSession({ token: body.accessToken, username: body.username, role: body.role })
+  setSession({
+    token: body.accessToken,
+    refreshToken: body.refreshToken,
+    username: body.username,
+    role: body.role,
+  })
   return body
 }
 
@@ -73,38 +122,31 @@ export const api = {
   register: (username: string, password: string) =>
     loginLike('/auth/register', { username, password }),
   changePassword: async (currentPassword: string, newPassword: string) => {
-    const r = await fetch('/auth/change-password', {
+    const r = await authedFetch('/auth/change-password', {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ currentPassword, newPassword }),
     })
     if (r.status === 401) throw new Error('invalid_credentials')
     if (r.status === 409) throw new Error('same_as_current')
     if (!r.ok) throw new Error(await r.text())
   },
-  list: () => fetch('/api/videos', { headers: authHeaders() }).then(jsonOrThrow<Asset[]>),
-  get: (id: string) =>
-    fetch(`/api/videos/${id}`, { headers: authHeaders() }).then(jsonOrThrow<Asset>),
-  jobs: (id: string) =>
-    fetch(`/api/videos/${id}/jobs`, { headers: authHeaders() }).then(jsonOrThrow<Job[]>),
+  list: () => authedFetch('/api/videos').then(jsonOrThrow<Asset[]>),
+  get: (id: string) => authedFetch(`/api/videos/${id}`).then(jsonOrThrow<Asset>),
+  jobs: (id: string) => authedFetch(`/api/videos/${id}/jobs`).then(jsonOrThrow<Job[]>),
   create: (body: { title: string; description?: string }) =>
-    fetch('/api/videos', {
+    authedFetch('/api/videos', {
       method: 'POST',
-      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<Asset>),
   upload: (id: string, file: File) => {
     const fd = new FormData()
     fd.append('file', file)
-    return fetch(`/api/videos/${id}/upload`, {
-      method: 'POST',
-      headers: authHeaders(),
-      body: fd,
-    }).then(jsonOrThrow<Asset>)
+    return authedFetch(`/api/videos/${id}/upload`, { method: 'POST', body: fd }).then(
+      jsonOrThrow<Asset>,
+    )
   },
   process: (id: string) =>
-    fetch(`/api/videos/${id}/process`, {
-      method: 'POST',
-      headers: authHeaders(),
-    }).then(jsonOrThrow<void>),
+    authedFetch(`/api/videos/${id}/process`, { method: 'POST' }).then(jsonOrThrow<void>),
 }

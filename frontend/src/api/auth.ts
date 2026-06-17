@@ -1,8 +1,10 @@
 const TOKEN_KEY = 'ott-demo:token'
+const REFRESH_KEY = 'ott-demo:refresh'
 const USER_KEY = 'ott-demo:user'
 
 export interface AuthSession {
   token: string
+  refreshToken: string | null
   username: string
   role: string
   expiresAtMs: number
@@ -33,15 +35,22 @@ export function getSession(): AuthSession | null {
   const raw = localStorage.getItem(USER_KEY)
   if (!token || !raw) return null
   if (isExpired(token)) {
-    localStorage.removeItem(TOKEN_KEY)
-    localStorage.removeItem(USER_KEY)
-    return null
+    // Access token is dead. If we still have a usable refresh token, leave the
+    // session metadata in place so the API client can transparently refresh.
+    const refresh = localStorage.getItem(REFRESH_KEY)
+    if (!refresh || isExpired(refresh)) {
+      localStorage.removeItem(TOKEN_KEY)
+      localStorage.removeItem(REFRESH_KEY)
+      localStorage.removeItem(USER_KEY)
+      return null
+    }
   }
   try {
     const u = JSON.parse(raw) as { username: string; role: string }
     const exp = decodeExp(token)
     return {
       token,
+      refreshToken: localStorage.getItem(REFRESH_KEY),
       username: u.username,
       role: u.role,
       expiresAtMs: exp !== null ? exp * 1000 : 0,
@@ -51,14 +60,21 @@ export function getSession(): AuthSession | null {
   }
 }
 
-export function setSession(s: Omit<AuthSession, 'expiresAtMs'>) {
+export function setSession(s: {
+  token: string
+  refreshToken: string
+  username: string
+  role: string
+}) {
   localStorage.setItem(TOKEN_KEY, s.token)
+  localStorage.setItem(REFRESH_KEY, s.refreshToken)
   localStorage.setItem(USER_KEY, JSON.stringify({ username: s.username, role: s.role }))
   listeners.forEach((l) => l())
 }
 
 export function clearSession() {
   localStorage.removeItem(TOKEN_KEY)
+  localStorage.removeItem(REFRESH_KEY)
   localStorage.removeItem(USER_KEY)
   listeners.forEach((l) => l())
 }
@@ -71,9 +87,12 @@ export function onSessionChange(fn: () => void): () => void {
 export function getToken(): string | null {
   const token = localStorage.getItem(TOKEN_KEY)
   if (!token) return null
-  if (isExpired(token)) {
-    clearSession()
-    return null
-  }
+  if (isExpired(token)) return null
   return token
+}
+
+export function getRefreshToken(): string | null {
+  const t = localStorage.getItem(REFRESH_KEY)
+  if (!t || isExpired(t)) return null
+  return t
 }

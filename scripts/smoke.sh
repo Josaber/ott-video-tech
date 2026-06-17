@@ -135,18 +135,32 @@ LOGIN_JSON=$(curl_local -X POST http://127.0.0.1:8080/auth/login \
   -H 'Content-Type: application/json' \
   -d '{"username":"admin","password":"admin"}')
 TOKEN=$(echo "$LOGIN_JSON" | jq -r '.accessToken')
+REFRESH=$(echo "$LOGIN_JSON" | jq -r '.refreshToken')
 if [[ -z "$TOKEN" || "$TOKEN" == "null" ]]; then
   red "login failed: $LOGIN_JSON"; exit 1
 fi
+if [[ -z "$REFRESH" || "$REFRESH" == "null" ]]; then
+  red "login response missing refreshToken"; exit 1
+fi
 AUTH_HEADER="Authorization: Bearer $TOKEN"
-green "got token (${#TOKEN} chars)"
+green "got access (${#TOKEN} chars) and refresh (${#REFRESH} chars)"
 
 step "verifying token via /auth/me"
 ME=$(curl_api http://127.0.0.1:8080/auth/me)
 echo "  $ME"
-if ! echo "$ME" | jq -e '.username == "admin"' >/dev/null; then
-  red "/auth/me did not return admin"; exit 1
+if ! echo "$ME" | jq -e '.username == "admin" and .role == "ADMIN"' >/dev/null; then
+  red "/auth/me did not return admin ADMIN"; exit 1
 fi
+
+step "verifying /auth/refresh issues a fresh access token"
+NEW_LOGIN=$(curl_local -X POST http://127.0.0.1:8080/auth/refresh \
+  -H 'Content-Type: application/json' \
+  -d "$(jq -n --arg t "$REFRESH" '{refreshToken:$t}')")
+NEW_TOKEN=$(echo "$NEW_LOGIN" | jq -r '.accessToken')
+if [[ -z "$NEW_TOKEN" || "$NEW_TOKEN" == "null" || "$NEW_TOKEN" == "$TOKEN" ]]; then
+  red "refresh failed or returned the same token: $NEW_LOGIN"; exit 1
+fi
+green "  ok: fresh access token (${#NEW_TOKEN} chars)"
 
 step "verifying /api/videos rejects no-auth"
 CODE=$(curl_local -o /dev/null -w '%{http_code}' http://127.0.0.1:8080/api/videos)

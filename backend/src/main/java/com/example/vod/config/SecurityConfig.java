@@ -16,18 +16,25 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.NimbusJwtDecoder;
+import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
+import org.springframework.security.oauth2.server.resource.web.authentication.BearerTokenAuthenticationFilter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @Configuration
+@EnableMethodSecurity
 public class SecurityConfig {
 
     private final JwtProperties jwtProperties;
+    private final JwtTokenVersionFilter tokenVersionFilter;
 
-    public SecurityConfig(JwtProperties jwtProperties) {
+    public SecurityConfig(JwtProperties jwtProperties, JwtTokenVersionFilter tokenVersionFilter) {
         this.jwtProperties = jwtProperties;
+        this.tokenVersionFilter = tokenVersionFilter;
     }
 
     @Bean
@@ -50,6 +57,25 @@ public class SecurityConfig {
         return source;
     }
 
+    private JwtAuthenticationConverter jwtAuthenticationConverter() {
+        // Translate the "role" claim ("ADMIN" | "VIEWER") into the
+        // ROLE_ADMIN / ROLE_VIEWER authorities @PreAuthorize("hasRole(...)")
+        // expects. Reject access tokens whose typ != "access" so a refresh
+        // token can never be used to call /api.
+        JwtAuthenticationConverter c = new JwtAuthenticationConverter();
+        c.setJwtGrantedAuthoritiesConverter(jwt -> {
+            String typ = jwt.getClaimAsString("typ");
+            if (typ != null && !"access".equals(typ)) {
+                return List.of();
+            }
+            String role = jwt.getClaimAsString("role");
+            return role == null
+                ? List.of()
+                : List.of(new SimpleGrantedAuthority("ROLE_" + role));
+        });
+        return c;
+    }
+
     @Bean
     public JwtDecoder jwtDecoder() {
         byte[] secret = jwtProperties.getSecret().getBytes(StandardCharsets.UTF_8);
@@ -65,7 +91,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/auth/login", "/auth/register").permitAll()
+                .requestMatchers("/auth/login", "/auth/register", "/auth/refresh").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 // license.key is the meaningful secret — token required.
                 .requestMatchers("/playback/*/license.key").authenticated()
@@ -77,7 +103,11 @@ public class SecurityConfig {
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )
-            .oauth2ResourceServer(rs -> rs.jwt(Customizer.withDefaults()));
+            .oauth2ResourceServer(rs -> rs.jwt(j -> j.jwtAuthenticationConverter(jwtAuthenticationConverter())))
+            // Compare JWT "tv" claim against users.token_version on every
+            // authenticated request, after the BearerTokenAuthenticationFilter
+            // has set the principal.
+            .addFilterAfter(tokenVersionFilter, BearerTokenAuthenticationFilter.class);
         return http.build();
     }
 }

@@ -68,12 +68,22 @@ public class AuthService {
             throw new IllegalStateException("new password must differ from current");
         }
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
+        // Invalidate every existing access/refresh token for this user.
+        // JwtTokenVersionFilter compares the "tv" claim against this column.
+        user.setTokenVersion(user.getTokenVersion() + 1);
         users.save(user);
     }
 
+    public LoginResponse refresh(UserEntity user) {
+        return toLoginResponse(user);
+    }
+
     private LoginResponse toLoginResponse(UserEntity user) {
-        String token = jwt.issue(user);
-        return new LoginResponse(token, "Bearer", jwt.ttlSeconds(),
-                user.getUsername(), user.getRole().name());
+        String access = jwt.issueAccessToken(user);
+        String refresh = jwt.issueRefreshToken(user);
+        return new LoginResponse(
+            access, refresh, "Bearer",
+            jwt.accessTtlSeconds(), jwt.refreshTtlSeconds(),
+            user.getUsername(), user.getRole().name());
     }
 }
