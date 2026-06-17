@@ -25,6 +25,12 @@ spring:
     baseline-on-migrate: true
 
 app:
+  auth:
+    jwt:
+      # MUST be >= 32 bytes (HS256 / MACSigner requirement). Override via env in any non-local env.
+      secret: ${JWT_SECRET:dev-only-secret-please-rotate-in-real-deployments-aaaaaaaaaaaa}
+      issuer: ott-video-tech-demo
+      ttl-hours: ${JWT_TTL_HOURS:24}
   media:
     upload-dir: ${UPLOAD_DIR:./data/uploads}
     processed-dir: ${PROCESSED_DIR:./data/processed}

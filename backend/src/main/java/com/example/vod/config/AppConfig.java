@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties({MediaProperties.class, SsaiProperties.class, TemporalProperties.class})
+@EnableConfigurationProperties({MediaProperties.class, SsaiProperties.class, TemporalProperties.class, JwtProperties.class})
 public class AppConfig {
 
     @Bean
