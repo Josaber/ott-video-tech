@@ -130,6 +130,16 @@ export const api = {
     if (r.status === 401) throw new Error('invalid_credentials')
     if (r.status === 409) throw new Error('same_as_current')
     if (!r.ok) throw new Error(await r.text())
+    // Backend rotates token_version, which would 401 every subsequent
+    // request from THIS tab too. The response carries a fresh access +
+    // refresh pair stamped with the new tv; install them.
+    const body = (await r.json()) as LoginResponse
+    setSession({
+      token: body.accessToken,
+      refreshToken: body.refreshToken,
+      username: body.username,
+      role: body.role,
+    })
   },
   list: () => authedFetch('/api/videos').then(jsonOrThrow<Asset[]>),
   get: (id: string) => authedFetch(`/api/videos/${id}`).then(jsonOrThrow<Asset>),

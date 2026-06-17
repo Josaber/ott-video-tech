@@ -74,10 +74,13 @@ public class AuthController {
     }
 
     @PostMapping("/change-password")
-    public ResponseEntity<Void> changePassword(@AuthenticationPrincipal Jwt jwt,
-                                               @Valid @RequestBody ChangePasswordRequest req) {
-        auth.changePassword(jwt.getSubject(), req);
-        return ResponseEntity.noContent().build();
+    public LoginResponse changePassword(@AuthenticationPrincipal Jwt jwt,
+                                        @Valid @RequestBody ChangePasswordRequest req) {
+        // Returns a fresh access+refresh pair stamped with the new
+        // token_version so the caller stays signed in without bouncing
+        // through the login page; every OTHER session for the same user
+        // is invalidated by JwtTokenVersionFilter on its next request.
+        return auth.changePassword(jwt.getSubject(), req);
     }
 
     @GetMapping("/me")

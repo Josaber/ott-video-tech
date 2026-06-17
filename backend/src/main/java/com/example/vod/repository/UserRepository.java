@@ -17,8 +17,15 @@ public interface UserRepository extends JpaRepository<UserEntity, UUID> {
      * concurrent change-password calls both read token_version=N and both
      * write N+1, effectively only invalidating one token version's worth
      * of issued tokens.
+     *
+     * clearAutomatically=true so any UserEntity already in the persistence
+     * context drops the stale tokenVersion; the next findByUsername()
+     * inside the same transaction re-hydrates from the post-UPDATE row.
+     * Without this, AuthService.changePassword would issue replacement
+     * tokens stamped with the OLD token_version, immediately invalidating
+     * itself on the next request.
      */
-    @Modifying
+    @Modifying(clearAutomatically = true)
     @Transactional
     @Query("update UserEntity u set u.tokenVersion = u.tokenVersion + 1 where u.username = :username")
     int incrementTokenVersion(@Param("username") String username);

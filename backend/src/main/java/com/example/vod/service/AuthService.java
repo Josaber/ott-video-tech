@@ -58,7 +58,7 @@ public class AuthService {
     }
 
     @Transactional
-    public void changePassword(String username, ChangePasswordRequest req) {
+    public LoginResponse changePassword(String username, ChangePasswordRequest req) {
         UserEntity user = users.findByUsername(username)
                 .orElseThrow(() -> new BadCredentialsException("invalid credentials"));
         if (!passwordEncoder.matches(req.currentPassword(), user.getPasswordHash())) {
@@ -74,6 +74,13 @@ public class AuthService {
         // one of two concurrent updates and silently fail to revoke one
         // request's worth of issued tokens.
         users.incrementTokenVersion(username);
+        // clearAutomatically on incrementTokenVersion dropped the stale
+        // entity, so this fresh load returns the post-UPDATE tokenVersion.
+        // Hand the caller back a new pair stamped with the new tv so the
+        // tab they're typing on doesn't have to bounce through the login
+        // screen just because they rotated their own password.
+        UserEntity refreshed = users.findByUsername(username).orElseThrow();
+        return toLoginResponse(refreshed);
     }
 
     public LoginResponse refresh(UserEntity user) {
