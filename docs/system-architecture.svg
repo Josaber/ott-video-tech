@@ -113,8 +113,8 @@
   <rect class="group" x="405" y="785" width="935" height="92"/>
   <text class="section-title" x="430" y="820">Persistence and Media Outputs</text>
   <rect class="data" x="650" y="802" width="165" height="56"/>
-  <text class="small" x="678" y="826">Postgres 16</text>
-  <text class="tiny" x="690" y="846">port 55432</text>
+  <text class="small" x="678" y="826">Postgres 18</text>
+  <text class="tiny" x="690" y="846">port 5432</text>
   <rect class="data" x="840" y="802" width="165" height="56"/>
   <text class="small" x="875" y="826">Flyway</text>
   <text class="tiny" x="872" y="846">migrations</text>

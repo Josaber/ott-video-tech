@@ -9,7 +9,7 @@ spring:
   application:
     name: ott-video-tech-demo-backend
   datasource:
-    url: jdbc:postgresql://127.0.0.1:55432/ott_video_demo
+    url: jdbc:postgresql://127.0.0.1:5432/ott_video_demo
     username: ott_demo
     password: ott_demo
     driver-class-name: org.postgresql.Driver

@@ -1,13 +1,13 @@
 services:
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: ott-video-tech-demo-postgres
     environment:
       POSTGRES_DB: ott_video_demo
       POSTGRES_USER: ott_demo
       POSTGRES_PASSWORD: ott_demo
     ports:
-      - "55432:5432"
+      - "5432:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
@@ -21,7 +21,7 @@ services:
   # Switch the backend to it with `app.temporal.mode=remote`.
   # State survives backend restarts (unlike the embedded TestWorkflowEnvironment).
   temporal:
-    image: temporalio/auto-setup:1.24.2
+    image: temporalio/auto-setup:1.29.7
     container_name: ott-video-tech-demo-temporal
     depends_on:
       postgres:
@@ -46,7 +46,7 @@ services:
       start_period: 120s
 
   temporal-ui:
-    image: temporalio/ui:2.27.2
+    image: temporalio/ui:2.51.0
     container_name: ott-video-tech-demo-temporal-ui
     depends_on:
       - temporal

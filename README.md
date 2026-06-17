@@ -9,7 +9,7 @@ End-to-end VOD publishing demo: metadata → raw upload → FFmpeg transcode →
 | `ad-service/` | Java 25, Spring Boot 4.1             | 8090  | Fixed-catalog ad source. Generates pre-roll MP4 + HLS on demand with FFmpeg, exposes VAST 4.2 XML and HLS sub-manifests. |
 | `backend/`    | Java 25, Spring Boot 4.1, Temporal, FFmpeg, Postgres, Flyway | 8080 | VOD pipeline. Workers per stage, embedded Temporal, manifest stitcher. |
 | `frontend/`   | React + Vite + hls.js                | 5173  | Workflow console + player with ad seek-lock. |
-| `docker-compose.yml` | Postgres 16 Alpine            | 55432 | Local database. |
+| `docker-compose.yml` | Postgres 18 Alpine            | 5432 | Local database. |
 
 ## Prerequisites
 
@@ -21,7 +21,7 @@ End-to-end VOD publishing demo: metadata → raw upload → FFmpeg transcode →
 ## Local quickstart
 
 ```bash
-make db-up          # postgres on :55432
+make db-up          # postgres on :5432
 make ad-service     # in shell 1: ad-service on :8090
 make backend        # in shell 2: backend on :8080 (runs Flyway, embedded Temporal)
 make install        # one-time: npm install frontend deps

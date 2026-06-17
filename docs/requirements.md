@@ -32,10 +32,10 @@
 
 ### 数据库与本地基础设施
 
-- PostgreSQL 16 Alpine 作为本地数据库。
+- PostgreSQL 18 Alpine 作为本地数据库。
 - Docker Compose 管理数据库容器。
 - PostgreSQL 容器名为 `ott-video-tech-demo-postgres`。
-- 本地数据库端口映射为 `55432:5432`。
+- 本地数据库端口映射为 `5432:5432`。
 - 数据库名、用户名和密码分别为 `ott_video_demo`、`ott_demo`、`ott_demo`。
 
 ### 媒体处理与播放格式
@@ -146,7 +146,7 @@
 - UI 应保持操作型 workflow console 风格，不做营销 landing page。
 - 文档需要说明本地运行、API、demo flow 和关键媒体处理行为。
 - 后端 schema 使用 Flyway 管理，Hibernate 只做 schema validate。
-- PostgreSQL 使用 Docker Compose，本地端口为 `55432`，避免和本机 `5432` 冲突。
+- PostgreSQL 使用 Docker Compose，本地端口为 `5432`。如果本机已有 `5432` 占用，调整 `docker-compose.yml` 中的端口映射并同步 `application.yml` 的 `spring.datasource.url`。
 
 ## 验收标准
 
