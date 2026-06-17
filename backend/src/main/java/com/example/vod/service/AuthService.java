@@ -68,10 +68,12 @@ public class AuthService {
             throw new IllegalStateException("new password must differ from current");
         }
         user.setPasswordHash(passwordEncoder.encode(req.newPassword()));
-        // Invalidate every existing access/refresh token for this user.
-        // JwtTokenVersionFilter compares the "tv" claim against this column.
-        user.setTokenVersion(user.getTokenVersion() + 1);
         users.save(user);
+        // Atomic SQL increment so concurrent change-password calls each
+        // contribute their own version bump; read-modify-write would lose
+        // one of two concurrent updates and silently fail to revoke one
+        // request's worth of issued tokens.
+        users.incrementTokenVersion(username);
     }
 
     public LoginResponse refresh(UserEntity user) {
