@@ -53,18 +53,34 @@ async function jsonOrThrow<T>(r: Response): Promise<T> {
   return r.json() as Promise<T>
 }
 
+async function loginLike(endpoint: string, payload: object): Promise<LoginResponse> {
+  const r = await fetch(endpoint, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload),
+  })
+  if (r.status === 401) throw new Error('invalid_credentials')
+  if (r.status === 409) throw new Error('username_taken')
+  if (!r.ok) throw new Error(await r.text())
+  const body = (await r.json()) as LoginResponse
+  setSession({ token: body.accessToken, username: body.username, role: body.role })
+  return body
+}
+
 export const api = {
-  login: async (username: string, password: string) => {
-    const r = await fetch('/auth/login', {
+  login: (username: string, password: string) =>
+    loginLike('/auth/login', { username, password }),
+  register: (username: string, password: string) =>
+    loginLike('/auth/register', { username, password }),
+  changePassword: async (currentPassword: string, newPassword: string) => {
+    const r = await fetch('/auth/change-password', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ username, password }),
+      headers: authHeaders({ 'Content-Type': 'application/json' }),
+      body: JSON.stringify({ currentPassword, newPassword }),
     })
     if (r.status === 401) throw new Error('invalid_credentials')
+    if (r.status === 409) throw new Error('same_as_current')
     if (!r.ok) throw new Error(await r.text())
-    const body = (await r.json()) as LoginResponse
-    setSession({ token: body.accessToken, username: body.username, role: body.role })
-    return body
   },
   list: () => fetch('/api/videos', { headers: authHeaders() }).then(jsonOrThrow<Asset[]>),
   get: (id: string) =>

@@ -5,6 +5,7 @@ import { AssetList } from './components/AssetList'
 import { CreateAssetForm } from './components/CreateAssetForm'
 import { AssetDetail } from './components/AssetDetail'
 import { Login } from './components/Login'
+import { ChangePassword } from './components/ChangePassword'
 import { AuthSession, clearSession, getSession, onSessionChange } from './api/auth'
 
 export default function App() {
@@ -16,6 +17,17 @@ export default function App() {
   useEffect(() => {
     return onSessionChange(() => setSessionState(getSession()))
   }, [])
+
+  // Re-check the JWT exp every 30s. If the token quietly expires while the user
+  // is idle on the page, this flips them back to the login screen without
+  // waiting for the next API call to 401.
+  useEffect(() => {
+    const t = setInterval(() => {
+      const current = getSession()
+      if (current === null && session !== null) setSessionState(null)
+    }, 30000)
+    return () => clearInterval(t)
+  }, [session])
 
   const refresh = useCallback(async () => {
     if (!session) return
@@ -57,6 +69,10 @@ export default function App() {
             <LogOut size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
             Sign out
           </button>
+        </div>
+        <div className="panel">
+          <h1>Account</h1>
+          <ChangePassword />
         </div>
         <div className="panel">
           <h1>New asset</h1>

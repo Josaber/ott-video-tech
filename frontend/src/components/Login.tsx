@@ -1,8 +1,11 @@
 import { useState } from 'react'
-import { LogIn } from 'lucide-react'
+import { LogIn, UserPlus } from 'lucide-react'
 import { api } from '../api/client'
 
+type Mode = 'login' | 'register'
+
 export function Login() {
+  const [mode, setMode] = useState<Mode>('login')
   const [username, setUsername] = useState('admin')
   const [password, setPassword] = useState('admin')
   const [busy, setBusy] = useState(false)
@@ -13,51 +16,86 @@ export function Login() {
     setBusy(true)
     setError(null)
     try {
-      await api.login(username, password)
+      if (mode === 'login') {
+        await api.login(username, password)
+      } else {
+        await api.register(username, password)
+      }
     } catch (err) {
-      setError(err instanceof Error && err.message === 'invalid_credentials'
-        ? 'Invalid username or password.'
-        : 'Login failed.')
+      setError(translate(err))
     } finally {
       setBusy(false)
     }
   }
 
+  const switchMode = (next: Mode) => {
+    setMode(next)
+    setError(null)
+    if (next === 'register') {
+      setUsername('')
+      setPassword('')
+    }
+  }
+
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 24 }}>
-      <form
-        onSubmit={submit}
-        className="panel"
-        style={{ width: 360, padding: 24 }}
-      >
+      <form onSubmit={submit} className="panel" style={{ width: 380, padding: 24 }}>
         <h1 style={{ marginBottom: 16 }}>OTT Workflow Console</h1>
+        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+          <button
+            type="button"
+            className={mode === 'login' ? '' : 'secondary'}
+            onClick={() => switchMode('login')}
+          >
+            Sign in
+          </button>
+          <button
+            type="button"
+            className={mode === 'register' ? '' : 'secondary'}
+            onClick={() => switchMode('register')}
+          >
+            Register
+          </button>
+        </div>
         <label>Username</label>
         <input
-          autoComplete="username"
+          autoComplete={mode === 'login' ? 'username' : 'username'}
           value={username}
           onChange={(e) => setUsername(e.target.value)}
+          placeholder={mode === 'register' ? 'letters, digits, . _ -' : ''}
         />
         <label>Password</label>
         <input
           type="password"
-          autoComplete="current-password"
+          autoComplete={mode === 'login' ? 'current-password' : 'new-password'}
           value={password}
           onChange={(e) => setPassword(e.target.value)}
+          placeholder={mode === 'register' ? 'min 8 characters' : ''}
         />
         {error && (
           <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{error}</div>
         )}
         <div style={{ marginTop: 16 }}>
           <button type="submit" disabled={busy || !username || !password}>
-            <LogIn size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Sign in
+            {mode === 'login'
+              ? <><LogIn size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Sign in</>
+              : <><UserPlus size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Create account</>}
           </button>
         </div>
         <p style={{ fontSize: 11, color: '#64748b', marginTop: 16 }}>
-          Demo default: <code>admin</code> / <code>admin</code>. Override via the
-          <code> users</code> table or by setting <code>JWT_SECRET</code> + a custom seed.
+          {mode === 'login'
+            ? <>Demo default: <code>admin</code> / <code>admin</code>. New accounts use the <code>VIEWER</code> role.</>
+            : <>New accounts are created with the <code>VIEWER</code> role and signed in immediately.</>}
         </p>
       </form>
     </div>
   )
+}
+
+function translate(err: unknown): string {
+  if (err instanceof Error) {
+    if (err.message === 'invalid_credentials') return 'Invalid username or password.'
+    if (err.message === 'username_taken') return 'That username is already taken.'
+  }
+  return 'Request failed. Try again.'
 }

@@ -37,13 +37,17 @@ Self-signed HS256 JWT verified by Spring Security's oauth2-resource-server. The 
 | Endpoint                              | Auth |
 | ------------------------------------- | ---- |
 | `POST /auth/login`                    | open (returns Bearer token) |
-| `GET /auth/me`                        | Bearer |
-| `GET /actuator/health`                | open |
-| `*  /api/**`                          | Bearer |
-| `GET /playback/{id}/master.m3u8`      | open (TODO: sessionize) |
-| `GET /playback/{id}/segment_*.ts`     | open (TODO: signed URL) |
-| `GET /playback/{id}/license.key`      | Bearer |
+| `POST /auth/register`                 | open (creates VIEWER, returns Bearer token) |
+| `POST /auth/change-password`          | Bearer (subject taken from JWT) |
+| `GET  /auth/me`                       | Bearer |
+| `GET  /actuator/health`               | open |
+| `*    /api/**`                        | Bearer |
+| `GET  /playback/{id}/master.m3u8`     | open (TODO: sessionize) |
+| `GET  /playback/{id}/segment_*.ts`    | open (TODO: signed URL) |
+| `GET  /playback/{id}/license.key`     | Bearer |
 | ad-service `/vast`, `/ads/...`        | open (browser fetches ad ts directly) |
+
+The frontend decodes the JWT `exp` claim locally and re-checks it every 30 s, so a quietly-expired session flips back to the login screen without waiting for an API call to 401.
 
 Override the secret with `JWT_SECRET=…` (must be ≥ 32 bytes) and token lifetime with `JWT_TTL_HOURS=…`. The HLS player attaches `Authorization` only to same-origin requests via hls.js `xhrSetup`, so cross-origin ad-service ts fetches don't trigger a CORS preflight per segment.
 
