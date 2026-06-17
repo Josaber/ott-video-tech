@@ -65,7 +65,7 @@ public class SecurityConfig {
             .sessionManagement(s -> s.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
-                .requestMatchers("/auth/login").permitAll()
+                .requestMatchers("/auth/login", "/auth/register").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
                 // license.key is the meaningful secret — token required.
                 .requestMatchers("/playback/*/license.key").authenticated()
