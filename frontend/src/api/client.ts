@@ -116,11 +116,17 @@ async function loginLike(endpoint: string, payload: object): Promise<LoginRespon
   return body
 }
 
+export interface MeResponse {
+  username: string
+  role: string
+}
+
 export const api = {
   login: (username: string, password: string) =>
     loginLike('/auth/login', { username, password }),
   register: (username: string, password: string) =>
     loginLike('/auth/register', { username, password }),
+  me: () => authedFetch('/auth/me').then(jsonOrThrow<MeResponse>),
   changePassword: async (currentPassword: string, newPassword: string) => {
     const r = await authedFetch('/auth/change-password', {
       method: 'POST',

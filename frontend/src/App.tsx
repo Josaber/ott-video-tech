@@ -6,7 +6,7 @@ import { CreateAssetForm } from './components/CreateAssetForm'
 import { AssetDetail } from './components/AssetDetail'
 import { Login } from './components/Login'
 import { ChangePassword } from './components/ChangePassword'
-import { AuthSession, clearSession, getSession, onSessionChange } from './api/auth'
+import { AuthSession, clearSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 export default function App() {
   const [session, setSessionState] = useState<AuthSession | null>(getSession())
@@ -28,6 +28,33 @@ export default function App() {
     }, 30000)
     return () => clearInterval(t)
   }, [session])
+
+  // Re-fetch /auth/me on mount and on window focus so a role change made by
+  // an admin (e.g. demoting this user from ADMIN to VIEWER) reaches the UI
+  // before the access token's natural 15-minute refresh would refresh it.
+  useEffect(() => {
+    if (!session) return
+    let cancelled = false
+    const refreshProfile = async () => {
+      try {
+        const me = await api.me()
+        if (cancelled) return
+        const current = getSession()
+        if (current && (current.username !== me.username || current.role !== me.role)) {
+          updateProfile(me.username, me.role)
+        }
+      } catch {
+        /* a 401 here is handled by jsonOrThrow → clearSession */
+      }
+    }
+    refreshProfile()
+    const onFocus = () => refreshProfile()
+    window.addEventListener('focus', onFocus)
+    return () => {
+      cancelled = true
+      window.removeEventListener('focus', onFocus)
+    }
+  }, [session?.token])
 
   const refresh = useCallback(async () => {
     if (!session) return

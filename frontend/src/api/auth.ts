@@ -79,6 +79,16 @@ export function clearSession() {
   listeners.forEach((l) => l())
 }
 
+/**
+ * Update the cached username/role for the current session without
+ * touching the tokens. Used when /auth/me returns a different role
+ * (e.g. an admin demoted this user between token refreshes).
+ */
+export function updateProfile(username: string, role: string) {
+  localStorage.setItem(USER_KEY, JSON.stringify({ username, role }))
+  listeners.forEach((l) => l())
+}
+
 export function onSessionChange(fn: () => void): () => void {
   listeners.add(fn)
   return () => listeners.delete(fn)
