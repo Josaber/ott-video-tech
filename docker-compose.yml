@@ -37,7 +37,13 @@ services:
     ports:
       - "7233:7233"
     healthcheck:
-      test: ["CMD", "temporal", "operator", "cluster", "health", "--address", "temporal:7233"]
+      # Use tctl, not "temporal operator cluster health". On 1.29.7 the
+      # Spice CLI's health subcommand hits its internal gRPC deadline and
+      # returns "context deadline exceeded" against a known-healthy
+      # cluster (verified: tctl returns SERVING in 50ms, temporal operator
+      # times out at 8s+ on the same socket). tctl is shipped in the
+      # auto-setup image and is the recommended healthcheck for now.
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
       interval: 10s
       timeout: 5s
       retries: 30
