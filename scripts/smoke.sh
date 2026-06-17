@@ -210,8 +210,16 @@ done
 if (( PUBLISHED == 0 )); then red "asset did not reach PUBLISHED in time"; exit 1; fi
 
 # ---------- manifest invariants ----------
-step "fetching stitched playback manifest"
-MANIFEST=$(curl_local "http://127.0.0.1:8080/playback/$ASSET_ID/master.m3u8")
+step "verifying /playback/.../master.m3u8 requires auth"
+NOAUTH_M=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/master.m3u8")
+if [[ "$NOAUTH_M" == "401" ]]; then
+  green "  ok: master.m3u8 without token -> 401"
+else
+  red "  master.m3u8 without token returned $NOAUTH_M (expected 401)"; exit 1
+fi
+
+step "fetching stitched playback manifest with token"
+MANIFEST=$(curl_api "http://127.0.0.1:8080/playback/$ASSET_ID/master.m3u8")
 echo "----- manifest -----"
 echo "$MANIFEST"
 echo "--------------------"
@@ -265,20 +273,24 @@ else
   red "  program segment returned $PROG_HTTP_CODE"; exit 1
 fi
 
-step "checking license.key requires auth"
-NO_AUTH_CODE=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
-if [[ "$NO_AUTH_CODE" == "401" ]]; then
-  green "  ok: license.key without token -> 401"
+step "checking license.key rejects unsigned URL"
+UNSIGNED=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
+if [[ "$UNSIGNED" == "403" ]]; then
+  green "  ok: license.key without signature -> 403"
 else
-  red "  license.key without token returned $NO_AUTH_CODE (expected 401)"; exit 1
+  red "  license.key without signature returned $UNSIGNED (expected 403)"; exit 1
 fi
 
-step "checking license.key reachable with token"
-KEY_HTTP_CODE=$(curl_api -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/license.key")
+step "checking license.key accepts the signed URL embedded in the manifest"
+SIGNED_QUERY=$(echo "$MANIFEST" | grep -oE 'license\.key\?[^"]+' | head -1)
+if [[ -z "$SIGNED_QUERY" ]]; then
+  red "could not extract signed license URL from manifest"; exit 1
+fi
+KEY_HTTP_CODE=$(curl_local -o /dev/null -w '%{http_code}' "http://127.0.0.1:8080/playback/$ASSET_ID/$SIGNED_QUERY")
 if [[ "$KEY_HTTP_CODE" == "200" ]]; then
-  green "  ok: license.key with token -> 200"
+  green "  ok: signed license.key -> 200"
 else
-  red "  license.key with token returned $KEY_HTTP_CODE"; exit 1
+  red "  signed license.key returned $KEY_HTTP_CODE"; exit 1
 fi
 
 green ""

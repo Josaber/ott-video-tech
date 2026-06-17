@@ -41,10 +41,12 @@ Self-signed HS256 JWT verified by Spring Security's oauth2-resource-server. The 
 | `POST /auth/change-password`          | Bearer (subject taken from JWT) |
 | `GET  /auth/me`                       | Bearer |
 | `GET  /actuator/health`               | open |
-| `*    /api/**`                        | Bearer |
-| `GET  /playback/{id}/master.m3u8`     | open (TODO: sessionize) |
-| `GET  /playback/{id}/segment_*.ts`    | open (TODO: signed URL) |
-| `GET  /playback/{id}/license.key`     | Bearer |
+| `POST /api/videos`, `/upload`, `/process` | Bearer + `ROLE_ADMIN` |
+| `GET  /api/videos*`                   | Bearer |
+| `GET  /playback/{id}/master.m3u8`     | Bearer (used to mint a viewer-bound signed license URL inside the manifest) |
+| `GET  /playback/{id}/segment_*.ts`    | open (TODO: signed segment URLs) |
+| `GET  /playback/{id}/license.key`     | open + signed URL (sig is the credential, exp 10 min, viewer-bound) |
+| `POST /auth/refresh`                  | open (carries its own refresh-typ JWT) |
 | ad-service `/vast`, `/ads/...`        | open (browser fetches ad ts directly) |
 
 The frontend decodes the JWT `exp` claim locally and re-checks it every 30 s, so a quietly-expired session flips back to the login screen without waiting for an API call to 401.
@@ -192,7 +194,7 @@ Treat this project as a **reference for the publishing pipeline shape**, not as 
 
 ### Architecture-level caveats (read before demoing)
 
-- **"DRM" is HLS AES-128 encryption, not real DRM.** No license server, no device binding, no Widevine/FairPlay/PlayReady. The AES key file is served unauthenticated under `/playback/{id}/license.key` — anyone who knows the asset id can decrypt the stream. A real DRM story needs Shaka Packager (or equivalent) + a license proxy + an EME-capable player.
+- **"DRM" is HLS AES-128 + signed key URLs, not real DRM.** The content key is generated per asset, the `license.key` URL is HMAC-signed for one viewer with a 10-minute TTL (see `LicenseUrlSigner`), and the manifest endpoint rewrites the `#EXT-X-KEY` URI on the fly. This is a meaningful step up from naked AES-128 — a leaked URL stops working and can't be reused on another asset — but it is **not** Widevine/FairPlay/PlayReady: there is no license server, no device binding, no output protection (HDCP), and the symmetric key still leaves the box in cleartext. A real DRM story needs Shaka Packager (or equivalent) + a license proxy + an EME-capable player.
 - **`embedded` Temporal mode is not durable.** `make backend` boots `TestWorkflowEnvironment` (in-memory) by default so the demo runs with zero extra containers. For a durable setup run `make temporal-up` (starts `temporalio/auto-setup` + `temporal-ui` against the same Postgres, on `:7233` / `:8088`) and then `make backend-remote` — workflow state survives restarts and `StuckAssetSweeper` then mostly has nothing to do.
 - **Auth is single-role and demo-shaped.** `/api/**` + `/playback/*/license.key` are gated by a self-signed HS256 JWT, but the manifest and ts segments stay open, the ad-service has no auth, the JWT secret defaults to a committed dev value (override with `JWT_SECRET`), there is no refresh token, and the seed user is `admin / admin`. Production needs proper user management, role-based authorization, key rotation, and per-viewer signed manifests.
 - **SSAI has no ad decisioning.** A single fixed `app.ssai.ad-id` from config is used for every asset. No targeting, no auction, no frequency capping, no VMAP, no per-viewer ad rotation.

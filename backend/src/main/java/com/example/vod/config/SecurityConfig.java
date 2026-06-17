@@ -93,12 +93,13 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/auth/login", "/auth/register", "/auth/refresh").permitAll()
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                // license.key is the meaningful secret — token required.
-                .requestMatchers("/playback/*/license.key").authenticated()
-                // master.m3u8 and ts segments stay open: the player can fetch
-                // them without auth so HLS playback works without sessionizing.
-                // Real protection here needs sessionized manifests, which is
-                // out of scope for this demo.
+                // Demo-DRM: the master manifest is authenticated so we know
+                // the viewer's identity, and we embed a viewer- and time-
+                // bound signed URL in the manifest's #EXT-X-KEY line. The
+                // license.key endpoint then validates that signed URL on
+                // its own — no Bearer required. ts segments stay open.
+                .requestMatchers("/playback/*/master.m3u8").authenticated()
+                .requestMatchers("/playback/*/license.key").permitAll()
                 .requestMatchers("/playback/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
