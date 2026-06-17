@@ -99,7 +99,8 @@ public class FfmpegMediaProcessor {
         ));
         runFfmpeg(args);
 
-        String keyId = HexFormat.of().formatHex(keyBytes);
+        // keyId is an opaque handle; the AES content key never leaves the filesystem (license.key).
+        String keyId = UUID.randomUUID().toString();
         return new DrmResult(encryptedManifest, keyFile, keyId);
     }
 
