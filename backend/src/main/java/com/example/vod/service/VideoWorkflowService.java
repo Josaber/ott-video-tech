@@ -12,7 +12,9 @@ import com.example.vod.repository.ProcessingJobRepository;
 import com.example.vod.repository.VideoAssetRepository;
 import com.example.vod.workflow.TemporalRuntime;
 import com.example.vod.workflow.VideoPublishingWorkflow;
+import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
+import io.temporal.client.WorkflowExecutionAlreadyStarted;
 import io.temporal.client.WorkflowOptions;
 import java.io.IOException;
 import java.nio.file.Files;
@@ -107,6 +109,9 @@ public class VideoWorkflowService {
         if (asset.getRawPath() == null) {
             throw new IllegalStateException("upload raw video before processing");
         }
+        if (asset.getStatus() == AssetStatus.PROCESSING) {
+            throw new IllegalStateException("asset is already being processed");
+        }
         state.markAssetProcessing(assetId);
 
         WorkflowClient client = temporal.client();
@@ -115,9 +120,14 @@ public class VideoWorkflowService {
             WorkflowOptions.newBuilder()
                 .setTaskQueue(temporalProperties.getTaskQueue())
                 .setWorkflowId("publish-" + assetId)
+                .setWorkflowIdReusePolicy(WorkflowIdReusePolicy.WORKFLOW_ID_REUSE_POLICY_ALLOW_DUPLICATE)
                 .build());
-        WorkflowClient.start(workflow::publish, assetId);
-        log.info("started VideoPublishingWorkflow for asset {}", assetId);
+        try {
+            WorkflowClient.start(workflow::publish, assetId);
+            log.info("started VideoPublishingWorkflow for asset {}", assetId);
+        } catch (WorkflowExecutionAlreadyStarted e) {
+            throw new IllegalStateException("workflow already running for asset");
+        }
     }
 
     private static String sanitize(String name) {

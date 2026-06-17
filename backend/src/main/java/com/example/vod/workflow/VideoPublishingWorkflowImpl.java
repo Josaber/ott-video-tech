@@ -14,8 +14,10 @@ public class VideoPublishingWorkflowImpl implements VideoPublishingWorkflow {
         ActivityOptions.newBuilder()
             .setStartToCloseTimeout(Duration.ofMinutes(20))
             .setRetryOptions(RetryOptions.newBuilder()
-                .setMaximumAttempts(2)
-                .setInitialInterval(Duration.ofSeconds(1))
+                .setMaximumAttempts(4)
+                .setInitialInterval(Duration.ofSeconds(10))
+                .setMaximumInterval(Duration.ofMinutes(2))
+                .setBackoffCoefficient(2.0)
                 .build())
             .build()
     );
