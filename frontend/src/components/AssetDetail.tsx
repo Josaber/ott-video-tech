@@ -6,9 +6,10 @@ import { HlsPlayer } from './HlsPlayer'
 interface Props {
   assetId: string
   onChange: () => void
+  canWrite: boolean
 }
 
-export function AssetDetail({ assetId, onChange }: Props) {
+export function AssetDetail({ assetId, onChange, canWrite }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [busy, setBusy] = useState(false)
@@ -69,32 +70,36 @@ export function AssetDetail({ assetId, onChange }: Props) {
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-          <button
-            className="secondary"
-            disabled={busy}
-            onClick={() => fileRef.current?.click()}
-          >
-            <Upload size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            {asset.rawUploaded ? 'Re-upload raw' : 'Upload raw'}
-          </button>
-          <input
-            type="file"
-            accept="video/*"
-            hidden
-            ref={fileRef}
-            onChange={(e) => {
-              const f = e.target.files?.[0]
-              if (f) upload(f)
-              e.target.value = ''
-            }}
-          />
-          <button
-            disabled={busy || !asset.rawUploaded || asset.status === 'PROCESSING'}
-            onClick={process}
-          >
-            <Play size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Process &amp; publish
-          </button>
+          {canWrite && (
+            <>
+              <button
+                className="secondary"
+                disabled={busy}
+                onClick={() => fileRef.current?.click()}
+              >
+                <Upload size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                {asset.rawUploaded ? 'Re-upload raw' : 'Upload raw'}
+              </button>
+              <input
+                type="file"
+                accept="video/*"
+                hidden
+                ref={fileRef}
+                onChange={(e) => {
+                  const f = e.target.files?.[0]
+                  if (f) upload(f)
+                  e.target.value = ''
+                }}
+              />
+              <button
+                disabled={busy || !asset.rawUploaded || asset.status === 'PROCESSING'}
+                onClick={process}
+              >
+                <Play size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                Process &amp; publish
+              </button>
+            </>
+          )}
           <button className="secondary" onClick={refresh}>
             <RefreshCw size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
             Refresh

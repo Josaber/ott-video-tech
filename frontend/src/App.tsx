@@ -56,6 +56,8 @@ export default function App() {
 
   if (!session) return <Login />
 
+  const isAdmin = session.role === 'ADMIN'
+
   return (
     <div className="app">
       <div>
@@ -74,10 +76,12 @@ export default function App() {
           <h1>Account</h1>
           <ChangePassword />
         </div>
-        <div className="panel">
-          <h1>New asset</h1>
-          <CreateAssetForm onCreated={refresh} />
-        </div>
+        {isAdmin && (
+          <div className="panel">
+            <h1>New asset</h1>
+            <CreateAssetForm onCreated={refresh} />
+          </div>
+        )}
         <div className="panel">
           <h1>Assets</h1>
           {error && (
@@ -88,7 +92,7 @@ export default function App() {
       </div>
       <div>
         {selected ? (
-          <AssetDetail assetId={selected} onChange={refresh} />
+          <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
         ) : (
           <div className="panel">
             <h1>Workflow console</h1>
