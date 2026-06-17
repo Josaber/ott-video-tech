@@ -20,16 +20,21 @@ public class AuthService {
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
+    private final UserTokenVersionCache tokenVersionCache;
     // Pre-computed real BCrypt hash, used to absorb the cost when the user
     // doesn't exist. A naive "$2a$10$invalid…" literal short-circuits inside
     // BCryptPasswordEncoder (regex check fails before BCrypt.checkpw runs)
     // and re-introduces a ~150x timing gap between user-exists / user-missing.
     private final String dummyHash;
 
-    public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwt) {
+    public AuthService(UserRepository users,
+                       PasswordEncoder passwordEncoder,
+                       JwtService jwt,
+                       UserTokenVersionCache tokenVersionCache) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
+        this.tokenVersionCache = tokenVersionCache;
         this.dummyHash = passwordEncoder.encode("dummy-" + UUID.randomUUID());
     }
 
@@ -74,6 +79,10 @@ public class AuthService {
         // one of two concurrent updates and silently fail to revoke one
         // request's worth of issued tokens.
         users.incrementTokenVersion(username);
+        // Drop the Caffeine entry so the next /api request for this user
+        // re-reads the fresh DB value instead of seeing up to 30s of stale
+        // pre-bump version through the cache.
+        tokenVersionCache.invalidate(username);
         // clearAutomatically on incrementTokenVersion dropped the stale
         // entity, so this fresh load returns the post-UPDATE tokenVersion.
         // Hand the caller back a new pair stamped with the new tv so the
