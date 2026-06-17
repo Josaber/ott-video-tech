@@ -80,6 +80,13 @@ public class VideoWorkflowService {
     @Transactional
     public VideoAssetEntity upload(UUID assetId, MultipartFile file) throws IOException {
         VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
+        if (file == null || file.isEmpty()) {
+            throw new IllegalStateException("uploaded file is empty");
+        }
+        String contentType = file.getContentType();
+        if (contentType == null || !(contentType.startsWith("video/") || contentType.equals("application/octet-stream"))) {
+            throw new IllegalStateException("unsupported content type: " + contentType);
+        }
         Path dir = Path.of(media.getUploadDir(), assetId.toString()).toAbsolutePath().normalize();
         Files.createDirectories(dir);
         String name = file.getOriginalFilename();
