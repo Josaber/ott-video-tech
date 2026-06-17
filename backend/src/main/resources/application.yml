@@ -41,11 +41,11 @@ app:
     ad-service-base-url: ${AD_SERVICE_BASE_URL:http://127.0.0.1:8090}
     ad-id: ${SSAI_AD_ID:preroll-brand-a}
   temporal:
-    mode: embedded
+    mode: ${APP_TEMPORAL_MODE:embedded}
     task-queue: vod-publishing
     remote:
-      target: 127.0.0.1:7233
-      namespace: default
+      target: ${APP_TEMPORAL_TARGET:127.0.0.1:7233}
+      namespace: ${APP_TEMPORAL_NAMESPACE:default}
 
 logging:
   level:

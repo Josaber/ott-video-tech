@@ -1,4 +1,4 @@
-.PHONY: help install db-up db-down backend ad-service frontend test build smoke clean
+.PHONY: help install db-up db-down temporal-up temporal-down backend backend-remote ad-service frontend test build smoke clean
 
 help:
 	@echo "OTT Video Tech Demo - common targets"
@@ -6,8 +6,11 @@ help:
 	@echo "  make install      - install frontend dependencies"
 	@echo "  make db-up        - start Postgres via docker compose"
 	@echo "  make db-down      - stop Postgres"
+	@echo "  make temporal-up  - start real Temporal cluster (:7233) + UI (:8088)"
+	@echo "  make temporal-down- stop Temporal cluster"
 	@echo "  make ad-service   - run ad-service on :8090"
-	@echo "  make backend      - run main backend on :8080"
+	@echo "  make backend      - run main backend on :8080 (embedded Temporal)"
+	@echo "  make backend-remote - run main backend against the docker Temporal cluster"
 	@echo "  make frontend     - run Vite dev server on :5173"
 	@echo "  make test         - run backend + ad-service tests"
 	@echo "  make build        - build all modules"
@@ -23,11 +26,20 @@ db-up:
 db-down:
 	docker compose stop postgres
 
+temporal-up:
+	docker compose up -d temporal temporal-ui
+
+temporal-down:
+	docker compose stop temporal temporal-ui
+
 ad-service:
 	mvn -f ad-service/pom.xml spring-boot:run
 
 backend:
 	mvn -f backend/pom.xml spring-boot:run
+
+backend-remote:
+	APP_TEMPORAL_MODE=remote mvn -f backend/pom.xml spring-boot:run
 
 frontend:
 	cd frontend && npm run dev
