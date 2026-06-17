@@ -31,6 +31,12 @@ app:
       secret: ${JWT_SECRET:dev-only-secret-please-rotate-in-real-deployments-aaaaaaaaaaaa}
       issuer: ott-video-tech-demo
       ttl-hours: ${JWT_TTL_HOURS:24}
+  # Signs viewer-bound license URLs embedded in HLS manifests. Deliberately
+  # separate from app.auth.jwt.secret so a leak of either does not compromise
+  # the other.
+  license:
+    signing-secret: ${LICENSE_SIGNING_SECRET:dev-only-license-signing-secret-please-rotate-aaaaaaaaaaaa}
+    ttl-minutes: ${LICENSE_TTL_MINUTES:10}
   media:
     upload-dir: ${UPLOAD_DIR:./data/uploads}
     processed-dir: ${PROCESSED_DIR:./data/processed}

@@ -1,13 +1,16 @@
 package com.example.vod.service;
 
-import com.example.vod.config.JwtProperties;
+import com.example.vod.config.LicenseProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Base64;
 import java.util.UUID;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Mints viewer-bound, time-bounded license URLs and verifies them on key
@@ -23,10 +26,31 @@ import javax.crypto.spec.SecretKeySpec;
  */
 public class LicenseUrlSigner {
 
-    private final byte[] secret;
+    private static final Logger log = LoggerFactory.getLogger(LicenseUrlSigner.class);
+    private static final String DEFAULT_SECRET_MARKER = "dev-only-license-signing-secret";
 
-    public LicenseUrlSigner(JwtProperties properties) {
-        this.secret = properties.getSecret().getBytes(StandardCharsets.UTF_8);
+    private final byte[] secret;
+    private final Duration ttl;
+
+    public LicenseUrlSigner(LicenseProperties properties) {
+        this.secret = properties.getSigningSecret().getBytes(StandardCharsets.UTF_8);
+        if (this.secret.length < 32) {
+            throw new IllegalStateException(
+                "app.license.signing-secret must be at least 32 bytes (got " + this.secret.length + ")");
+        }
+        if (properties.getSigningSecret().contains(DEFAULT_SECRET_MARKER)) {
+            log.warn("==============================================================");
+            log.warn("  LICENSE_SIGNING_SECRET is the default development value.    ");
+            log.warn("  Anyone with this repository can mint license URLs.          ");
+            log.warn("  Set LICENSE_SIGNING_SECRET=<random>=>=32-bytes in any non-  ");
+            log.warn("  local deployment.                                           ");
+            log.warn("==============================================================");
+        }
+        this.ttl = Duration.ofMinutes(properties.getTtlMinutes());
+    }
+
+    public Duration ttl() {
+        return ttl;
     }
 
     public SignedLicense sign(UUID assetId, String username, Instant expiresAt) {

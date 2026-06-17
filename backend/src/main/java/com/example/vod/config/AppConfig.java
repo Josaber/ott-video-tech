@@ -10,12 +10,12 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
 
 @Configuration
-@EnableConfigurationProperties({MediaProperties.class, SsaiProperties.class, TemporalProperties.class, JwtProperties.class})
+@EnableConfigurationProperties({MediaProperties.class, SsaiProperties.class, TemporalProperties.class, JwtProperties.class, LicenseProperties.class})
 public class AppConfig {
 
     @Bean
-    public LicenseUrlSigner licenseUrlSigner(JwtProperties jwtProperties) {
-        return new LicenseUrlSigner(jwtProperties);
+    public LicenseUrlSigner licenseUrlSigner(LicenseProperties licenseProperties) {
+        return new LicenseUrlSigner(licenseProperties);
     }
 
     @Bean

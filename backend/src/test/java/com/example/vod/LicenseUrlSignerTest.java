@@ -2,7 +2,7 @@ package com.example.vod;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.example.vod.config.JwtProperties;
+import com.example.vod.config.LicenseProperties;
 import com.example.vod.service.LicenseUrlSigner;
 import com.example.vod.service.LicenseUrlSigner.SignedLicense;
 import java.time.Instant;
@@ -12,8 +12,8 @@ import org.junit.jupiter.api.Test;
 class LicenseUrlSignerTest {
 
     private LicenseUrlSigner newSigner() {
-        JwtProperties p = new JwtProperties();
-        p.setSecret("test-secret-test-secret-test-secret-test-secret");
+        LicenseProperties p = new LicenseProperties();
+        p.setSigningSecret("test-secret-test-secret-test-secret-test-secret");
         return new LicenseUrlSigner(p);
     }
 

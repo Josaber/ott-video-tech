@@ -11,7 +11,6 @@ import com.example.vod.ssai.AdManifestStitcher.StitchOptions;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.time.Duration;
 import java.time.Instant;
 import java.util.UUID;
 import java.util.regex.Matcher;
@@ -55,7 +54,6 @@ import org.springframework.web.server.ResponseStatusException;
 public class PlaybackController {
 
     private static final Pattern KEY_URI = Pattern.compile("URI=\"[^\"]*license\\.key[^\"]*\"");
-    private static final Duration LICENSE_TTL = Duration.ofMinutes(10);
 
     private final VideoAssetRepository assets;
     private final FfmpegMediaProcessor ffmpeg;
@@ -104,7 +102,7 @@ public class PlaybackController {
     }
 
     private String rewriteLicenseUri(String body, UUID assetId, String username) {
-        SignedLicense signed = signer.sign(assetId, username, Instant.now().plus(LICENSE_TTL));
+        SignedLicense signed = signer.sign(assetId, username, Instant.now().plus(signer.ttl()));
         // Relative URI; hls.js resolves against the manifest URL.
         String replacement = "URI=\"license.key?" + signed.toQueryString() + "\"";
         Matcher m = KEY_URI.matcher(body);
