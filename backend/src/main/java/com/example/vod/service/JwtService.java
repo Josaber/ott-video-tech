@@ -11,6 +11,9 @@ import com.nimbusds.jwt.SignedJWT;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.core.env.Environment;
 import org.springframework.stereotype.Service;
 
 /**
@@ -20,14 +23,31 @@ import org.springframework.stereotype.Service;
 @Service
 public class JwtService {
 
+    private static final Logger log = LoggerFactory.getLogger(JwtService.class);
+    private static final String DEFAULT_SECRET_MARKER = "dev-only-secret-please-rotate";
+
     private final JwtProperties properties;
 
-    public JwtService(JwtProperties properties) {
+    public JwtService(JwtProperties properties, Environment env) {
         this.properties = properties;
         byte[] bytes = properties.getSecret().getBytes(StandardCharsets.UTF_8);
         if (bytes.length < 32) {
             throw new IllegalStateException(
                 "app.auth.jwt.secret must be at least 32 bytes for HS256 (got " + bytes.length + ")");
+        }
+        boolean usingDefault = properties.getSecret().contains(DEFAULT_SECRET_MARKER);
+        boolean prodProfile = env.acceptsProfiles("prod", "production");
+        if (usingDefault && prodProfile) {
+            throw new IllegalStateException(
+                "JWT secret is still the default value while spring profile=prod. "
+                + "Set JWT_SECRET to a strong random string (>= 32 bytes) before booting.");
+        }
+        if (usingDefault) {
+            log.warn("==============================================================");
+            log.warn("  JWT_SECRET is the default development value.                 ");
+            log.warn("  Anyone with this repository can forge tokens.                ");
+            log.warn("  Set JWT_SECRET=<random>=>=32-bytes for any shared deployment.");
+            log.warn("==============================================================");
         }
     }
 

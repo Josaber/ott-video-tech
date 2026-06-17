@@ -17,24 +17,25 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthService {
 
-    // Used when no user is found, so passwordEncoder.matches still runs and login
-    // timing doesn't reveal user existence.
-    private static final String DUMMY_HASH =
-        "$2a$10$invalidinvalidinvalidinvalidinvalidinvalidinvalidinvalidi";
-
     private final UserRepository users;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwt;
+    // Pre-computed real BCrypt hash, used to absorb the cost when the user
+    // doesn't exist. A naive "$2a$10$invalid…" literal short-circuits inside
+    // BCryptPasswordEncoder (regex check fails before BCrypt.checkpw runs)
+    // and re-introduces a ~150x timing gap between user-exists / user-missing.
+    private final String dummyHash;
 
     public AuthService(UserRepository users, PasswordEncoder passwordEncoder, JwtService jwt) {
         this.users = users;
         this.passwordEncoder = passwordEncoder;
         this.jwt = jwt;
+        this.dummyHash = passwordEncoder.encode("dummy-" + UUID.randomUUID());
     }
 
     public LoginResponse login(LoginRequest req) {
         Optional<UserEntity> maybe = users.findByUsername(req.username());
-        String hash = maybe.map(UserEntity::getPasswordHash).orElse(DUMMY_HASH);
+        String hash = maybe.map(UserEntity::getPasswordHash).orElse(dummyHash);
         boolean ok = passwordEncoder.matches(req.password(), hash);
         if (!ok || maybe.isEmpty()) {
             throw new BadCredentialsException("invalid credentials");
