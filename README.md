@@ -190,7 +190,7 @@ Treat this project as a **reference for the publishing pipeline shape**, not as 
 
 - **"DRM" is HLS AES-128 encryption, not real DRM.** No license server, no device binding, no Widevine/FairPlay/PlayReady. The AES key file is served unauthenticated under `/playback/{id}/license.key` — anyone who knows the asset id can decrypt the stream. A real DRM story needs Shaka Packager (or equivalent) + a license proxy + an EME-capable player.
 - **Temporal mode `embedded` is in-memory only** (`TestWorkflowEnvironment`). Workflow state is **not durable across restarts**. Switch to a real Temporal cluster (`app.temporal.mode=remote`) for any non-local use.
-- **Zero authentication or authorization.** Every endpoint — create asset, upload, process, playback, license key, ad-service — is open. Do not expose this to a public network as-is.
+- **Auth is single-role and demo-shaped.** `/api/**` + `/playback/*/license.key` are gated by a self-signed HS256 JWT, but the manifest and ts segments stay open, the ad-service has no auth, the JWT secret defaults to a committed dev value (override with `JWT_SECRET`), there is no refresh token, and the seed user is `admin / admin`. Production needs proper user management, role-based authorization, key rotation, and per-viewer signed manifests.
 - **SSAI has no ad decisioning.** A single fixed `app.ssai.ad-id` from config is used for every asset. No targeting, no auction, no frequency capping, no VMAP, no per-viewer ad rotation.
 - **No sessionized manifest.** Same asset id → same manifest forever. The ad-skip lock is enforced only on the player; `curl /playback/{id}/segment_NNN.ts` bypasses everything.
 - **Single bitrate.** No ABR ladder. The `master.m3u8` is a media playlist, not a variant playlist of multiple bitrates.
