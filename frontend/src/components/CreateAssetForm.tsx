@@ -37,7 +37,7 @@ export function CreateAssetForm({ onCreated }: Props) {
       />
       <div style={{ marginTop: 12 }}>
         <button disabled={busy || !title.trim()} onClick={submit}>
-          <Plus size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+          <Plus size={14} />
           Create asset
         </button>
       </div>

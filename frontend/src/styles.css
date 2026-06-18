@@ -131,6 +131,15 @@ button {
   padding: 8px 16px;
   font-weight: 600;
   cursor: pointer;
+  /* inline-flex so SVG icons + label sit on the same axis without
+     relying on the flaky verticalAlign: middle inline-baseline trick. */
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  font-family: inherit;
+  font-size: 14px;
+  line-height: 1;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.secondary {

@@ -78,8 +78,8 @@ export function Login() {
         <div style={{ marginTop: 16 }}>
           <button type="submit" disabled={busy || !username || !password}>
             {mode === 'login'
-              ? <><LogIn size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Sign in</>
-              : <><UserPlus size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} /> Create account</>}
+              ? <><LogIn size={14} /> Sign in</>
+              : <><UserPlus size={14} /> Create account</>}
           </button>
         </div>
         <p style={{ fontSize: 11, color: '#64748b', marginTop: 16 }}>

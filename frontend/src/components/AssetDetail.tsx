@@ -92,7 +92,7 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
                 disabled={busy}
                 onClick={() => fileRef.current?.click()}
               >
-                <Upload size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                <Upload size={14} />
                 {asset.rawUploaded ? 'Re-upload raw' : 'Upload raw'}
               </button>
               <input
@@ -110,18 +110,18 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
                 disabled={busy || !asset.rawUploaded || asset.status === 'PROCESSING'}
                 onClick={process}
               >
-                <Play size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                <Play size={14} />
                 Process &amp; publish
               </button>
             </>
           )}
           <button className="secondary" onClick={refresh}>
-            <RefreshCw size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+            <RefreshCw size={14} />
             Refresh
           </button>
           {canWrite && (
             <button className="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
-              <Trash2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              <Trash2 size={14} />
               Delete
             </button>
           )}
