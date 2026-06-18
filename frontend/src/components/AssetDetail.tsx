@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Upload, Play, RefreshCw, Trash2 } from 'lucide-react'
 import { api, Asset, Job } from '../api/client'
 import { HlsPlayer } from './HlsPlayer'
+import { ConfirmDialog } from './ConfirmDialog'
 
 interface Props {
   assetId: string
@@ -13,6 +14,7 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function refresh() {
@@ -54,17 +56,14 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
     }
   }
 
-  async function remove() {
-    if (!asset) return
-    if (!window.confirm(`Delete "${asset.title}"? This terminates any running workflow and removes uploaded and packaged media. This cannot be undone.`)) {
-      return
-    }
+  async function confirmRemove() {
     setBusy(true)
     try {
       await api.delete(assetId)
       // The list refresh in App will notice the asset is gone and clear the
       // selection, so AssetDetail unmounts on its own — no need to setAsset(null).
       onChange()
+      setConfirmDelete(false)
     } finally {
       setBusy(false)
     }
@@ -121,7 +120,7 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
             Refresh
           </button>
           {canWrite && (
-            <button className="danger" disabled={busy} onClick={remove}>
+            <button className="danger" disabled={busy} onClick={() => setConfirmDelete(true)}>
               <Trash2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
               Delete
             </button>
@@ -152,6 +151,18 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
           </div>
         </div>
       )}
+
+      <ConfirmDialog
+        open={confirmDelete}
+        title={`Delete "${asset.title}"?`}
+        body="This terminates any running workflow and removes the uploaded raw video and the packaged HLS output. This cannot be undone."
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        danger
+        busy={busy}
+        onConfirm={confirmRemove}
+        onCancel={() => setConfirmDelete(false)}
+      />
     </>
   )
 }
