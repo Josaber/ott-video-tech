@@ -6,6 +6,7 @@ import { AssetDetail } from './components/AssetDetail'
 import { Login } from './components/Login'
 import { Header } from './components/Header'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
+import { ArchitectureDiagram } from './components/ArchitectureDiagram'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 export default function App() {
@@ -112,12 +113,15 @@ export default function App() {
           ) : (
             <div className="panel">
               <h1>Workflow console</h1>
-              <p style={{ fontSize: 14, color: '#cbd5e1' }}>
+              <p style={{ fontSize: 14, color: '#cbd5e1', marginTop: 0 }}>
                 Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
                 The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
                 encrypted program manifest, and exposes the result for playback. The player blocks
                 seeking and fast-forwarding during the ad.
               </p>
+              <div style={{ marginTop: 16 }}>
+                <ArchitectureDiagram />
+              </div>
             </div>
           )}
         </div>
