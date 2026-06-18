@@ -92,6 +92,10 @@ body { margin: 0; }
 .user-menu-dropdown button {
   display: flex;
   align-items: center;
+  /* override the global button's justify-content: center so dropdown items
+     start from the left edge; menu rows feel weird when the icon+text
+     pair is horizontally centered. */
+  justify-content: flex-start;
   gap: 8px;
   width: 100%;
   padding: 8px 10px;
