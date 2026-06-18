@@ -7,6 +7,7 @@ import { Login } from './components/Login'
 import { Header } from './components/Header'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { ArchitectureDiagram } from './components/ArchitectureDiagram'
+import { Glossary } from './components/Glossary'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 export default function App() {
@@ -122,6 +123,12 @@ export default function App() {
               <div style={{ marginTop: 16 }}>
                 <ArchitectureDiagram />
               </div>
+            </div>
+          )}
+          {!selected && (
+            <div className="panel">
+              <h1>Glossary</h1>
+              <Glossary />
             </div>
           )}
         </div>

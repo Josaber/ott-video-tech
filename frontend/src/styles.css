@@ -142,6 +142,49 @@ body { margin: 0; }
   color: #e2e8f0;
 }
 
+.glossary {
+  margin: 0;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px 20px;
+}
+.glossary-row {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 12px;
+  background: #0f172a;
+  border: 1px solid #1e293b;
+  border-radius: 6px;
+}
+.glossary-row dt {
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  margin: 0;
+}
+.glossary-abbr {
+  font-weight: 700;
+  color: #22d3ee;
+  font-size: 13px;
+  letter-spacing: 0.04em;
+}
+.glossary-full {
+  color: #94a3b8;
+  font-size: 12px;
+}
+.glossary-row dd {
+  margin: 0;
+  color: #cbd5e1;
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+@media (max-width: 880px) {
+  .glossary {
+    grid-template-columns: 1fr;
+  }
+}
+
 .app h1 {
   font-size: 18px;
   margin: 0 0 16px 0;
