@@ -49,6 +49,10 @@ button.secondary {
   background: #334155;
   color: #e2e8f0;
 }
+button.danger {
+  background: #dc2626;
+  color: #fef2f2;
+}
 
 input, textarea {
   width: 100%;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Upload, Play, RefreshCw } from 'lucide-react'
+import { Upload, Play, RefreshCw, Trash2 } from 'lucide-react'
 import { api, Asset, Job } from '../api/client'
 import { HlsPlayer } from './HlsPlayer'
 
@@ -48,6 +48,22 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
     try {
       await api.process(assetId)
       await refresh()
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function remove() {
+    if (!asset) return
+    if (!window.confirm(`Delete "${asset.title}"? This terminates any running workflow and removes uploaded and packaged media. This cannot be undone.`)) {
+      return
+    }
+    setBusy(true)
+    try {
+      await api.delete(assetId)
+      // The list refresh in App will notice the asset is gone and clear the
+      // selection, so AssetDetail unmounts on its own — no need to setAsset(null).
       onChange()
     } finally {
       setBusy(false)
@@ -104,6 +120,12 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
             <RefreshCw size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
             Refresh
           </button>
+          {canWrite && (
+            <button className="danger" disabled={busy} onClick={remove}>
+              <Trash2 size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              Delete
+            </button>
+          )}
         </div>
       </div>
 

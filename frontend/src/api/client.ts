@@ -165,4 +165,6 @@ export const api = {
   },
   process: (id: string) =>
     authedFetch(`/api/videos/${id}/process`, { method: 'POST' }).then(jsonOrThrow<void>),
+  delete: (id: string) =>
+    authedFetch(`/api/videos/${id}`, { method: 'DELETE' }).then(jsonOrThrow<void>),
 }
