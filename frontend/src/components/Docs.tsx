@@ -1,0 +1,424 @@
+import { useEffect, useState } from 'react'
+import { ChevronLeft, ChevronRight } from 'lucide-react'
+import { ArchitectureDiagram } from './ArchitectureDiagram'
+import { Glossary } from './Glossary'
+
+interface Chapter {
+  slug: string
+  title: string
+  blurb: string
+  render: () => JSX.Element
+}
+
+const CHAPTERS: Chapter[] = [
+  {
+    slug: 'overview',
+    title: 'Overview',
+    blurb: 'What this demo is and how the pieces fit together.',
+    render: () => (
+      <>
+        <p>
+          <strong>OTT</strong> (Over-The-Top) is video delivered over the public internet, bypassing
+          traditional cable and satellite. This project is a deliberately small end-to-end VOD slice:
+          a single React SPA, a Spring Boot backend that orchestrates publishing with Temporal, a
+          separate Spring Boot ad-service that generates a real pre-roll on demand, and PostgreSQL
+          for metadata.
+        </p>
+        <p>
+          Publishing a video runs through six stages — <em>UPLOAD → TRANSCODE → PACKAGE → SSAI → DRM
+          → PUBLISH</em> — each tracked as a row in <code>processing_jobs</code> and orchestrated by
+          a Temporal workflow keyed off the asset's UUID. The diagram below shows the runtime shape
+          (boxes match the JobStage enum, the amber dashed box is the cross-process Ad-Service):
+        </p>
+        <div className="docs-figure">
+          <ArchitectureDiagram />
+        </div>
+        <h3>Default ports</h3>
+        <ul>
+          <li><code>5173</code> — Vite dev server (this SPA)</li>
+          <li><code>8080</code> — Spring Boot backend (API + playback + workflow)</li>
+          <li><code>8090</code> — Ad-Service (VAST + ad ts segments)</li>
+          <li><code>5432</code> — PostgreSQL (Flyway-managed schema)</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'hls',
+    title: 'HLS essentials',
+    blurb: 'Manifests, segments, ABR — the streaming protocol underneath everything.',
+    render: () => (
+      <>
+        <p>
+          <strong>HLS</strong> (HTTP Live Streaming) is Apple's adaptive-bitrate protocol. The
+          player loads a text manifest first, picks a rendition, and downloads short segments
+          referenced from that manifest. Plain HTTP, infinitely cacheable on a CDN.
+        </p>
+        <h3>Two-layer manifest</h3>
+        <p>
+          A <strong>master playlist</strong> lists per-bitrate variants. A <strong>media playlist
+          </strong> lists the segments for one variant. The player can switch between variants
+          mid-stream — this is ABR (adaptive bitrate).
+        </p>
+        <pre><code>{`# master.m3u8
+#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=2400000,RESOLUTION=1280x720
+720p/index.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360
+360p/index.m3u8`}</code></pre>
+        <pre><code>{`# 720p/index.m3u8
+#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:4
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXTINF:4.000000,
+segment_000.ts
+#EXTINF:4.000000,
+segment_001.ts
+#EXT-X-ENDLIST`}</code></pre>
+        <h3>This demo's shortcut</h3>
+        <p>
+          For simplicity the backend emits a single-rendition manifest — no ladder, no per-bitrate
+          subdirectories. The master playlist has just one variant. A real ABR ladder would
+          transcode 360p / 480p / 720p / 1080p with matching keyframe-aligned segments.
+        </p>
+        <h3>Containers: .ts vs .m4s</h3>
+        <p>
+          Classic HLS uses <strong>MPEG-TS</strong> (.ts) segments. Modern HLS and DASH share a
+          unified container called <strong>CMAF</strong> (fragmented MP4, .m4s). CMAF is now the
+          recommended path because one set of segments can be referenced by both an .m3u8 and an
+          .mpd manifest. This demo uses .ts because hls.js is universal.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'ssai',
+    title: 'Server-Side Ad Insertion',
+    blurb: "How the backend stitches the ad-service's pre-roll into the program manifest.",
+    render: () => (
+      <>
+        <p>
+          With <strong>CSAI</strong> (Client-Side Ad Insertion), the player fetches an ad tag,
+          loads the ad creative, pauses the program, plays the ad, then resumes. Ad blockers can
+          short-circuit any of those steps. With <strong>SSAI</strong>, the ad segments are stitched
+          straight into the program manifest at publish time — the player sees one continuous stream
+          and can't tell which segments are ads.
+        </p>
+        <h3>The flow</h3>
+        <ol>
+          <li>
+            Backend's <code>SsaiWorker</code> calls <code>GET /vast?adId=preroll-brand-a</code> on
+            the ad-service. Response is a VAST 4.2 XML describing the ad: creative URL, duration,
+            impression / click-through pixels.
+          </li>
+          <li>
+            Ad-service runs FFmpeg on the fly to produce the ad's HLS rendition (master + ts
+            segments), caches the result on disk. Subsequent VAST hits skip the FFmpeg run.
+          </li>
+          <li>
+            Backend pulls the ad's media playlist and prepends its segments to the program's
+            media playlist, then writes an <strong>EXT-X-DATERANGE</strong> tag marking the ad
+            block's start time and duration.
+          </li>
+          <li>
+            The stitched manifest is what the player loads. Ad ts URLs point back at the
+            ad-service over CORS; program ts URLs stay on the backend.
+          </li>
+        </ol>
+        <h3>Ad-cue tag: EXT-X-DATERANGE</h3>
+        <p>
+          This demo uses Apple's modern <code>#EXT-X-DATERANGE</code> tag with a custom
+          <code>CLASS="ad"</code> and a <code>DURATION</code>. The player reads it on the
+          MANIFEST_PARSED event and locks the seek bar for the ad's duration (see
+          <code>HlsPlayer.tsx</code>). Older players that only understand
+          <code>#EXT-X-CUE-OUT</code> / <code>#EXT-X-CUE-IN</code> would miss it — production
+          stitchers often emit both for compatibility.
+        </p>
+        <h3>What real SSAI vendors do extra</h3>
+        <ul>
+          <li>
+            <strong>Per-viewer manifests.</strong> Each viewer gets a manifest stitched with a
+            personalized ad selection — same program, different ads.
+          </li>
+          <li>
+            <strong>SCTE-35 cues from the encoder.</strong> Live SSAI inserts dynamic ad breaks
+            signalled by SCTE-35 markers inside the MPEG-TS stream itself.
+          </li>
+          <li>
+            <strong>Ad transcoding.</strong> Ads must match the program's codec, resolution and
+            audio layout — otherwise the player rebuffers at the boundary.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'drm',
+    title: 'DRM-lite vs production DRM',
+    blurb: 'How the demo protects content, and how Widevine / FairPlay / PlayReady differ.',
+    render: () => (
+      <>
+        <p>
+          This demo encrypts every HLS segment with <strong>AES-128</strong> and gates the key
+          behind a viewer-bound, time-bound, single-use signed URL. It is intentionally NOT a
+          production DRM — see the comparison at the end. It is, however, the same shape: <em>
+          opaque encrypted segments + a separate "license" path the server controls</em>.
+        </p>
+        <h3>What the player sees</h3>
+        <pre><code>{`#EXTM3U
+#EXT-X-VERSION:3
+#EXT-X-TARGETDURATION:4
+#EXT-X-KEY:METHOD=AES-128,
+    URI="license.key?user=admin&exp=1781798175&nonce=…&sig=…",
+    IV=0x...
+#EXTINF:4.000000,
+segment_000.ts
+#EXT-X-ENDLIST`}</code></pre>
+        <p>
+          The <code>URI</code> on <code>#EXT-X-KEY</code> is generated freshly for the requesting
+          viewer at manifest fetch time. The path itself is open (no Bearer required) — the URL
+          itself is the credential.
+        </p>
+        <h3>HMAC signature anatomy</h3>
+        <ul>
+          <li><code>user</code> — the JWT subject that requested the manifest</li>
+          <li><code>exp</code> — Unix timestamp after which the key returns 410 Gone</li>
+          <li><code>nonce</code> — random 16 bytes, claimed once by <code>NonceStore</code></li>
+          <li><code>sig</code> — HMAC-SHA256 of (user, exp, nonce) under the license-signing secret</li>
+        </ul>
+        <p>
+          The signing secret is separate from the JWT secret (see
+          <code>application.yml</code>). A leak of either does not compromise the other.
+        </p>
+        <h3>Production DRM landscape</h3>
+        <p>
+          Real OTT DRM uses <strong>EME</strong> (the browser API) + a <strong>CDM</strong>
+          (Content Decryption Module) baked into the player / OS. The three commercial CDMs:
+        </p>
+        <ul>
+          <li><strong>Widevine</strong> (Google) — Chrome, Firefox, Edge, Android.</li>
+          <li><strong>FairPlay</strong> (Apple) — Safari, iOS, tvOS.</li>
+          <li><strong>PlayReady</strong> (Microsoft) — Edge legacy, Xbox, Windows, many smart TVs.</li>
+        </ul>
+        <p>
+          A <strong>CENC</strong>-encrypted bitstream is consumable by all three (FairPlay needs
+          a small workaround), so providers ship one encrypted set of segments and three license
+          servers. The license server returns a binary blob the CDM uses to derive segment keys.
+          The plaintext never leaves the CDM's trusted environment.
+        </p>
+        <p>
+          This demo would map to: AES-128 + HMAC URL → license server, hls.js → CDM, browser → EME.
+          Production gives you four things the demo can't: device-level key handling, hardware
+          decryption paths, robust output protection (HDCP), and an actual studio-grade audit
+          trail. Demo gives you: clarity, ~150 lines of code, and zero patent licensing.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'auth',
+    title: 'Auth & session',
+    blurb: 'JWT, refresh tokens, the typ claim, and how change-password keeps you signed in.',
+    render: () => (
+      <>
+        <p>
+          Auth in this demo is self-signed <strong>HS256 JWT</strong>: backend mints an access
+          token (15 min) and a refresh token (24 h) on login. Both are HS256-signed with the same
+          secret but carry a distinguishing <code>typ</code> claim — <code>access</code> vs
+          <code>refresh</code>.
+        </p>
+        <h3>Why two decoders</h3>
+        <p>
+          The backend wires <strong>two</strong> <code>JwtDecoder</code> beans, each with an{' '}
+          <code>OAuth2TokenValidator&lt;Jwt&gt;</code> that enforces a specific <code>typ</code>.
+          The access decoder is <code>@Primary</code> so <code>oauth2ResourceServer.jwt()</code>
+          picks it up; the refresh decoder is qualified explicitly on the
+          <code>/auth/refresh</code> handler. This blocks a refresh token from being used as a
+          Bearer header on protected APIs — a common bug when the rejection happens at
+          authorities-conversion time (returning empty authorities still authenticates the
+          request, the <code>@PreAuthorize</code> matcher is what 403s, and a frontend interceptor
+          that only redirects on 401 silently sends the user nowhere).
+        </p>
+        <h3>Revocation: token_version</h3>
+        <p>
+          Every issued JWT embeds a <code>tv</code> claim equal to the user row's current{' '}
+          <code>token_version</code>. <code>JwtTokenVersionFilter</code> looks up the live value
+          (Caffeine-cached for 30 s) on every authenticated request; a mismatch clears the security
+          context. Bumping the user's <code>token_version</code> invalidates every still-valid
+          token issued before the bump.
+        </p>
+        <h3>Change-password stays signed in</h3>
+        <p>
+          When the user changes their password, the backend bumps <code>token_version</code> —
+          which would 401 the same tab on its next API call. To avoid the bounce-through-login
+          experience, <code>/auth/change-password</code> returns a fresh access + refresh pair
+          stamped with the new <code>tv</code>; the SPA calls <code>setSession()</code> with it.
+        </p>
+        <h3>Refresh flow on 401</h3>
+        <p>
+          The client's <code>authedFetch</code> wrapper catches 401, tries{' '}
+          <code>/auth/refresh</code>, installs the new pair, retries the original request.{' '}
+          <code>inflightRefresh</code> coalesces concurrent 401s so multiple in-flight requests
+          share one refresh.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'gaps',
+    title: 'Production gaps',
+    blurb: 'What this demo deliberately skips, and where you would add it in real OTT.',
+    render: () => (
+      <>
+        <p>
+          This is a teaching demo — it covers the spine of an OTT publishing platform but
+          deliberately leaves out everything operational. The list below is what you would build
+          before sending traffic to humans.
+        </p>
+        <table className="docs-gaps">
+          <thead>
+            <tr>
+              <th>Gap</th>
+              <th>Real solution</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td>No multi-tenancy</td>
+              <td><code>VideoAssetEntity</code> has no <code>owner_id</code>. Add it + an authorization rule in the controller.</td>
+            </tr>
+            <tr>
+              <td>No CDN</td>
+              <td>Backend serves segments directly. Production hides origin behind CloudFront / Fastly / Akamai with token-signed URLs.</td>
+            </tr>
+            <tr>
+              <td>Single rendition</td>
+              <td>Real ABR ladder: 360p / 480p / 720p / 1080p, keyframe-aligned, signaled in master playlist.</td>
+            </tr>
+            <tr>
+              <td>DRM-lite, not real DRM</td>
+              <td>Widevine / FairPlay / PlayReady via EME + license server. See the DRM chapter.</td>
+            </tr>
+            <tr>
+              <td>No captions / multi-audio</td>
+              <td>Add <code>EXT-X-MEDIA TYPE=SUBTITLES</code> and <code>TYPE=AUDIO</code> groups; ship WebVTT / TTML sidecars.</td>
+            </tr>
+            <tr>
+              <td>No live streaming</td>
+              <td>Demo is VOD only. Live requires an encoder feeding HLS / LL-HLS or DASH, with SCTE-35 ad cues.</td>
+            </tr>
+            <tr>
+              <td>No rate limiting</td>
+              <td><code>/auth/login</code> and <code>/auth/register</code> accept unlimited attempts. Add bucket4j + IP + username pacing.</td>
+            </tr>
+            <tr>
+              <td>No password policy</td>
+              <td>Min length only. Production wants entropy checks + breach-database lookups (HIBP API).</td>
+            </tr>
+            <tr>
+              <td>No geofencing or ratings</td>
+              <td>License URL endpoint would consult a per-asset country whitelist + content rating before issuing the key.</td>
+            </tr>
+            <tr>
+              <td>No QoE telemetry</td>
+              <td>Send CMCD headers from the player, ingest player events server-side, surface in a Conviva / Mux Data dashboard.</td>
+            </tr>
+            <tr>
+              <td>Synchronous ad cold-start</td>
+              <td>Ad-service uses on-demand FFmpeg; first <code>/vast</code> takes ~48 s. Warm the catalog at boot or pre-bake renditions.</td>
+            </tr>
+          </tbody>
+        </table>
+      </>
+    ),
+  },
+  {
+    slug: 'glossary',
+    title: 'Glossary',
+    blurb: 'Every OTT term used in this codebase, grouped by topic.',
+    render: () => <Glossary />,
+  },
+]
+
+function readHashChapter(): number {
+  const m = /^#\/docs\/([\w-]+)/.exec(window.location.hash)
+  if (!m) return 0
+  const idx = CHAPTERS.findIndex((c) => c.slug === m[1])
+  return idx >= 0 ? idx : 0
+}
+
+export function Docs() {
+  const [active, setActive] = useState<number>(() => readHashChapter())
+
+  useEffect(() => {
+    const next = CHAPTERS[active]
+    if (next && window.location.hash !== `#/docs/${next.slug}`) {
+      window.history.replaceState(null, '', `#/docs/${next.slug}`)
+    }
+  }, [active])
+
+  useEffect(() => {
+    const onHash = () => setActive(readHashChapter())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const ch = CHAPTERS[active]
+  const prev = active > 0 ? CHAPTERS[active - 1] : null
+  const next = active < CHAPTERS.length - 1 ? CHAPTERS[active + 1] : null
+
+  return (
+    <div className="docs-layout">
+      <aside className="docs-toc">
+        <div className="docs-toc-label">Chapters</div>
+        <ol>
+          {CHAPTERS.map((c, i) => (
+            <li key={c.slug} className={i === active ? 'active' : ''}>
+              <button onClick={() => setActive(i)}>
+                <span className="docs-toc-num">{String(i + 1).padStart(2, '0')}</span>
+                <span className="docs-toc-title">{c.title}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </aside>
+      <article className="docs-content panel">
+        <div className="docs-chapter-eyebrow">
+          Chapter {active + 1} of {CHAPTERS.length}
+        </div>
+        <h1 className="docs-chapter-title">{ch.title}</h1>
+        <p className="docs-chapter-blurb">{ch.blurb}</p>
+        <div className="docs-prose">{ch.render()}</div>
+        <nav className="docs-pager">
+          {prev ? (
+            <button className="secondary docs-pager-link" onClick={() => setActive(active - 1)}>
+              <ChevronLeft size={14} />
+              <span>
+                <span className="docs-pager-dir">Previous</span>
+                <span className="docs-pager-title">{prev.title}</span>
+              </span>
+            </button>
+          ) : (
+            <span />
+          )}
+          {next ? (
+            <button
+              className="secondary docs-pager-link docs-pager-link-right"
+              onClick={() => setActive(active + 1)}
+            >
+              <span>
+                <span className="docs-pager-dir">Next</span>
+                <span className="docs-pager-title">{next.title}</span>
+              </span>
+              <ChevronRight size={14} />
+            </button>
+          ) : (
+            <span />
+          )}
+        </nav>
+      </article>
+    </div>
+  )
+}

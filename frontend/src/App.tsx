@@ -4,11 +4,15 @@ import { AssetList } from './components/AssetList'
 import { CreateAssetForm } from './components/CreateAssetForm'
 import { AssetDetail } from './components/AssetDetail'
 import { Login } from './components/Login'
-import { Header } from './components/Header'
+import { Header, View } from './components/Header'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { ArchitectureDiagram } from './components/ArchitectureDiagram'
-import { Glossary } from './components/Glossary'
+import { Docs } from './components/Docs'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
+
+function readView(): View {
+  return window.location.hash.startsWith('#/docs') ? 'docs' : 'console'
+}
 
 export default function App() {
   const [session, setSessionState] = useState<AuthSession | null>(getSession())
@@ -16,6 +20,21 @@ export default function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [changePassOpen, setChangePassOpen] = useState(false)
+  const [view, setView] = useState<View>(readView)
+
+  useEffect(() => {
+    const onHash = () => setView(readView())
+    window.addEventListener('hashchange', onHash)
+    return () => window.removeEventListener('hashchange', onHash)
+  }, [])
+
+  const navigate = useCallback((next: View) => {
+    setView(next)
+    const target = next === 'docs' ? '#/docs/overview' : '#/console'
+    if (window.location.hash !== target) {
+      window.history.pushState(null, '', target)
+    }
+  }, [])
 
   useEffect(() => {
     return onSessionChange(() => setSessionState(getSession()))
@@ -91,48 +110,52 @@ export default function App() {
 
   return (
     <>
-      <Header session={session} onChangePassword={() => setChangePassOpen(true)} />
-      <div className="app">
-        <div>
-          {isAdmin && (
-            <div className="panel">
-              <h1>New asset</h1>
-              <CreateAssetForm onCreated={refresh} />
-            </div>
-          )}
-          <div className="panel">
-            <h1>Assets</h1>
-            {error && (
-              <div style={{ color: '#f87171', fontSize: 12, marginBottom: 8 }}>{error}</div>
+      <Header
+        session={session}
+        view={view}
+        onNavigate={navigate}
+        onChangePassword={() => setChangePassOpen(true)}
+      />
+      {view === 'docs' ? (
+        <Docs />
+      ) : (
+        <div className="app">
+          <div>
+            {isAdmin && (
+              <div className="panel">
+                <h1>New asset</h1>
+                <CreateAssetForm onCreated={refresh} />
+              </div>
             )}
-            <AssetList assets={assets} selected={selected} onSelect={setSelected} />
+            <div className="panel">
+              <h1>Assets</h1>
+              {error && (
+                <div style={{ color: '#f87171', fontSize: 12, marginBottom: 8 }}>{error}</div>
+              )}
+              <AssetList assets={assets} selected={selected} onSelect={setSelected} />
+            </div>
+          </div>
+          <div>
+            {selected ? (
+              <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
+            ) : (
+              <div className="panel">
+                <h1>Workflow console</h1>
+                <p style={{ fontSize: 14, color: '#cbd5e1', marginTop: 0 }}>
+                  Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
+                  The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
+                  encrypted program manifest, and exposes the result for playback. The player blocks
+                  seeking and fast-forwarding during the ad. Open the <strong>Docs</strong> tab for the
+                  full background.
+                </p>
+                <div style={{ marginTop: 16 }}>
+                  <ArchitectureDiagram />
+                </div>
+              </div>
+            )}
           </div>
         </div>
-        <div>
-          {selected ? (
-            <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
-          ) : (
-            <div className="panel">
-              <h1>Workflow console</h1>
-              <p style={{ fontSize: 14, color: '#cbd5e1', marginTop: 0 }}>
-                Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
-                The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
-                encrypted program manifest, and exposes the result for playback. The player blocks
-                seeking and fast-forwarding during the ad.
-              </p>
-              <div style={{ marginTop: 16 }}>
-                <ArchitectureDiagram />
-              </div>
-            </div>
-          )}
-          {!selected && (
-            <div className="panel">
-              <h1>Glossary</h1>
-              <Glossary />
-            </div>
-          )}
-        </div>
-      </div>
+      )}
       <ChangePasswordDialog open={changePassOpen} onClose={() => setChangePassOpen(false)} />
     </>
   )
