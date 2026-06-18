@@ -89,9 +89,9 @@ const GROUPS: Group[] = [
         note: "Apple's adaptive-bitrate protocol over plain HTTP. A text playlist (.m3u8) points at short MPEG-TS or fMP4 segments.",
       },
       {
-        abbr: 'm3u8',
-        full: 'M3U playlist (UTF-8)',
-        note: 'The text manifest file format HLS uses. Two layers: a master that lists renditions, and per-rendition media playlists.',
+        abbr: 'Manifest',
+        full: 'playlist / MPD — the index file',
+        note: "The first file a streaming player loads. Lists renditions, bitrates and pointers to every segment. HLS uses a text playlist (.m3u8) in two layers — a master listing per-bitrate media playlists. DASH uses an XML manifest (.mpd, Media Presentation Description) with a Period → AdaptationSet → Representation → Segment hierarchy. CMAF is NOT a manifest format — it's the segment container under both, so modern HLS and DASH can point at the same .m4s files through their own manifests.",
       },
       {
         abbr: 'DASH',
