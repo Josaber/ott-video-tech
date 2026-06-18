@@ -80,7 +80,11 @@ export function Login() {
           <div style={{ color: '#f87171', fontSize: 12, marginTop: 8 }}>{error}</div>
         )}
         <div style={{ marginTop: 16 }}>
-          <button type="submit" disabled={busy || !username || !password}>
+          <button
+            type="submit"
+            disabled={busy || !username || !password}
+            style={{ width: '100%' }}
+          >
             {mode === 'login'
               ? <><LogIn size={14} /> Sign in</>
               : <><UserPlus size={14} /> Create account</>}
