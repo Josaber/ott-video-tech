@@ -9,7 +9,11 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      # postgres:18+ stores data under a major-version-aware subdir
+      # (/var/lib/postgresql/18/docker) and the image bails if you mount
+      # over /var/lib/postgresql/data — the old PG 16 convention — because
+      # that path is then an "unused mount". Mount the parent dir instead.
+      - postgres-data:/var/lib/postgresql
       - ./infra/postgres/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ott_demo -d ott_video_demo"]
