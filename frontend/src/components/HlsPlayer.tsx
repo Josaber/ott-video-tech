@@ -37,8 +37,14 @@ export function HlsPlayer({ src }: Props) {
         // segments) get no header — they don't accept auth anyway and we
         // avoid the CORS preflight cost.
         xhrSetup: (xhr, url) => {
+          // Attach the Bearer only to same-origin (backend) requests. We treat
+          // a leading "/" as same-origin too because hls.js does NOT normalize
+          // relative URLs before invoking xhrSetup, and a relative URL like
+          // "/playback/.../master.m3u8" obviously can't start with the
+          // window.location.origin string.
           const token = getToken()
-          if (token && url.startsWith(window.location.origin)) {
+          const sameOrigin = url.startsWith('/') || url.startsWith(window.location.origin)
+          if (token && sameOrigin) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`)
           }
         },
