@@ -3,10 +3,9 @@ package com.example.vod.config;
 import java.time.Duration;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import com.example.vod.service.LicenseUrlSigner;
-import org.springframework.boot.web.client.ClientHttpRequestFactoryBuilder;
-import org.springframework.boot.web.client.ClientHttpRequestFactorySettings;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
 
 @Configuration
@@ -23,10 +22,13 @@ public class AppConfig {
         // Hard timeouts so a hung ad-service can't pin a backend worker
         // thread indefinitely. 5s connect / 10s read is enough for a
         // freshly-generated VAST + cached manifest fetch over loopback.
-        var settings = ClientHttpRequestFactorySettings.defaults()
-                .withConnectTimeout(Duration.ofSeconds(5))
-                .withReadTimeout(Duration.ofSeconds(10));
-        var requestFactory = ClientHttpRequestFactoryBuilder.detect().build(settings);
+        //
+        // Spring Boot 4.0 removed ClientHttpRequestFactoryBuilder/Settings
+        // (the old org.springframework.boot.web.client.* facade); plain
+        // SimpleClientHttpRequestFactory from spring-web is what's left.
+        var requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(Duration.ofSeconds(5));
+        requestFactory.setReadTimeout(Duration.ofSeconds(10));
         return RestClient.builder().requestFactory(requestFactory).build();
     }
 }

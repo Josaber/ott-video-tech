@@ -7,6 +7,7 @@ import javax.crypto.SecretKey;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -82,6 +83,11 @@ public class SecurityConfig {
         return c;
     }
 
+    // @Primary so Spring Security 7's oauth2ResourceServer.jwt() autowire
+    // picks the access decoder when two JwtDecoder beans coexist. SS6 used
+    // to fall back to the well-known bean name "jwtDecoder"; SS7 errors
+    // with "expected single matching bean but found 2".
+    @Primary
     @Bean
     public JwtDecoder jwtDecoder() {
         // Primary decoder used by oauth2ResourceServer for every Authorization:
