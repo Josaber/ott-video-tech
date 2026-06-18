@@ -23,4 +23,8 @@ public interface ProcessingJobRepository extends JpaRepository<ProcessingJobEnti
     @Transactional
     @Query("delete from ProcessingJobEntity j where j.status = :status and j.createdAt < :cutoff")
     int deleteByStatusAndCreatedAtBefore(@Param("status") JobStatus status, @Param("cutoff") Instant cutoff);
+
+    @Modifying
+    @Transactional
+    int deleteByAssetId(UUID assetId);
 }

@@ -15,14 +15,18 @@ import com.example.vod.workflow.VideoPublishingWorkflow;
 import io.temporal.api.enums.v1.WorkflowIdReusePolicy;
 import io.temporal.client.WorkflowClient;
 import io.temporal.client.WorkflowExecutionAlreadyStarted;
+import io.temporal.client.WorkflowNotFoundException;
 import io.temporal.client.WorkflowOptions;
+import io.temporal.client.WorkflowStub;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
+import java.util.Comparator;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -134,6 +138,85 @@ public class VideoWorkflowService {
             log.info("started VideoPublishingWorkflow for asset {}", assetId);
         } catch (WorkflowExecutionAlreadyStarted e) {
             throw new IllegalStateException("workflow already running for asset");
+        }
+    }
+
+    /**
+     * Delete an asset, its job history, its on-disk artifacts (upload + HLS
+     * package), and ask Temporal to terminate any in-flight workflow for it.
+     *
+     * The transaction wraps only the DB side (jobs + asset row). The workflow
+     * terminate is fire-and-forget — a slow / down Temporal cluster cannot pin
+     * a request-scoped DB connection. The filesystem cleanup runs AFTER the
+     * commit: if it fails the DB rows are already gone, and the next disk
+     * scan or a manual rm is enough to reclaim the leaked bytes.
+     */
+    @Transactional
+    public void delete(UUID assetId) {
+        VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
+        String rawPath = asset.getRawPath();
+        String packageDir = asset.getPackageDir();
+
+        terminateWorkflow(assetId);
+        jobs.deleteByAssetId(assetId);
+        assets.delete(asset);
+
+        deleteAssetFiles(assetId, rawPath, packageDir);
+    }
+
+    private void terminateWorkflow(UUID assetId) {
+        String workflowId = "publish-" + assetId;
+        CompletableFuture.runAsync(() -> {
+            try {
+                WorkflowStub stub = temporal.client().newUntypedWorkflowStub(workflowId);
+                stub.terminate("asset-deleted", "asset " + assetId + " deleted by admin");
+                log.info("terminated workflow {} for delete", workflowId);
+            } catch (WorkflowNotFoundException ignored) {
+                // No live workflow (embedded mode after JVM restart, or asset never published).
+            } catch (Exception e) {
+                log.warn("could not terminate workflow {}: {}", workflowId, e.getMessage());
+            }
+        });
+    }
+
+    /**
+     * Defensive deletion: only purge paths that are inside the configured
+     * upload / processed directories. A misconfigured row pointing at
+     * /etc/something must not let an admin DELETE wipe the host.
+     */
+    private void deleteAssetFiles(UUID assetId, String rawPath, String packageDir) {
+        Path uploadDir = Path.of(media.getUploadDir(), assetId.toString()).toAbsolutePath().normalize();
+        deleteRecursivelyIfUnder(uploadDir, Path.of(media.getUploadDir()).toAbsolutePath().normalize());
+        if (rawPath != null) {
+            Path raw = Path.of(rawPath).toAbsolutePath().normalize();
+            // Already covered by uploadDir wipe in the standard case, but in case
+            // a future upload landed outside the per-asset dir we tidy it up too.
+            if (!raw.startsWith(uploadDir)) {
+                deleteRecursivelyIfUnder(raw, Path.of(media.getUploadDir()).toAbsolutePath().normalize());
+            }
+        }
+        if (packageDir != null) {
+            Path pkg = Path.of(packageDir).toAbsolutePath().normalize();
+            deleteRecursivelyIfUnder(pkg, Path.of(media.getProcessedDir()).toAbsolutePath().normalize());
+        }
+    }
+
+    private void deleteRecursivelyIfUnder(Path target, Path mustBeUnder) {
+        if (!Files.exists(target)) return;
+        if (!target.startsWith(mustBeUnder)) {
+            log.warn("refusing to delete {} (not under {})", target, mustBeUnder);
+            return;
+        }
+        try (var stream = Files.walk(target)) {
+            stream.sorted(Comparator.reverseOrder()).forEach(p -> {
+                try {
+                    Files.deleteIfExists(p);
+                } catch (IOException e) {
+                    log.warn("could not delete {}: {}", p, e.getMessage());
+                }
+            });
+        } catch (IOException e) {
+            log.warn("could not walk {}: {}", target, e.getMessage());
         }
     }
 
