@@ -173,6 +173,16 @@ const GROUPS: Group[] = [
         full: 'Group of Pictures',
         note: 'Distance between I-frames (independent keyframes). Each HLS segment must start on an I-frame, so GOP length sets the minimum segment duration.',
       },
+      {
+        abbr: 'HDR10',
+        full: 'Open HDR baseline',
+        note: 'High-dynamic-range with static, whole-stream metadata (peak luminance, color volume). Royalty-free baseline every HDR-capable TV supports. Carried over HEVC 10-bit.',
+      },
+      {
+        abbr: 'Dolby Vision',
+        full: 'HDR with dynamic metadata',
+        note: "Per-scene (or per-frame) tone-mapping metadata layered on top of an HEVC HDR base. Wider gamut and finer brightness control than HDR10's static metadata. Premium-OTT tier alongside Atmos.",
+      },
     ],
   },
   {
@@ -184,6 +194,21 @@ const GROUPS: Group[] = [
         note: "MPEG-4 audio codec. The default audio for HLS — FFmpeg's aac encoder, ~128 kbps stereo for streaming. Universal hardware support.",
       },
       {
+        abbr: 'Stereo',
+        full: '2-channel audio (2.0)',
+        note: 'Left + Right speakers. The default streaming audio layout — every decoder handles it; a phone speaker folds down to mono from the same bitstream.',
+      },
+      {
+        abbr: 'Channel layout',
+        full: 'Mono / Stereo / 5.1 / 7.1',
+        note: 'Speaker arrangement an audio track is mixed for. Stereo (2.0) is the streaming default; 5.1 / 7.1 are surround; Atmos adds height channels and objects on top.',
+      },
+      {
+        abbr: 'Dolby',
+        full: 'Dolby Laboratories portfolio',
+        note: 'Umbrella brand for premium A/V tech across OTT: audio (Dolby Digital AC-3, Digital Plus E-AC-3, Atmos object-based) and video / HDR (Dolby Vision). Licensed decoders + certification programs across every CTV and silicon vendor.',
+      },
+      {
         abbr: 'AC-3 / E-AC-3',
         full: 'Dolby Digital / Dolby Digital Plus',
         note: "Dolby's surround-sound codecs. E-AC-3 carries up to 7.1 + object-based metadata. Standard pass-through audio path for premium content on CTV.",
@@ -192,11 +217,6 @@ const GROUPS: Group[] = [
         abbr: 'Atmos',
         full: 'Dolby Atmos',
         note: "Object-based immersive audio. Mixes are authored as discrete audio objects with 3D positions; the renderer maps them to the viewer's speaker / headphone layout at playback time.",
-      },
-      {
-        abbr: 'Channel layout',
-        full: 'Mono / Stereo / 5.1 / 7.1',
-        note: 'Speaker arrangement an audio track is mixed for. Stereo (2.0) is the streaming default; 5.1 / 7.1 are surround; Atmos adds height channels and objects on top.',
       },
       {
         abbr: 'Dub',
