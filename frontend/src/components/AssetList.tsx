@@ -18,7 +18,7 @@ export function AssetList({ assets, selected, onSelect }: Props) {
           className={'asset-row' + (a.id === selected ? ' active' : '')}
           onClick={() => onSelect(a.id)}
         >
-          <span>{a.title}</span>
+          <span className="asset-row-title" title={a.title}>{a.title}</span>
           <span className={'status ' + a.status}>{a.status}</span>
         </div>
       ))}
