@@ -39,7 +39,7 @@ export function Login() {
 
   return (
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 24 }}>
-      <form onSubmit={submit} className="panel" style={{ width: 380, padding: 24 }}>
+      <form onSubmit={submit} className="panel" style={{ width: 460, padding: 24 }}>
         <h1 style={{ marginBottom: 16 }}>OTT Workflow Console</h1>
         <div className="tabs" role="tablist">
           <button
