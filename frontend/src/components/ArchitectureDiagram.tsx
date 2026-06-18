@@ -24,7 +24,7 @@ export function ArchitectureDiagram() {
 
   return (
     <svg
-      viewBox="0 0 880 260"
+      viewBox="0 0 880 282"
       width="100%"
       role="img"
       aria-label="OTT publishing pipeline architecture"
@@ -187,10 +187,10 @@ export function ArchitectureDiagram() {
         )
       })()}
 
-      {/* Bottom: state stores */}
+      {/* Bottom: state stores — clear of the ad-service box, which ends at y=238 */}
       <g>
-        <rect x={24} y={232} width={832} height={22} rx={4} fill="#0f172a" stroke="#334155" />
-        <text x={440} y={247} textAnchor="middle" fontSize={10.5} fill="#64748b" letterSpacing="0.06em">
+        <rect x={24} y={252} width={832} height={22} rx={4} fill="#0f172a" stroke="#334155" />
+        <text x={440} y={267} textAnchor="middle" fontSize={10.5} fill="#64748b" letterSpacing="0.06em">
           STATE  ·  Temporal workflow (publish-&lt;assetId&gt;)  ·  PostgreSQL (jobs, assets, users)  ·  Filesystem (uploads, processed)
         </text>
       </g>
