@@ -142,6 +142,35 @@ body { margin: 0; }
   color: #e2e8f0;
 }
 
+.glossary-wrap {
+  display: flex;
+  flex-direction: column;
+  gap: 24px;
+}
+.glossary-section { margin: 0; }
+.glossary-section-title {
+  font-size: 11px;
+  font-weight: 700;
+  color: #22d3ee;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  margin: 0 0 10px;
+  padding-bottom: 6px;
+  border-bottom: 1px solid #1e293b;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.glossary-section-count {
+  font-size: 10px;
+  font-weight: 600;
+  color: #64748b;
+  background: #0f172a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.04em;
+}
+
 .glossary {
   margin: 0;
   display: grid;
