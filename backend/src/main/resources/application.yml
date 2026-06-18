@@ -1,13 +1,17 @@
 server:
   port: 8080
-  servlet:
-    multipart:
-      max-file-size: 512MB
-      max-request-size: 512MB
 
 spring:
   application:
     name: ott-video-tech-demo-backend
+  # Spring Boot reads multipart limits from spring.servlet.multipart.*,
+  # NOT server.servlet.multipart.* (which silently does nothing). Without
+  # this binding, Tomcat enforces its 1 MB internal default and any upload
+  # bigger than that fails with FileSizeLimitExceededException as a 500.
+  servlet:
+    multipart:
+      max-file-size: 512MB
+      max-request-size: 512MB
   datasource:
     url: jdbc:postgresql://127.0.0.1:5432/ott_video_demo
     username: ott_demo
