@@ -155,6 +155,38 @@ const TERMS: Term[] = [
     note: 'Distance between I-frames (independent keyframes). Each HLS segment must start on an I-frame, so GOP length sets the minimum segment duration.',
   },
 
+  // Audio & localization -------------------------------------------------
+  {
+    abbr: 'AAC',
+    full: 'Advanced Audio Coding',
+    note: "MPEG-4 audio codec. The default audio for HLS — FFmpeg's aac encoder, ~128 kbps stereo for streaming. Universal hardware support.",
+  },
+  {
+    abbr: 'AC-3 / E-AC-3',
+    full: 'Dolby Digital / Dolby Digital Plus',
+    note: 'Dolby\'s surround-sound codecs. E-AC-3 carries up to 7.1 + object-based metadata. Standard pass-through audio path for premium content on CTV.',
+  },
+  {
+    abbr: 'Atmos',
+    full: 'Dolby Atmos',
+    note: 'Object-based immersive audio. Mixes are authored as discrete audio objects with 3D positions; the renderer maps them to the viewer\'s speaker / headphone layout at playback time.',
+  },
+  {
+    abbr: 'Channel layout',
+    full: 'Mono / Stereo / 5.1 / 7.1',
+    note: 'Speaker arrangement an audio track is mixed for. Stereo (2.0) is the streaming default; 5.1 / 7.1 are surround; Atmos adds height channels and objects on top.',
+  },
+  {
+    abbr: 'Dub',
+    full: 'Dubbed audio track',
+    note: 'Alternative-language voice track replacing the original. Shipped as an additional EXT-X-MEDIA TYPE=AUDIO group in the HLS master so the player can switch languages without reloading.',
+  },
+  {
+    abbr: 'AD',
+    full: 'Audio Description',
+    note: 'Extra narration track describing on-screen action for blind / low-vision viewers. Required for compliance in many markets; another EXT-X-MEDIA AUDIO entry alongside the main track.',
+  },
+
   // Ad -------------------------------------------------------------------
   {
     abbr: 'SSAI',
