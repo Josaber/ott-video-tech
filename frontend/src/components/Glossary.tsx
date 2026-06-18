@@ -27,6 +27,48 @@ const TERMS: Term[] = [
     note: 'Distributed edge cache (CloudFront, Akamai, Fastly...) that serves the manifest and segments close to the viewer. This demo skips it — backend serves directly.',
   },
 
+  // Distribution & monetization -----------------------------------------
+  {
+    abbr: 'Live',
+    full: 'Live streaming',
+    note: 'Encoder feeds fresh segments while viewers watch. Manifest is a sliding window. Latency and DVR rules matter; pre-encoded VOD has neither.',
+  },
+  {
+    abbr: 'Linear',
+    full: 'Linear (channel) programming',
+    note: 'Scheduled programming on a fixed channel — broadcast TV\'s native pattern, replicated on OTT for FAST channels and 24/7 news / sports.',
+  },
+  {
+    abbr: 'PPV',
+    full: 'Pay-Per-View',
+    note: 'Viewer pays once for a single event or title. Boxing / UFC nights, premium concerts, day-and-date movie releases — usually combined with Live.',
+  },
+  {
+    abbr: 'SVOD',
+    full: 'Subscription VOD',
+    note: 'Monthly fee, generally ad-free, full catalog access (Netflix, Disney+, HBO Max).',
+  },
+  {
+    abbr: 'AVOD',
+    full: 'Ad-supported VOD',
+    note: 'Free for the viewer; revenue is ad impressions. YouTube\'s free tier, Pluto TV on-demand, Tubi.',
+  },
+  {
+    abbr: 'TVOD',
+    full: 'Transactional VOD',
+    note: 'Rent or buy individual titles — Apple TV / iTunes, Amazon Video purchases, day-and-date premium movies.',
+  },
+  {
+    abbr: 'FAST',
+    full: 'Free Ad-Supported Streaming TV',
+    note: 'Linear channels delivered via OTT (Pluto TV, Samsung TV Plus, Roku Channel). Fastest-growing US ad-supported category since 2022.',
+  },
+  {
+    abbr: 'CTV',
+    full: 'Connected TV',
+    note: 'Smart TVs and dongles (Roku, Fire TV, Apple TV, Chromecast) running OTT apps. Distinct from mobile / desktop because ad inventory is lean-back big-screen.',
+  },
+
   // Streaming protocol ---------------------------------------------------
   {
     abbr: 'HLS',
@@ -57,6 +99,28 @@ const TERMS: Term[] = [
     abbr: 'fMP4',
     full: 'Fragmented MP4',
     note: 'MP4 split into self-describing fragments (moof + mdat) so a player can start mid-stream. Container under CMAF.',
+  },
+
+  // Live & low-latency ---------------------------------------------------
+  {
+    abbr: 'LL-HLS',
+    full: 'Low-Latency HLS',
+    note: 'Apple\'s LL extension. Partial segments + HTTP/2 push bring glass-to-glass latency under 2 s — vs ~10–30 s for classic HLS.',
+  },
+  {
+    abbr: 'DVR',
+    full: 'Digital Video Recorder window',
+    note: 'In live OTT: the manifest keeps a retention tail of old segments so the player can seek backward (rewind a goal, restart a show in progress).',
+  },
+  {
+    abbr: 'WebRTC',
+    full: 'Web Real-Time Communications',
+    note: 'Sub-500 ms interactive streaming over UDP. Used for auctions, betting, two-way video. Completely different stack from HLS / DASH.',
+  },
+  {
+    abbr: 'SCTE-35',
+    full: 'Ad-cue signaling spec',
+    note: 'In-band markers inside MPEG-TS streams (or sidecar metadata for CMAF) that say "ad break starts here, N seconds long". The bridge between broadcast workflows and SSAI.',
   },
 
   // Codec ----------------------------------------------------------------
@@ -153,6 +217,28 @@ const TERMS: Term[] = [
     abbr: 'HMAC',
     full: 'Hash-based Message Authentication Code',
     note: 'Keyed hash signature used here to make license URLs time-bound and viewer-bound — server validates the signature on every key fetch.',
+  },
+
+  // Quality, accessibility & telemetry ----------------------------------
+  {
+    abbr: 'WebVTT',
+    full: 'Web Video Text Tracks',
+    note: 'Browser-native subtitle / caption format. Wired into HLS via the master playlist\'s SUBTITLES group; into HTML5 via <track kind="subtitles">.',
+  },
+  {
+    abbr: 'QoE',
+    full: 'Quality of Experience',
+    note: 'Composite metric of startup time, rebuffer ratio, average bitrate, stalls per viewer-hour. The number every CDN / encoding tweak is judged by.',
+  },
+  {
+    abbr: 'CMCD',
+    full: 'Common Media Client Data',
+    note: 'CTA-5004 spec — player sends standardized telemetry (buffer level, measured throughput, content ID, session ID) in an HTTP header on every segment fetch. Lets CDN / origin observe and adapt without a separate beacon.',
+  },
+  {
+    abbr: 'Watermark',
+    full: 'Forensic watermark',
+    note: 'Per-viewer identifier subtly embedded in the video itself so a leaked screen-capture can be traced back to the leaking account. Required by most major studios for premium content.',
   },
 
   // Tool -----------------------------------------------------------------
