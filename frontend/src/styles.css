@@ -110,6 +110,38 @@ body { margin: 0; }
 }
 .user-menu-dropdown button:hover { background: #334155; }
 
+.tabs {
+  display: flex;
+  gap: 24px;
+  margin-bottom: 20px;
+  border-bottom: 1px solid #334155;
+}
+.tab {
+  /* reset all the global button styles so it reads as a heading switch,
+     not as a call-to-action button next to the Sign-in submit button. */
+  background: transparent;
+  color: #64748b;
+  border: none;
+  border-bottom: 2px solid transparent;
+  border-radius: 0;
+  padding: 8px 2px;
+  margin-bottom: -1px; /* sit on top of the .tabs underline */
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  cursor: pointer;
+  transition: color 120ms ease, border-color 120ms ease;
+}
+.tab:hover { color: #cbd5e1; }
+.tab.active {
+  color: #e2e8f0;
+  border-bottom-color: #22d3ee;
+}
+.tab:focus-visible {
+  outline: none;
+  color: #e2e8f0;
+}
+
 .app h1 {
   font-size: 18px;
   margin: 0 0 16px 0;

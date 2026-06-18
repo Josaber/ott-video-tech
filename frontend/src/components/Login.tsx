@@ -41,17 +41,21 @@ export function Login() {
     <div style={{ display: 'grid', placeItems: 'center', minHeight: '100vh', padding: 24 }}>
       <form onSubmit={submit} className="panel" style={{ width: 380, padding: 24 }}>
         <h1 style={{ marginBottom: 16 }}>OTT Workflow Console</h1>
-        <div style={{ display: 'flex', gap: 4, marginBottom: 16 }}>
+        <div className="tabs" role="tablist">
           <button
             type="button"
-            className={mode === 'login' ? '' : 'secondary'}
+            role="tab"
+            aria-selected={mode === 'login'}
+            className={'tab' + (mode === 'login' ? ' active' : '')}
             onClick={() => switchMode('login')}
           >
             Sign in
           </button>
           <button
             type="button"
-            className={mode === 'register' ? '' : 'secondary'}
+            role="tab"
+            aria-selected={mode === 'register'}
+            className={'tab' + (mode === 'register' ? ' active' : '')}
             onClick={() => switchMode('register')}
           >
             Register
