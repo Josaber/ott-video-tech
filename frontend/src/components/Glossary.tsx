@@ -100,6 +100,11 @@ const TERMS: Term[] = [
     full: 'Fragmented MP4',
     note: 'MP4 split into self-describing fragments (moof + mdat) so a player can start mid-stream. Container under CMAF.',
   },
+  {
+    abbr: 'JIT',
+    full: 'Just-in-time packaging',
+    note: 'Origin stores one high-quality mezzanine file and packages HLS / DASH renditions only when the player asks for them. Saves disk vs pre-packaging every variant; trades it for CPU on the origin.',
+  },
 
   // Live & low-latency ---------------------------------------------------
   {
@@ -124,6 +129,11 @@ const TERMS: Term[] = [
   },
 
   // Codec ----------------------------------------------------------------
+  {
+    abbr: 'codec',
+    full: 'coder + decoder',
+    note: 'An encoder / decoder pair that compresses and decompresses video or audio. The choice (H.264, AV1, AAC, Opus...) trades file size against decode CPU and patent licensing.',
+  },
   {
     abbr: 'H.264',
     full: 'AVC — Advanced Video Coding',
@@ -170,6 +180,16 @@ const TERMS: Term[] = [
     abbr: 'Roll',
     full: 'Pre-roll / Mid-roll / Post-roll',
     note: 'Ad slot positions relative to program content. This demo inserts a single pre-roll before each asset.',
+  },
+  {
+    abbr: 'EXT-X-DATERANGE',
+    full: 'HLS ad-cue tag (current)',
+    note: "Apple's modern way to mark an ad block inside an HLS playlist. Carries DURATION, optional SCTE-35 attribute, arbitrary CLASS — what this demo writes for the pre-roll. Replaces the older CUE-OUT/CUE-IN pair.",
+  },
+  {
+    abbr: 'EXT-X-CUE-OUT',
+    full: 'HLS ad-cue tag (legacy)',
+    note: 'Older Adobe-derived pair (CUE-OUT / CUE-IN) used by many SSAI stitchers and ad servers as a fallback for players that don\'t understand DATERANGE.',
   },
 
   // Security -------------------------------------------------------------
@@ -224,6 +244,21 @@ const TERMS: Term[] = [
     abbr: 'WebVTT',
     full: 'Web Video Text Tracks',
     note: 'Browser-native subtitle / caption format. Wired into HLS via the master playlist\'s SUBTITLES group; into HTML5 via <track kind="subtitles">.',
+  },
+  {
+    abbr: 'CC',
+    full: 'Closed Captions (CEA-608 / CEA-708)',
+    note: 'Captions encoded inside the video stream itself, not as a separate file. The legacy broadcast standard — modern OTT prefers WebVTT / TTML sidecar files, but FAST channels often still carry 608.',
+  },
+  {
+    abbr: 'SRT',
+    full: 'SubRip Text',
+    note: 'Simple text caption format ([HH:MM:SS,mmm --> HH:MM:SS,mmm] + line). Universal in non-streaming workflows; not directly supported by HLS / browsers, so usually transcoded to WebVTT before delivery.',
+  },
+  {
+    abbr: 'TTML',
+    full: 'Timed Text Markup Language',
+    note: 'W3C XML-based caption format with rich styling (positioning, colors, animation). Common in EBU-TT-D and IMSC1 profiles used by many studios; HLS supports it via EXT-X-MEDIA TYPE=SUBTITLES.',
   },
   {
     abbr: 'QoE',
