@@ -15,8 +15,96 @@ body { margin: 0; }
   display: grid;
   grid-template-columns: 360px 1fr;
   gap: 24px;
-  min-height: 100vh;
 }
+
+.app-header {
+  position: sticky;
+  top: 0;
+  z-index: 50;
+  background: rgba(15, 23, 42, 0.9);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid #1e293b;
+}
+.app-header-inner {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 12px 24px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.app-brand {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  font-size: 13px;
+  color: #22d3ee;
+}
+
+.user-menu { position: relative; }
+.user-menu-trigger {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 6px 10px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 500;
+  font-size: 13px;
+  cursor: pointer;
+}
+.user-menu-trigger:hover { border-color: #475569; }
+.user-menu-name { color: #e2e8f0; }
+.user-menu-role {
+  font-size: 10px;
+  color: #94a3b8;
+  background: #0f172a;
+  padding: 2px 6px;
+  border-radius: 4px;
+  letter-spacing: 0.05em;
+}
+.user-menu-chevron {
+  color: #94a3b8;
+  transition: transform 140ms ease;
+}
+.user-menu-chevron.open { transform: rotate(180deg); }
+
+.user-menu-dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 6px);
+  min-width: 180px;
+  background: #1e293b;
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.4);
+  animation: menu-rise 120ms ease-out;
+}
+@keyframes menu-rise {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.user-menu-dropdown button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 10px;
+  background: transparent;
+  color: #e2e8f0;
+  border: none;
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 500;
+  text-align: left;
+  cursor: pointer;
+}
+.user-menu-dropdown button:hover { background: #334155; }
 
 .app h1 {
   font-size: 18px;

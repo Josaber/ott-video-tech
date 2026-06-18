@@ -1,18 +1,19 @@
 import { useEffect, useState, useCallback } from 'react'
-import { LogOut } from 'lucide-react'
 import { api, Asset } from './api/client'
 import { AssetList } from './components/AssetList'
 import { CreateAssetForm } from './components/CreateAssetForm'
 import { AssetDetail } from './components/AssetDetail'
 import { Login } from './components/Login'
-import { ChangePassword } from './components/ChangePassword'
-import { AuthSession, clearSession, getSession, onSessionChange, updateProfile } from './api/auth'
+import { Header } from './components/Header'
+import { ChangePasswordDialog } from './components/ChangePasswordDialog'
+import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 export default function App() {
   const [session, setSessionState] = useState<AuthSession | null>(getSession())
   const [assets, setAssets] = useState<Asset[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [changePassOpen, setChangePassOpen] = useState(false)
 
   useEffect(() => {
     return onSessionChange(() => setSessionState(getSession()))
@@ -87,52 +88,41 @@ export default function App() {
   const isAdmin = session.role === 'ADMIN'
 
   return (
-    <div className="app">
-      <div>
-        <div className="panel" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div>
-            <div style={{ fontSize: 11, color: '#94a3b8' }}>SIGNED IN AS</div>
-            <div style={{ fontWeight: 600 }}>{session.username}</div>
-            <div style={{ fontSize: 11, color: '#64748b' }}>{session.role}</div>
-          </div>
-          <button className="secondary" onClick={() => clearSession()}>
-            <LogOut size={14} style={{ verticalAlign: 'middle', marginRight: 4 }} />
-            Sign out
-          </button>
-        </div>
-        <div className="panel">
-          <h1>Account</h1>
-          <ChangePassword />
-        </div>
-        {isAdmin && (
-          <div className="panel">
-            <h1>New asset</h1>
-            <CreateAssetForm onCreated={refresh} />
-          </div>
-        )}
-        <div className="panel">
-          <h1>Assets</h1>
-          {error && (
-            <div style={{ color: '#f87171', fontSize: 12, marginBottom: 8 }}>{error}</div>
+    <>
+      <Header session={session} onChangePassword={() => setChangePassOpen(true)} />
+      <div className="app">
+        <div>
+          {isAdmin && (
+            <div className="panel">
+              <h1>New asset</h1>
+              <CreateAssetForm onCreated={refresh} />
+            </div>
           )}
-          <AssetList assets={assets} selected={selected} onSelect={setSelected} />
+          <div className="panel">
+            <h1>Assets</h1>
+            {error && (
+              <div style={{ color: '#f87171', fontSize: 12, marginBottom: 8 }}>{error}</div>
+            )}
+            <AssetList assets={assets} selected={selected} onSelect={setSelected} />
+          </div>
+        </div>
+        <div>
+          {selected ? (
+            <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
+          ) : (
+            <div className="panel">
+              <h1>Workflow console</h1>
+              <p style={{ fontSize: 14, color: '#cbd5e1' }}>
+                Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
+                The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
+                encrypted program manifest, and exposes the result for playback. The player blocks
+                seeking and fast-forwarding during the ad.
+              </p>
+            </div>
+          )}
         </div>
       </div>
-      <div>
-        {selected ? (
-          <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
-        ) : (
-          <div className="panel">
-            <h1>Workflow console</h1>
-            <p style={{ fontSize: 14, color: '#cbd5e1' }}>
-              Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
-              The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
-              encrypted program manifest, and exposes the result for playback. The player blocks
-              seeking and fast-forwarding during the ad.
-            </p>
-          </div>
-        )}
-      </div>
-    </div>
+      <ChangePasswordDialog open={changePassOpen} onClose={() => setChangePassOpen(false)} />
+    </>
   )
 }
