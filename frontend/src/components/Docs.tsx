@@ -36,6 +36,76 @@ interface Chapter {
 
 const CHAPTERS: Chapter[] = [
   {
+    slug: 'guide',
+    title: 'How to read this',
+    blurb: 'Five reading paths for different audiences — pick the one closest to your role.',
+    render: () => (
+      <>
+        <p>
+          This doc is built around a working OTT demo, but the topics generalise. Below are
+          five reading paths depending on what you do. The fastest way to find what's relevant
+          is to skim each chapter's headings on your path, then read end-to-end only the ones
+          that answer a question you already have.
+        </p>
+
+        <h3>Backend engineer joining an OTT team</h3>
+        <ol>
+          <li><em>Overview</em> — what you're building.</li>
+          <li><em>HLS essentials</em> + <em>Manifest deep-dive</em> — the protocol the team writes against.</li>
+          <li><em>Server-Side Ad Insertion</em> — the most code-heavy thing the platform does.</li>
+          <li><em>Multi-DRM in production</em> — how the entitlement layer plugs into vendor licence servers.</li>
+          <li><em>Production gaps</em> — what's intentionally missing from the demo.</li>
+        </ol>
+
+        <h3>Frontend / web-player engineer</h3>
+        <ol>
+          <li><em>HLS essentials</em> · <em>Containers</em> · <em>Codecs</em> — what your player has to decode.</li>
+          <li><em>Player & client architecture</em> — your daily tools (hls.js / shaka / native).</li>
+          <li><em>Trick-play & thumbnails</em> — the seek-bar UX users complain about.</li>
+          <li><em>Multi-DRM in production</em> — what your EME code is actually doing.</li>
+          <li><em>Observability & QoE</em> — what your telemetry instrumentation drives.</li>
+        </ol>
+
+        <h3>Mobile / CTV client engineer</h3>
+        <ol>
+          <li><em>Device platforms & SDKs</em> — your platform's quirks.</li>
+          <li><em>Player & client architecture</em> — the JS reference; substitute your native equivalent.</li>
+          <li><em>Multi-DRM in production</em> — Widevine vs FairPlay vs PlayReady depending on your platform.</li>
+          <li><em>Identity, profiles & devices</em> — registration + concurrent stream rules.</li>
+          <li><em>Trick-play & thumbnails</em> — most-shipped feature you'll touch.</li>
+        </ol>
+
+        <h3>Security / DRM engineer</h3>
+        <ol>
+          <li><em>Auth & session</em> — the access-token foundation.</li>
+          <li><em>DRM-lite vs production DRM</em> + <em>Multi-DRM in production</em> — the key-fetch stack.</li>
+          <li><em>Anti-piracy beyond DRM</em> — HDCP, watermarking, geofence, account sharing.</li>
+          <li><em>Identity, profiles & devices</em> — device + concurrent-stream policy.</li>
+          <li><em>Privacy & consent</em> — IFA, TCF, COPPA.</li>
+        </ol>
+
+        <h3>PM / business person wanting the lay of the land</h3>
+        <ol>
+          <li><em>Overview</em> + <em>Video metadata</em> — catalog model.</li>
+          <li><em>Catalog & recommendations</em> + <em>Search & discovery</em> — discovery UX.</li>
+          <li><em>Cost model</em> + <em>Payments & billing</em> — how revenue and unit economics work.</li>
+          <li><em>Compliance & accessibility</em> + <em>Privacy & consent</em> — what the legal team will ask about.</li>
+          <li><em>Production gaps</em> — the engineering risk list.</li>
+        </ol>
+
+        <p>
+          The reference Part (<em>Standards & organisations</em> · <em>Production gaps</em> ·{' '}
+          <em>Glossary</em>) is meant for lookup, not sequential reading. Open them when a
+          term sends you scrambling.
+        </p>
+        <p>
+          Each chapter header shows an estimated read time. Total cover-to-cover is just over
+          three hours; the four reading paths above each fit in 40 minutes.
+        </p>
+      </>
+    ),
+  },
+  {
     slug: 'overview',
     title: 'Overview',
     blurb: 'What this demo is and how the pieces fit together.',
@@ -1619,6 +1689,37 @@ segment_000.ts
             </tr>
           </tbody>
         </table>
+
+        <h3>Demo UX</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>Hardcoded ad ID</td>
+              <td>Every asset gets <code>preroll-brand-a</code>. Production picks dynamically from an ad pod by VAST, factoring frequency caps and audience segment.</td>
+            </tr>
+            <tr>
+              <td>No download / offline support</td>
+              <td>The player has no "download for offline" action. Production needs persistent license issuance, encrypted local storage, an expiry-tracking job.</td>
+            </tr>
+            <tr>
+              <td>No metadata editing after create</td>
+              <td>Title / description are immutable post-creation. Add an admin edit form; or wire CRUD against the editorial layer.</td>
+            </tr>
+            <tr>
+              <td>Workflow progress is stage-only</td>
+              <td>The job timeline shows stage transitions but no within-stage percentage. Add FFmpeg progress parsing to surface "Transcoding 60%".</td>
+            </tr>
+            <tr>
+              <td>No in-UI retry for FAILED workflows</td>
+              <td>Admin has to re-upload to retry. Add a "Retry workflow" button that bumps the asset back to UNPUBLISHED and re-triggers the Temporal workflow without losing the raw upload.</td>
+            </tr>
+            <tr>
+              <td>Stuck-asset sweep cadence opaque</td>
+              <td>StuckAssetSweeper runs every 5 min but there's no admin "Sweep now" trigger or visibility into when it last ran.</td>
+            </tr>
+          </tbody>
+        </table>
       </>
     ),
   },
@@ -2328,7 +2429,7 @@ segment_001.ts`}</code></pre>
 const PARTS: { name: string; slugs: string[] }[] = [
   {
     name: 'Foundations',
-    slugs: ['overview', 'hls', 'containers', 'codecs', 'manifest'],
+    slugs: ['guide', 'overview', 'hls', 'containers', 'codecs', 'manifest'],
   },
   {
     name: 'The publishing pipeline',
@@ -2353,6 +2454,75 @@ const PARTS: { name: string; slugs: string[] }[] = [
 ]
 
 const READING_ORDER: string[] = PARTS.flatMap((p) => p.slugs)
+
+// Hand-estimated reading minutes per chapter (rough — based on word count
+// + table density at ~220 wpm). Drives the eyebrow's "~N min read" hint.
+const READING_MINUTES: Record<string, number> = {
+  guide: 3,
+  overview: 4,
+  hls: 6,
+  containers: 5,
+  codecs: 7,
+  manifest: 8,
+  mezzanine: 6,
+  'transcode-package': 7,
+  captions: 7,
+  ssai: 8,
+  cdn: 7,
+  player: 7,
+  'trick-play': 5,
+  live: 7,
+  observability: 5,
+  devices: 7,
+  metadata: 7,
+  catalog: 6,
+  search: 6,
+  cost: 5,
+  payments: 7,
+  compliance: 7,
+  privacy: 7,
+  auth: 7,
+  identity: 7,
+  drm: 8,
+  'multi-drm': 7,
+  'anti-piracy': 7,
+  standards: 4,
+  gaps: 5,
+  glossary: 6,
+}
+
+// Inter-chapter cross-references. Each chapter lists the slugs of one to
+// three other chapters most worth reading right after it. Reference-only
+// chapters (standards / gaps / glossary) intentionally have no See also.
+const SEE_ALSO: Record<string, string[]> = {
+  overview: ['guide', 'gaps'],
+  hls: ['manifest', 'containers'],
+  containers: ['codecs', 'manifest'],
+  codecs: ['containers', 'transcode-package'],
+  manifest: ['hls', 'ssai'],
+  mezzanine: ['transcode-package', 'codecs'],
+  'transcode-package': ['codecs', 'cdn'],
+  captions: ['compliance', 'manifest'],
+  ssai: ['manifest', 'live'],
+  cdn: ['player', 'cost'],
+  player: ['drm', 'trick-play', 'devices'],
+  'trick-play': ['manifest', 'player'],
+  live: ['ssai', 'observability'],
+  observability: ['player', 'cdn'],
+  devices: ['player', 'multi-drm'],
+  metadata: ['catalog', 'compliance'],
+  catalog: ['search', 'metadata'],
+  search: ['catalog', 'metadata'],
+  cost: ['cdn', 'transcode-package'],
+  payments: ['identity', 'compliance'],
+  compliance: ['privacy', 'captions'],
+  privacy: ['compliance', 'identity'],
+  auth: ['identity', 'drm'],
+  identity: ['auth', 'payments'],
+  drm: ['multi-drm', 'anti-piracy'],
+  'multi-drm': ['drm', 'anti-piracy'],
+  'anti-piracy': ['multi-drm', 'identity'],
+}
 
 const CHAPTERS_BY_SLUG: Record<string, Chapter> = Object.fromEntries(
   CHAPTERS.map((c) => [c.slug, c]),
@@ -2420,10 +2590,26 @@ export function Docs() {
       <article className="docs-content panel">
         <div className="docs-chapter-eyebrow">
           Chapter {idx + 1} of {READING_ORDER.length}
+          {READING_MINUTES[ch.slug] ? <> · ~{READING_MINUTES[ch.slug]} min read</> : null}
         </div>
         <h1 className="docs-chapter-title">{ch.title}</h1>
         <p className="docs-chapter-blurb">{ch.blurb}</p>
         <div className="docs-prose">{ch.render()}</div>
+        {SEE_ALSO[ch.slug] && SEE_ALSO[ch.slug].length > 0 && (
+          <div className="docs-see-also">
+            <span className="docs-see-also-label">SEE ALSO</span>
+            {SEE_ALSO[ch.slug].map((s, i) => {
+              const c = CHAPTERS_BY_SLUG[s]
+              if (!c) return null
+              return (
+                <span key={s} className="docs-see-also-item">
+                  {i > 0 && <span className="docs-see-also-sep">·</span>}
+                  <button onClick={() => setActiveSlug(s)}>{c.title}</button>
+                </span>
+              )
+            })}
+          </div>
+        )}
         <nav className="docs-pager">
           {prev ? (
             <button
