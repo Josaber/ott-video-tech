@@ -7,6 +7,11 @@ import {
   CDNCacheFigure,
   LiveLatencyFigure,
   EMELicenseSequenceFigure,
+  GOPFramesFigure,
+  ABRLadderFigure,
+  SSAISequenceFigure,
+  PlayerStackFigure,
+  EditorialHierarchyFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -69,6 +74,9 @@ const CHAPTERS: Chapter[] = [
         </p>
 
         <h3>Editorial hierarchy</h3>
+        <div className="docs-figure">
+          <EditorialHierarchyFigure />
+        </div>
         <table className="docs-gaps">
           <thead>
             <tr>
@@ -484,6 +492,9 @@ segment_002.m4s
           a frame, the codec splits into blocks, transforms them (DCT, integer transforms),
           quantises (the lossy step), and entropy-codes the residual.
         </p>
+        <div className="docs-figure">
+          <GOPFramesFigure />
+        </div>
         <h3>Video codecs</h3>
         <table className="docs-gaps">
           <thead>
@@ -596,18 +607,12 @@ segment_002.m4s
           delivery: ProRes is too big, H.265 isn't supported on enough devices, the source
           bitrate doesn't suit slow Wi-Fi. Transcoding produces one or more
           {' '}<strong>renditions</strong> — same content, each encoded with a specific codec at
-          a specific resolution and bitrate.
+          a specific resolution and bitrate. The set of renditions you offer is the production
+          {' '}<strong>ABR ladder</strong>:
         </p>
-        <p>
-          A production <strong>ABR ladder</strong> is the set of renditions you offer:
-        </p>
-        <pre><code>{`Ladder example
-  240p   H.264   400  kbps   (mobile, weak connection)
-  360p   H.264   800  kbps
-  480p   H.264  1400  kbps
-  720p   H.264  2800  kbps
-  1080p  H.264  5000  kbps
-  4K HDR H.265 12000  kbps   (CTV with HEVC decoder)`}</code></pre>
+        <div className="docs-figure">
+          <ABRLadderFigure />
+        </div>
         <p>
           Two non-obvious requirements bind the ladder together:
         </p>
@@ -695,6 +700,9 @@ segment_002.m4s
           and can't tell which segments are ads.
         </p>
         <h3>The flow</h3>
+        <div className="docs-figure">
+          <SSAISequenceFigure />
+        </div>
         <ol>
           <li>
             Backend's <code>SsaiWorker</code> calls <code>GET /vast?adId=preroll-brand-a</code> on
@@ -1021,6 +1029,9 @@ segment_000.ts
           player on top.
         </p>
         <h3>The browser stack</h3>
+        <div className="docs-figure">
+          <PlayerStackFigure />
+        </div>
         <ul>
           <li><strong>HTMLMediaElement</strong> — the <code>&lt;video&gt;</code> tag itself. Exposes <code>play()</code>, <code>currentTime</code>, events (timeupdate, waiting, ended, error). Knows nothing about HLS / DASH directly except on Safari (native HLS).</li>
           <li><strong>MSE</strong> (Media Source Extensions, 2016 W3C). The JS player creates a <code>MediaSource</code>, attaches it to the video element, fetches segments itself, appends them to a <code>SourceBuffer</code>. Browser handles demux + decode + render.</li>
