@@ -1472,7 +1472,7 @@ segment_000.ts
             </tr>
             <tr>
               <td>No captions / multi-audio</td>
-              <td>No <code>EXT-X-MEDIA TYPE=SUBTITLES</code> or <code>TYPE=AUDIO</code> groups, no WebVTT / TTML sidecars, no dub tracks.</td>
+              <td>No <code>EXT-X-MEDIA TYPE=SUBTITLES</code> or <code>TYPE=AUDIO</code> groups, no WebVTT / TTML sidecars, no dub tracks. See <em>Captions & subtitles workflow</em>.</td>
             </tr>
             <tr>
               <td>No loudness / color compliance</td>
@@ -1500,6 +1500,10 @@ segment_000.ts
               <td>No QoE telemetry</td>
               <td>Zero client telemetry, no CMCD headers, no dashboards. Real OTT runs Conviva / Mux / Bitmovin Analytics. See <em>Observability & QoE</em>.</td>
             </tr>
+            <tr>
+              <td>No trick-play / scrubbing preview</td>
+              <td>No I-frame playlist, no thumbnail sprite. The progress bar is the HTML5 default. See <em>Trick-play & thumbnails</em>.</td>
+            </tr>
           </tbody>
         </table>
         <h3>Security & rights</h3>
@@ -1508,7 +1512,7 @@ segment_000.ts
           <tbody>
             <tr>
               <td>DRM-lite, not real DRM</td>
-              <td>AES-128 + HMAC-signed URL. Real OTT uses Widevine / FairPlay / PlayReady via EME + a CDM. See <em>DRM</em>.</td>
+              <td>AES-128 + HMAC-signed URL. Real OTT uses Widevine / FairPlay / PlayReady via EME + a CDM, wired through a DRMaaS vendor. See <em>DRM</em> and <em>Multi-DRM in production</em>.</td>
             </tr>
             <tr>
               <td>No HDCP enforcement</td>
@@ -1563,6 +1567,306 @@ segment_000.ts
     blurb: 'Every OTT term used in this codebase, grouped by topic.',
     render: () => <Glossary />,
   },
+  {
+    slug: 'captions',
+    title: 'Captions & subtitles workflow',
+    blurb: 'WebVTT, TTML, sidecar vs in-band, and the auto-transcribe + translate fan-out pipeline.',
+    render: () => (
+      <>
+        <p>
+          Compliance covered the regulatory side. This chapter covers the engineering side. The
+          caption / subtitle layer of an OTT catalog is a parallel pipeline that runs alongside
+          the video pipeline — format choice, authoring tool, language fan-out, QC, packaging,
+          delivery — and it costs roughly as much per program as transcoding.
+        </p>
+
+        <h3>Format families</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Format</th><th>Where it lives</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>WebVTT (.vtt)</td>
+              <td>Browser-native. The format HLS prefers. Plain text with cue timestamps, optional styling, voice tags. What every modern web player consumes.</td>
+            </tr>
+            <tr>
+              <td>SRT (.srt)</td>
+              <td>Simple legacy text. Universal in non-streaming workflows. Not playable in HLS or browsers directly — transcoded to WebVTT at packaging time.</td>
+            </tr>
+            <tr>
+              <td>TTML / EBU-TT-D / IMSC1</td>
+              <td>W3C XML caption format with rich styling, positioning, animation. Studios author master subtitles in IMSC1 (the modern profile); European broadcasters use EBU-TT-D. Carried over HLS via <code>EXT-X-MEDIA TYPE=SUBTITLES</code>.</td>
+            </tr>
+            <tr>
+              <td>CEA-608 / CEA-708</td>
+              <td>Captions encoded inside the video bitstream itself. The legacy broadcast standard. Modern OTT prefers sidecar but FAST channels often still carry 608.</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Minimal WebVTT</h3>
+        <pre><code>{`WEBVTT
+
+00:00:00.000 --> 00:00:04.500
+<v Narrator>The story begins with a small town
+on the edge of nowhere.
+
+00:00:04.500 --> 00:00:08.200 line:0 position:50%
+[wind howling]
+
+STYLE
+::cue { background: rgba(0,0,0,0.8); color: white; }`}</code></pre>
+
+        <h3>HLS wiring</h3>
+        <p>
+          Each language gets its own media playlist; the master playlist groups them under{' '}
+          <code>SUBTITLES="subs"</code> and the variant streams reference that group:
+        </p>
+        <pre><code>{`# master.m3u8
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",
+    DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="subs/en.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Español",
+    LANGUAGE="es",URI="subs/es.m3u8"
+#EXT-X-STREAM-INF:BANDWIDTH=2400000,CODECS="avc1.64001f,mp4a.40.2",
+    AUDIO="aac",SUBTITLES="subs"
+720p/index.m3u8
+
+# subs/en.m3u8 (media playlist for subtitle segments)
+#EXTM3U
+#EXT-X-VERSION:6
+#EXT-X-TARGETDURATION:240
+#EXTINF:240.0,
+en_0.vtt
+#EXT-X-ENDLIST`}</code></pre>
+
+        <h3>DASH wiring</h3>
+        <p>
+          DASH expresses subtitles as an <code>AdaptationSet</code> with{' '}
+          <code>contentType="text"</code> and either inline TTML or a <code>SegmentTemplate</code>
+          {' '}pointing at WebVTT / IMSC1 chunks. Same SUBTITLES group concept, XML instead of
+          playlist text.
+        </p>
+
+        <h3>Authoring & translation workflow</h3>
+        <ol>
+          <li><strong>Transcribe</strong> source-language audio. Auto (Whisper, Deepgram, AssemblyAI, Rev Reverb) costs ~$0.20-1.00 / minute and hits 92-97% word accuracy. Human transcription costs $1-5 / minute and hits 99%.</li>
+          <li><strong>Align + clean.</strong> Force-align cues against the audio, split into reading-rate-compliant lines (max ~17 chars/sec, max 2 lines, max ~36 chars/line), add speaker IDs and sound effects for HoH captions.</li>
+          <li><strong>Translate.</strong> Fan-out per language: machine translation (DeepL, NMT models) is ~85% acceptable for streaming; tentpole content goes through human post-edit.</li>
+          <li><strong>Vendor review.</strong> Studios contract specialists — Iyuno, IYUNO-SDI, ZOO Digital, Pixelogic — for human QC.</li>
+          <li><strong>Package.</strong> Transcode master into WebVTT, segment for HLS, write the SUBTITLES group lines into the master playlist.</li>
+        </ol>
+
+        <h3>Captions vs subtitles vs SDH</h3>
+        <ul>
+          <li><strong>Captions</strong> — for deaf / HoH viewers. Include speaker IDs, sound effects, music descriptions.</li>
+          <li><strong>Subtitles</strong> — translation aid for hearing viewers. Dialogue only.</li>
+          <li><strong>SDH</strong> (Subtitles for the Deaf and Hard-of-hearing) — translation + HoH cues. Used when there's no captions track in the source language.</li>
+        </ul>
+
+        <h3>Sync challenges</h3>
+        <p>
+          Captions must align with audio sample-accurately. Common breakages: drift from a
+          non-zero-start media offset (PROGRAM-DATE-TIME mismatch), segment-boundary cue splits
+          that lose the second half, framerate-induced timecode rounding (24p vs 23.976 NTSC).
+          Production runs a sync-validation pass before publishing.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'trick-play',
+    title: 'Trick-play & thumbnails',
+    blurb: 'Scrubbing previews, I-frame fast-forward, seek snapping — what lives behind the progress bar.',
+    render: () => (
+      <>
+        <p>
+          When a viewer hovers the progress bar and a small thumbnail appears, or holds
+          fast-forward and the picture zips through at 8× speed, that's <strong>trick-play
+          </strong>. Three separate features live under the name: scrubbing preview thumbnails,
+          I-frame fast-forward, and seek snapping.
+        </p>
+
+        <h3>Scrubbing preview thumbnails</h3>
+        <p>
+          The player needs an image for every N seconds of the timeline. Two main delivery
+          formats:
+        </p>
+        <table className="docs-gaps">
+          <thead><tr><th>Format</th><th>What it is</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>WebVTT thumbnail manifest</td>
+              <td>Standard <code>.vtt</code> file where each cue points at an image — either a URL per thumbnail or a sprite-sheet URL with a <code>#xywh</code> fragment.</td>
+            </tr>
+            <tr>
+              <td>BIF (Roku Base Index File)</td>
+              <td>Roku's binary thumbnail container — JPEGs + an index. Common across Roku-derived platforms (Roku Channel, Roku-based smart TVs). One file per asset.</td>
+            </tr>
+          </tbody>
+        </table>
+        <pre><code>{`# thumbnails.vtt — sprite-sheet form
+WEBVTT
+
+00:00:00.000 --> 00:00:10.000
+sprite.jpg#xywh=0,0,160,90
+
+00:00:10.000 --> 00:00:20.000
+sprite.jpg#xywh=160,0,160,90
+
+00:00:20.000 --> 00:00:30.000
+sprite.jpg#xywh=320,0,160,90`}</code></pre>
+        <p>
+          Production typical: one 160×90 thumbnail every 5-10 s of program, packed into 10×10
+          sprite sheets (so each sheet covers 5-10 minutes of program). Generated at packaging
+          time with FFmpeg's <code>thumbnail</code> filter and <code>montage</code>.
+        </p>
+
+        <h3>I-frame fast-forward</h3>
+        <p>
+          Playing the full bitstream at 2× / 4× / 8× speed is decoder-heavy and not how player
+          UIs actually do fast-forward. Instead, HLS publishes a separate I-frame-only playlist
+          — the same timeline but containing only the I-frames (one frame every ~2 s):
+        </p>
+        <pre><code>{`# master.m3u8
+#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=200000,RESOLUTION=1280x720,
+    CODECS="avc1.64001f",URI="720p/iframes.m3u8"
+
+# 720p/iframes.m3u8 — only I-frame byte ranges
+#EXTM3U
+#EXT-X-VERSION:4
+#EXT-X-TARGETDURATION:2
+#EXTINF:2.000,
+#EXT-X-BYTERANGE:48000@0
+segment_000.ts
+#EXTINF:2.000,
+#EXT-X-BYTERANGE:51200@2000000
+segment_001.ts`}</code></pre>
+        <p>
+          At fast-forward the player switches to the I-frame playlist, pulls just the keyframe
+          chunks, shows them at the requested speed — same visual effect, fraction of the
+          bandwidth and CPU.
+        </p>
+
+        <h3>DASH trickmode</h3>
+        <p>
+          DASH expresses the same idea with a separate AdaptationSet marked as trickmode:
+        </p>
+        <pre><code>{`<AdaptationSet contentType="video">
+  <EssentialProperty
+    schemeIdUri="http://dashif.org/guidelines/trickmode"
+    value="1" />
+  <Representation id="iframes" bandwidth="200000" codecs="avc1.64001f"
+    ... />
+</AdaptationSet>`}</code></pre>
+
+        <h3>Seek snapping & PROGRAM-DATE-TIME anchors</h3>
+        <p>
+          Live content uses <code>#EXT-X-PROGRAM-DATE-TIME</code> to anchor each segment to
+          wall-clock. The player's seek bar reads in wall-clock terms and snaps to segment
+          boundaries during DVR seek. Same anchor lets a "skip intro" or "start over" button
+          compute a frame-accurate seek.
+        </p>
+
+        <h3>Cost</h3>
+        <p>
+          Thumbnail strips: ~1 MB per hour of program for 160×90 @ 5 s spacing in JPEG. I-frame
+          ladder: ~10% extra encode time per rendition (the I-frames already exist; you're
+          just emitting an additional playlist + byte-range index). Most production transcoders
+          emit both as part of the packaging step.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'multi-drm',
+    title: 'Multi-DRM in production',
+    blurb: 'Wiring Widevine + FairPlay + PlayReady through a DRM-as-a-Service vendor.',
+    render: () => (
+      <>
+        <p>
+          The DRM chapter named the three commercial CDMs. This chapter walks how an engineer
+          actually wires them in — because nobody implements all three from scratch.
+          Production OTT uses one of two paths: build a full license server in-house (Netflix,
+          Disney+) or contract a <strong>DRM-as-a-Service</strong> vendor (everyone else).
+        </p>
+
+        <h3>The encrypt-once model</h3>
+        <p>
+          The packager produces <strong>CENC</strong>-encrypted segments — one set of bytes
+          consumable by all three CDMs. A few specifics:
+        </p>
+        <ul>
+          <li><strong>One key ID + content key per asset</strong> — or one per quality tier (SD / HD / UHD usually have separate keys so a low-security CDM can hold the SD key without unlocking HD).</li>
+          <li><strong>PSSH (Protection System Specific Header) boxes</strong> in the init segment — one per CDM, carrying CDM-specific key wrapping. Widevine, PlayReady, FairPlay each have their own PSSH UUID.</li>
+          <li><strong>FairPlay caveat</strong> — historically Apple required SAMPLE-AES, not CENC's cenc / cbcs schemes. Modern FairPlay accepts <code>cbcs</code> CENC mode, which is what every multi-DRM packager emits today.</li>
+        </ul>
+
+        <h3>License request flow</h3>
+        <ol>
+          <li>Player encounters an encrypted segment, fires the EME <code>encrypted</code> event.</li>
+          <li>Player requests a media key session from the CDM (Widevine / FairPlay / PlayReady).</li>
+          <li>CDM produces a <strong>license request blob</strong> — opaque, CDM-specific.</li>
+          <li>Player POSTs the blob to a <strong>license URL</strong> provided by your platform.</li>
+          <li>License URL handler validates the viewer's entitlement (subscription, rights window, geo, concurrent stream, HDCP), then forwards the blob to the DRM vendor's license server.</li>
+          <li>Vendor returns a <strong>license response blob</strong> — wraps the content key for that CDM.</li>
+          <li>Player feeds the response back to the CDM via <code>session.update()</code>.</li>
+          <li>CDM unwraps the key and starts decrypting segments inside its trusted environment.</li>
+        </ol>
+
+        <h3>DRM-as-a-Service vendors</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Vendor</th><th>What they offer</th></tr></thead>
+          <tbody>
+            <tr><td>PallyCon</td><td>Widevine + FairPlay + PlayReady + forensic watermarking. Mid-tier pricing. Popular for Korean / SEA streamers.</td></tr>
+            <tr><td>EZDRM</td><td>One-stop multi-DRM. Mid-tier. US-headquartered, broad adoption.</td></tr>
+            <tr><td>BuyDRM (KeyOS)</td><td>Multi-DRM + analytics. Enterprise pricing. Common at tier-1 studios.</td></tr>
+            <tr><td>Axinom</td><td>Multi-DRM + a full OTT platform stack. European, strong in CTV.</td></tr>
+            <tr><td>Verimatrix</td><td>Multi-DRM + cardless conditional access for IPTV.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Where your code sits</h3>
+        <p>
+          The vendor runs the license servers; you run the <strong>entitlement endpoint</strong>
+          in front of them. That endpoint is the only place your business rules live —
+          subscription status, rights window, country, parental controls, concurrent stream.
+          The call out to the vendor is essentially: "given this verified entitlement, mint a
+          license for this CDM with these constraints (HDCP level, persistence, output
+          protection)".
+        </p>
+
+        <h3>Persistent vs session licenses</h3>
+        <ul>
+          <li><strong>Session license</strong> — valid only while the playback session is live. Default for streaming.</li>
+          <li><strong>Persistent license</strong> — stored on the device for offline playback. Has its own expiry. Required for "download for offline" features. Usually billed at a premium per issuance.</li>
+        </ul>
+
+        <h3>Key rotation</h3>
+        <p>
+          For long live streams (or 24/7 channels), the content key rotates periodically. The
+          manifest emits a new <code>#EXT-X-KEY</code> entry, the player asks for a new license
+          with the new key ID, the CDM gets the wrapped key, decryption continues seamlessly.
+          Rotation cadence is usually hourly for live, never for VOD.
+        </p>
+
+        <h3>Cost</h3>
+        <p>
+          License issuance fees at enterprise scale: $0.0001-0.001 per license. Persistent
+          licenses can be 2-10× more. Forensic watermarking adds another fraction of a cent.
+          For a 1 M-viewer-day platform at 1 license per session that's $100-1000/day of pure
+          DRM cost — significant only at scale, but a real line item.
+        </p>
+
+        <h3>This demo's analogue</h3>
+        <p>
+          The signed license-URL endpoint in this demo plays the entitlement role: it
+          validates the viewer (signed URL = entitlement check), enforces a per-request nonce
+          (one playback session), then returns the AES-128 key. Swap the plaintext key
+          response for a CDM-specific license blob fetched from a DRMaaS vendor and you have
+          production DRM — the rest of the architecture is identical.
+        </p>
+      </>
+    ),
+  },
 ]
 
 // Part / chapter grouping. Reading order is computed from this — the CHAPTERS
@@ -1576,11 +1880,11 @@ const PARTS: { name: string; slugs: string[] }[] = [
   },
   {
     name: 'The publishing pipeline',
-    slugs: ['mezzanine', 'transcode-package', 'ssai'],
+    slugs: ['mezzanine', 'transcode-package', 'captions', 'ssai'],
   },
   {
     name: 'Delivery & playback',
-    slugs: ['cdn', 'player', 'live', 'observability'],
+    slugs: ['cdn', 'player', 'trick-play', 'live', 'observability'],
   },
   {
     name: 'Content & business',
@@ -1588,7 +1892,7 @@ const PARTS: { name: string; slugs: string[] }[] = [
   },
   {
     name: 'Security',
-    slugs: ['auth', 'drm', 'anti-piracy'],
+    slugs: ['auth', 'drm', 'multi-drm', 'anti-piracy'],
   },
   {
     name: 'Reference',
