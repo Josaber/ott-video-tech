@@ -17,6 +17,8 @@ import {
   SubscriptionStateMachineFigure,
   ConsentFlowFigure,
   DevicePlatformsFigure,
+  ContainerStructureFigure,
+  CodecEfficiencyFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -402,6 +404,9 @@ segment_002.m4s
           understands. Mismatching the two is the source of "the file plays in VLC but not in
           Safari" frustration — usually Safari supports the container but not the codec inside.
         </p>
+        <div className="docs-figure">
+          <ContainerStructureFigure />
+        </div>
         <h3>Common containers</h3>
         <table className="docs-gaps">
           <thead>
