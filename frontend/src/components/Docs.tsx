@@ -392,7 +392,7 @@ segment_002.m4s
   },
   {
     slug: 'containers',
-    title: 'Video containers',
+    title: 'Containers',
     blurb: 'MP4, MKV, MOV, TS — what each wrapper actually does, and why streaming picked the ones it did.',
     render: () => (
       <>
@@ -1508,7 +1508,7 @@ segment_000.ts
             </tr>
             <tr>
               <td>.ts segments only</td>
-              <td>MPEG-TS works everywhere but CMAF .m4s lets one segment set serve both HLS and DASH. See <em>Video containers</em>.</td>
+              <td>MPEG-TS works everywhere but CMAF .m4s lets one segment set serve both HLS and DASH. See <em>Containers</em>.</td>
             </tr>
             <tr>
               <td>No captions / multi-audio</td>
