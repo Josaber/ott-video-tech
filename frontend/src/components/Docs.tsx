@@ -159,6 +159,74 @@ const CHAPTERS: Chapter[] = [
     ),
   },
   {
+    slug: 'mezzanine',
+    title: 'Mezzanine & mastering',
+    blurb: "The high-quality intermediate file every delivery encode comes from.",
+    render: () => (
+      <>
+        <p>
+          Before transcoding produces ABR renditions you need a <strong>mezzanine</strong> — the
+          high-quality intermediate that's the source of truth for every delivery encode. The
+          demo accepts whatever comes out of a phone; a production catalog accepts only a tightly
+          spec'd mezzanine and refuses anything else.
+        </p>
+        <h3>Common mezzanine formats</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Format</th><th>Where it's used</th></tr></thead>
+          <tbody>
+            <tr><td>ProRes 422 HQ / 4444</td><td>Apple intermediate codec. Studio + post-production standard. ~220 Mb/s HD, ~880 Mb/s 4K. Bit-rate is "high enough not to matter" — easy to grade.</td></tr>
+            <tr><td>DNxHR / DNxHD</td><td>Avid's intermediate, same role. Common in broadcast workflows.</td></tr>
+            <tr><td>JPEG 2000 in MXF</td><td>SMPTE-standard. DCDM (Digital Cinema Distribution Master) and some studio OTT delivery formats. Visually lossless but slow to decode.</td></tr>
+            <tr><td>IMF (SMPTE 2067)</td><td>Interoperable Master Format — component-based packaging. Video, audio tracks, subtitles, supplemental material bundled with sidecar XML (CPL, PKL, AssetMap). Studio delivery standard since ~2015.</td></tr>
+            <tr><td>H.264 / HEVC mezzanine</td><td>Lossier compromise. Used by smaller ingest paths or when the original master is already H.264 and re-encoding would hurt further.</td></tr>
+          </tbody>
+        </table>
+        <h3>Mastering pipeline</h3>
+        <p>
+          Capture (camera) → edit (NLE: Avid, Premiere, Resolve) → color grade (Resolve,
+          Baselight) → audio mix → render (proxy → conform → output) → mezzanine → ingest. Each
+          step is usually a separate team and facility for tentpole content.
+        </p>
+        <h3>Quality control</h3>
+        <p>
+          Automated QC tools enforce spec compliance before ingest: <strong>Tektronix Aurora
+          </strong>, <strong>Vidchecker</strong>, <strong>Interra Baton</strong>. Common checks:
+          pixel artifacts, audio loudness, black / silent frame detection, captioning sync,
+          color gamut excursions, file integrity.
+        </p>
+        <h3>Loudness</h3>
+        <p>
+          Audio is measured in <strong>LUFS</strong> (or LKFS for ATSC) — integrated loudness
+          across the whole program. Common targets:
+        </p>
+        <ul>
+          <li><strong>-23 LUFS</strong> — EBU R128 (European broadcast)</li>
+          <li><strong>-24 LKFS</strong> — ATSC A/85 (US broadcast, the "CALM Act" target)</li>
+          <li><strong>-16 LUFS</strong> — typical streaming (Spotify, Apple Music)</li>
+          <li><strong>-14 LUFS</strong> — louder streaming target (YouTube)</li>
+        </ul>
+        <p>
+          Ads must match the program's loudness target — otherwise the volume jump triggers
+          viewer complaints, and in the US regulator fines.
+        </p>
+        <h3>Color & HDR</h3>
+        <p>
+          SDR sticks to <strong>BT.709</strong> color primaries with a power-2.2 / 2.4 gamma
+          curve. HDR moves to <strong>BT.2020</strong> (wider gamut) with one of two transfer
+          functions: <strong>PQ</strong> (Perceptual Quantizer — Dolby Vision / HDR10, absolute
+          brightness reference) or <strong>HLG</strong> (Hybrid Log-Gamma — BBC, NHK,
+          backwards-compatible with SDR displays).
+        </p>
+        <h3>What this demo skips</h3>
+        <p>
+          Everything in this chapter. The upload endpoint takes any <code>video/*</code> MIME,
+          runs FFmpeg with default settings, ships the result. A real catalog rejects 99% of
+          submissions at QC and sends them back to the studio with a report.
+        </p>
+      </>
+    ),
+  },
+  {
     slug: 'hls',
     title: 'HLS essentials',
     blurb: 'Manifests, segments, ABR — the streaming protocol underneath everything.',
@@ -204,6 +272,111 @@ segment_001.ts
           unified container called <strong>CMAF</strong> (fragmented MP4, .m4s). CMAF is now the
           recommended path because one set of segments can be referenced by both an .m3u8 and an
           .mpd manifest. This demo uses .ts because hls.js is universal.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'manifest',
+    title: 'Manifest deep-dive',
+    blurb: 'Every #EXT tag in an HLS playlist plus how DASH expresses the same ideas.',
+    render: () => (
+      <>
+        <p>
+          HLS essentials covered the two-layer concept. This chapter walks the tags individually
+          and contrasts them with the DASH equivalents.
+        </p>
+        <h3>Master playlist</h3>
+        <pre><code>{`#EXTM3U
+#EXT-X-VERSION:6
+#EXT-X-INDEPENDENT-SEGMENTS
+
+#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aac-en",NAME="English",
+    DEFAULT=YES,AUTOSELECT=YES,LANGUAGE="en",URI="audio/en.m3u8"
+#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",
+    DEFAULT=YES,LANGUAGE="en",URI="subs/en.m3u8"
+
+#EXT-X-STREAM-INF:BANDWIDTH=2400000,RESOLUTION=1280x720,
+    CODECS="avc1.64001f,mp4a.40.2",AUDIO="aac-en",SUBTITLES="subs"
+720p/index.m3u8
+
+#EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=200000,RESOLUTION=1280x720,
+    CODECS="avc1.64001f",URI="720p/iframes.m3u8"`}</code></pre>
+        <ul>
+          <li><code>#EXT-X-INDEPENDENT-SEGMENTS</code> — every segment starts with a keyframe; the player can switch at any boundary without rebuffering.</li>
+          <li><code>#EXT-X-MEDIA</code> — alternate audio / subtitle / closed-caption tracks grouped together. Players surface them as language switchers.</li>
+          <li><code>#EXT-X-STREAM-INF</code> — one per video rendition. <code>CODECS</code> is the strict RFC 6381 codec string the player uses to confirm it can decode without fetching.</li>
+          <li><code>#EXT-X-I-FRAME-STREAM-INF</code> — separate I-frame-only playlist for fast trick-play (scrubbing, thumbnail strips).</li>
+        </ul>
+        <h3>Media playlist</h3>
+        <pre><code>{`#EXTM3U
+#EXT-X-VERSION:6
+#EXT-X-TARGETDURATION:4
+#EXT-X-MEDIA-SEQUENCE:0
+#EXT-X-DISCONTINUITY-SEQUENCE:0
+#EXT-X-PLAYLIST-TYPE:VOD
+#EXT-X-MAP:URI="init.mp4"
+
+#EXT-X-KEY:METHOD=AES-128,URI="license.key?...",IV=0x...
+#EXT-X-PROGRAM-DATE-TIME:2026-06-19T10:00:00Z
+
+#EXTINF:4.000,
+segment_000.m4s
+#EXTINF:4.000,
+segment_001.m4s
+
+#EXT-X-DISCONTINUITY
+#EXT-X-DATERANGE:ID="ad-1",CLASS="ad",
+    START-DATE="2026-06-19T10:00:08Z",DURATION=12.0
+#EXTINF:4.000,
+ad_000.m4s
+#EXTINF:4.000,
+ad_001.m4s
+#EXTINF:4.000,
+ad_002.m4s
+#EXT-X-DISCONTINUITY
+
+#EXTINF:4.000,
+segment_002.m4s
+
+#EXT-X-ENDLIST`}</code></pre>
+        <ul>
+          <li><code>#EXT-X-TARGETDURATION</code> — upper bound on segment duration. Player polls the playlist at half this for live.</li>
+          <li><code>#EXT-X-MEDIA-SEQUENCE</code> — first segment's sequence number. Increments forever for live as old segments drop off the window.</li>
+          <li><code>#EXT-X-PLAYLIST-TYPE</code> — VOD (finite, has ENDLIST) or EVENT (live but appendable; manifest only grows).</li>
+          <li><code>#EXT-X-MAP</code> — init segment (the MP4 'ftyp' + 'moov' boxes) needed before any media segment.</li>
+          <li><code>#EXT-X-KEY</code> — the encryption preamble. Applies to all following segments until the next KEY tag.</li>
+          <li><code>#EXT-X-PROGRAM-DATE-TIME</code> — wall-clock anchor. Lets the player compute "current live edge" and "you joined 5s late".</li>
+          <li><code>#EXT-X-DISCONTINUITY</code> + <code>#EXT-X-DATERANGE</code> — what this demo's SSAI writes around an ad break.</li>
+          <li><code>#EXT-X-ENDLIST</code> — VOD only. Tells the player "no more segments coming".</li>
+        </ul>
+        <h3>LL-HLS tags</h3>
+        <p>
+          Low-Latency HLS adds partial-segment delivery. <code>#EXT-X-PART-INF</code> declares
+          partial duration, <code>#EXT-X-PART</code> lists partials inside an in-progress
+          segment, <code>#EXT-X-PRELOAD-HINT</code> nudges the player to request the next
+          partial before it's even listed.
+        </p>
+        <h3>DASH equivalent</h3>
+        <pre><code>{`<MPD type="dynamic" minimumUpdatePeriod="PT2S" ...>
+  <Period start="PT0S">
+    <AdaptationSet contentType="video" segmentAlignment="true">
+      <Representation id="720p" bandwidth="2400000" codecs="avc1.64001f">
+        <SegmentTemplate timescale="1000" duration="4000"
+          media="720p/seg_$Number$.m4s" initialization="720p/init.m4s" />
+      </Representation>
+    </AdaptationSet>
+    <AdaptationSet contentType="audio" lang="en">
+      ...
+    </AdaptationSet>
+  </Period>
+</MPD>`}</code></pre>
+        <p>
+          Hierarchy: <strong>Period</strong> (a chapter or ad break) → <strong>AdaptationSet
+          </strong> (one media type — video, audio, subtitles) → <strong>Representation</strong>
+          {' '}(one bitrate / codec variant) → <strong>SegmentTemplate</strong> or{' '}
+          <strong>SegmentList</strong> (where to find the bytes). CMAF lets one set of .m4s
+          files serve both an HLS .m3u8 and a DASH .mpd.
         </p>
       </>
     ),
@@ -639,6 +812,86 @@ segment_000.ts
     ),
   },
   {
+    slug: 'anti-piracy',
+    title: 'Anti-piracy beyond DRM',
+    blurb: 'HDCP, forensic watermarking, screen-capture detection, geofencing, account sharing.',
+    render: () => (
+      <>
+        <p>
+          DRM encrypts the bytes and gates the key. That stops file copy + replay. It doesn't
+          stop a viewer pointing a 4K camera at a TV, or a CDM exploit dumping decrypted frames
+          out of memory. Real OTT layers more on top.
+        </p>
+        <h3>Output protection — HDCP</h3>
+        <p>
+          <strong>HDCP</strong> (High-bandwidth Digital Content Protection) encrypts the link
+          between source (set-top, dongle, browser) and display. Studios mandate HDCP levels
+          per content tier:
+        </p>
+        <ul>
+          <li><strong>HDCP 2.2</strong> — required for 4K HDR and Dolby Vision.</li>
+          <li><strong>HDCP 1.4</strong> — required for HD.</li>
+          <li>None — SD only.</li>
+        </ul>
+        <p>
+          If the player can't negotiate the required HDCP version with the connected display,
+          the license server can refuse to issue the key — or issue a key that only unlocks an
+          SD rendition. iOS / Android enforce this at the OS level; browsers query through
+          EME's <code>MediaKeyStatus</code>.
+        </p>
+        <h3>Forensic watermarking</h3>
+        <p>
+          A per-viewer identifier embedded subtly in the video itself. Two approaches:
+        </p>
+        <ul>
+          <li><strong>Pre-baked A/B variants.</strong> Encode bit-shifted versions of every segment; the per-viewer manifest stitches a unique sequence (segment 0 = variant A, 1 = variant B...). A 30-bit ID needs 30 segments — easy in a VOD movie.</li>
+          <li><strong>Server-side watermark.</strong> Insert the per-viewer ID into the bitstream at packaging time. More CPU at packaging, less storage.</li>
+        </ul>
+        <p>
+          When a leak appears on a piracy site, the studio runs a forensic tool over the
+          captured frames, recovers the ID, traces it back to the account, terminates and
+          pursues.
+        </p>
+        <h3>Screen-capture & runtime protection</h3>
+        <ul>
+          <li><strong>iOS</strong> — <code>UIScreen.isCaptured</code> tells the app the screen is being mirrored / recorded; the player blanks the video.</li>
+          <li><strong>Android</strong> — <code>FLAG_SECURE</code> on the player window blocks <code>screenrecord</code>, screenshots, casting.</li>
+          <li><strong>Widevine L1</strong> — keys never reach userland; decryption happens in TEE (TrustZone). L3 (software-only) is allowed for SD but blocked for HD.</li>
+          <li><strong>FairPlay + HDCP</strong> — Safari blanks the canvas if you try to read pixels off the video element.</li>
+        </ul>
+        <h3>Token-signed URLs</h3>
+        <p>
+          Manifests and segments served from a CDN are guarded by short-lived signed URLs (or
+          signed cookies). The CDN validates the signature at the edge before serving — no
+          origin round-trip. CloudFront, Akamai, Fastly all support this. Signing key rotation
+          is typically every 15 min for streaming.
+        </p>
+        <h3>Geofencing</h3>
+        <p>
+          Per-asset country allowlist or denylist, consulted at license-issue time. IP
+          geolocation is the standard signal (MaxMind, IPinfo). VPN detection is the eternal
+          adversarial game: residential IP databases, latency profiling, and "no ASN we
+          recognise" all flag suspect traffic. License denies, player shows the "not available
+          in your region" wall.
+        </p>
+        <h3>Concurrent stream & account sharing</h3>
+        <p>
+          Concurrent-stream limits enforced at license-issue time (the license server keeps a
+          per-account active-stream ledger). Account sharing detection looks at deeper signals
+          — device fingerprint diversity, geographic centroid of usage, login patterns,
+          time-of-day clustering — and downgrades or challenges suspected shared accounts.
+          Netflix's 2023 crackdown is the canonical example.
+        </p>
+        <h3>What this demo skips</h3>
+        <p>
+          All of it. The license endpoint returns the AES-128 key to anyone with a valid signed
+          URL; no HDCP query, no watermark, no geofence, no concurrent-stream tracking. The
+          threat model is "show how the moving pieces fit", not "protect studio content".
+        </p>
+      </>
+    ),
+  },
+  {
     slug: 'auth',
     title: 'Auth & session',
     blurb: 'JWT, refresh tokens, the typ claim, and how change-password keeps you signed in.',
@@ -683,6 +936,526 @@ segment_000.ts
           <code>/auth/refresh</code>, installs the new pair, retries the original request.{' '}
           <code>inflightRefresh</code> coalesces concurrent 401s so multiple in-flight requests
           share one refresh.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'cdn',
+    title: 'CDN & delivery network',
+    blurb: 'Edge cache hierarchy, multi-CDN, token signing, edge compute — what production OTT runs on.',
+    render: () => (
+      <>
+        <p>
+          Origin servers don't scale to global viewer counts. A <strong>CDN</strong> (Content
+          Delivery Network) caches the manifest and segments at edge points-of-presence (PoPs)
+          close to the viewer, minimising round-trip time and offloading bandwidth from the
+          origin. Every production OTT system runs behind one — usually two.
+        </p>
+        <h3>Cache hierarchy</h3>
+        <ol>
+          <li><strong>Origin</strong> — your backend / packager. Single source of truth.</li>
+          <li><strong>Origin shield</strong> — a single CDN PoP that wraps the origin so concurrent edge misses collapse to one origin request.</li>
+          <li><strong>Tier-2 / regional PoPs</strong> — large mid-tier caches feeding edges in their region.</li>
+          <li><strong>Tier-1 / edge PoPs</strong> — what viewers actually connect to. Usually hundreds globally.</li>
+        </ol>
+        <p>
+          For VOD a popular asset reaches near-100% edge cache hit rate. For live the moving
+          edge is harder: every viewer wants the latest segment, and the cache is cold for
+          ~the segment's duration after each new segment lands.
+        </p>
+        <h3>Cache key design</h3>
+        <ul>
+          <li><strong>Per-viewer SSAI manifest.</strong> Each viewer's manifest is uniquely stitched — cache hit rate is 0% by construction. Mitigation: vendor stitchers emit a manifest cache key that strips per-viewer URLs so the rest is shareable.</li>
+          <li><strong>Signed-URL query strings.</strong> If the signature lives in the query and the CDN keys on full URL, every signed-URL refresh misses cache. Strip the signature from the cache key.</li>
+        </ul>
+        <h3>Multi-CDN strategy</h3>
+        <p>
+          Single-CDN is single-point-of-failure plus single-point-of-pricing. Multi-CDN systems
+          route per-session based on real-time signals: throughput from the player (CMCD),
+          latency probes, regional outages, current cost tier. <strong>Conviva</strong> and{' '}
+          <strong>NPAW</strong> both sell this. The router emits a different CDN host in the
+          session's manifest URL.
+        </p>
+        <h3>Edge compute</h3>
+        <p>
+          Modern CDNs run small workers at the edge — <strong>CloudFront Functions</strong>,{' '}
+          <strong>Lambda@Edge</strong>, <strong>Akamai EdgeWorkers</strong>,{' '}
+          <strong>Fastly Compute</strong>. Useful in OTT for:
+        </p>
+        <ul>
+          <li>Token rewrite — refresh a signed URL on hit without round-tripping to origin.</li>
+          <li>Geo redirect — route an EU viewer to an EU origin.</li>
+          <li>Manifest manipulation — inject per-viewer watermark IDs, strip ad cues for live.</li>
+          <li>SSAI itself — vendor-managed ad insertion at the edge.</li>
+        </ul>
+        <h3>Token-signed URLs</h3>
+        <p>
+          CloudFront / Akamai / Fastly all support edge-validated signed URLs. The signature
+          encodes expiry + optionally IP + path; the CDN validates at edge before serving.
+          Two delivery modes: query-string signature (every URL signed) or signed cookies
+          (one cookie covers many URLs under a path).
+        </p>
+        <h3>Cost</h3>
+        <p>
+          CDN egress dominates streaming P&amp;L. Order of magnitude in 2026:
+        </p>
+        <ul>
+          <li>AWS CloudFront: $0.085/GB at low volume, ~$0.02/GB negotiated at scale.</li>
+          <li>Cloudflare: $0 egress on R2 → Bandwidth Alliance partners.</li>
+          <li>Akamai / Fastly: enterprise-quoted, typically $0.005–0.02/GB at OTT scale.</li>
+        </ul>
+        <p>
+          A 5 Mbps stream is ~2.25 GB/hr. One million viewer-hours at $0.02/GB = $45,000.
+          That's why cache hit rate, codec efficiency and ABR ladder design directly translate
+          to operating margin.
+        </p>
+        <h3>What this demo does</h3>
+        <p>
+          Backend serves segments directly to the browser. No CDN, no edge cache, no signed-URL
+          complexity. Fine for one viewer on localhost; falls over at the first thousand-viewer
+          spike.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'player',
+    title: 'Player & client architecture',
+    blurb: 'HTMLMediaElement, MSE, EME, ABR algorithms — what hls.js actually does for you.',
+    render: () => (
+      <>
+        <p>
+          Browser-based playback rides on a three-layer browser API stack with a JavaScript
+          player on top.
+        </p>
+        <h3>The browser stack</h3>
+        <ul>
+          <li><strong>HTMLMediaElement</strong> — the <code>&lt;video&gt;</code> tag itself. Exposes <code>play()</code>, <code>currentTime</code>, events (timeupdate, waiting, ended, error). Knows nothing about HLS / DASH directly except on Safari (native HLS).</li>
+          <li><strong>MSE</strong> (Media Source Extensions, 2016 W3C). The JS player creates a <code>MediaSource</code>, attaches it to the video element, fetches segments itself, appends them to a <code>SourceBuffer</code>. Browser handles demux + decode + render.</li>
+          <li><strong>EME</strong> (Encrypted Media Extensions). When the player encounters encrypted segments it asks for a license via <code>navigator.requestMediaKeySystemAccess()</code>; the browser routes the request to a CDM (Widevine / FairPlay / PlayReady) that holds the keys in a trusted environment and decrypts in-place.</li>
+        </ul>
+        <h3>Common JS players</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Player</th><th>What it covers</th></tr></thead>
+          <tbody>
+            <tr><td>hls.js</td><td>HLS-only. Lightweight, used in this demo. Handles MSE, ABR, EME for Widevine. Doesn't speak DASH.</td></tr>
+            <tr><td>shaka-player</td><td>Google's player. HLS + DASH + CMAF, full EME (Widevine + FairPlay + PlayReady), offline storage. Heavier.</td></tr>
+            <tr><td>video.js + plugins</td><td>UI-first framework. Wraps hls.js / shaka under the hood via plugins. Drop-in for legacy sites that already use it.</td></tr>
+            <tr><td>dash.js</td><td>Reference DASH implementation. Less polished than shaka-player.</td></tr>
+          </tbody>
+        </table>
+        <h3>iOS / Safari quirk</h3>
+        <p>
+          Until iOS 17 (2023), MSE wasn't available on Safari iOS — the only way to play HLS
+          was the native <code>&lt;video src="*.m3u8"&gt;</code> path. That means hls.js /
+          shaka don't run on iPhone of that era; you fall back to setting <code>video.src</code>
+          {' '}directly. EME on FairPlay similarly differs — the license request and response
+          shapes are FairPlay-specific.
+        </p>
+        <h3>ABR algorithms</h3>
+        <ul>
+          <li><strong>Throughput-based</strong> — measure recent download speed, pick the highest bitrate that fits with a safety margin. Easy, but oscillates on bursty connections.</li>
+          <li><strong>Buffer-based (BOLA)</strong> — pick the bitrate that maximises a utility function of (current buffer length, requested bitrate). Smoother under stress.</li>
+          <li><strong>Model-predictive (MPC / Pensieve)</strong> — predict throughput trajectory and run an optimisation. Best quality but harder to debug.</li>
+        </ul>
+        <p>
+          hls.js uses a hybrid throughput + buffer-aware default. <code>config.abrEwmaDefaultEstimate</code> and friends let you tune.
+        </p>
+        <h3>Events to monitor</h3>
+        <ul>
+          <li><code>waiting</code> / <code>stalled</code> — player ran out of buffered data. Sum the time here = rebuffer time.</li>
+          <li><code>timeupdate</code> — fires ~4x/sec, drives progress UI.</li>
+          <li><code>error</code> — fatal player error. Codes 1-4 (aborted, network, decode, src not supported).</li>
+          <li><code>levelSwitched</code> (hls.js) — ABR picked a new rendition.</li>
+          <li><code>fragLoadError</code> (hls.js) — a segment fetch failed. Three in a row → fatal.</li>
+        </ul>
+        <h3>What this demo uses</h3>
+        <p>
+          hls.js in near-default config plus a custom <code>xhrSetup</code> that attaches the
+          Bearer token to same-origin segment requests (so license.key + master.m3u8
+          authenticate; ad-segment requests don't leak the token). Single-rendition manifest
+          means no ABR switching to worry about. Player wraps a single{' '}
+          <code>&lt;video&gt;</code> tag.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'live',
+    title: 'Live streaming pipeline',
+    blurb: 'Ingest protocols, sliding manifests, LL-HLS, the latency budget.',
+    render: () => (
+      <>
+        <p>
+          This demo is VOD only. Live is a parallel pipeline that shares the codec and DRM
+          layers but differs everywhere else — the encoder is feeding fresh frames, the
+          manifest is a sliding window, ad breaks come from SCTE-35 cues inside the live stream,
+          and every latency budget is brutal.
+        </p>
+        <h3>Ingest protocols</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Protocol</th><th>Where it's used</th></tr></thead>
+          <tbody>
+            <tr><td>RTMP (1990s, Adobe)</td><td>The dominant push protocol despite Flash being dead. OBS, Wirecast and most live encoders speak it natively. TCP-based, no FEC, ~3-5s contribution latency.</td></tr>
+            <tr><td>SRT</td><td>Secure Reliable Transport. UDP-based with ARQ. ~1-2s latency, encrypted by default. Common between contribution encoders and cloud ingest.</td></tr>
+            <tr><td>RIST</td><td>Reliable Internet Stream Transport. Open standard alternative to SRT, similar properties.</td></tr>
+            <tr><td>WHIP (WebRTC)</td><td>Browser-friendly. Sub-second latency, but designed for one-to-one. Used in pro-am contribution paths (interactive auctions, betting).</td></tr>
+            <tr><td>Zixi</td><td>Proprietary commercial protocol. Common in broadcaster-to-broadcaster contribution links.</td></tr>
+            <tr><td>HLS / DASH push</td><td>The encoder packages locally and HTTP-PUTs to origin. Higher latency, simpler ops.</td></tr>
+          </tbody>
+        </table>
+        <h3>Manifest sliding window</h3>
+        <p>
+          A live media playlist is a window of the most recent N segments. Each playlist
+          refresh drops the oldest segment, adds the newest. The player polls at half the
+          target duration. There's no <code>#EXT-X-ENDLIST</code> until the broadcast ends.
+        </p>
+        <p>
+          The <strong>DVR window</strong> is a longer retention tail — keep e.g. 4 hours of
+          segments so a viewer can pause / seek back. Time-shift, start-over and
+          restart-from-the-top all key off the DVR window length.
+        </p>
+        <h3>LL-HLS (Low-Latency HLS)</h3>
+        <p>
+          Classic HLS latency is 10-30s glass-to-glass because the player needs to wait for
+          whole segments. LL-HLS adds:
+        </p>
+        <ul>
+          <li><strong>Partial segments.</strong> The encoder publishes 250 ms partials of an in-progress segment.</li>
+          <li><strong>Blocking playlist reload.</strong> Player asks for "playlist with segment N + part M"; server holds the request until that part exists.</li>
+          <li><strong>HTTP/2 push.</strong> Server pushes the next partial alongside the playlist response.</li>
+        </ul>
+        <p>
+          Drops latency to ~2-3 s, comparable to LL-DASH.
+        </p>
+        <h3>Latency budget</h3>
+        <p>Classic HLS, viewer to encoder:</p>
+        <ul>
+          <li>Encoder I-frame interval / GOP: 2-4 s</li>
+          <li>Contribution to packager: 1-2 s</li>
+          <li>Packager segmenting + writing: 0-1 s</li>
+          <li>CDN propagation: 0-1 s</li>
+          <li>Player buffer (safe ABR target): 6-15 s</li>
+          <li><strong>Total: 9-23 s</strong></li>
+        </ul>
+        <p>
+          WebRTC end-to-end pushes the total to ~500 ms — at the cost of MSE / EME ecosystem
+          support and ABR sophistication.
+        </p>
+        <h3>Live SSAI</h3>
+        <p>
+          SCTE-35 markers inside the contribution feed flag "ad break in 5 seconds, 90 seconds
+          long". The packager surfaces these as EXT-X-DATERANGE in the manifest; the live SSAI
+          server intercepts and stitches a per-viewer ad pod in. Same shape as VOD SSAI but
+          running in real time on a 60-second budget.
+        </p>
+        <h3>What this demo skips</h3>
+        <p>
+          Everything in this chapter. Going live would require a separate ingest service (or
+          FFmpeg in segmenter mode), a state machine to track active streams,
+          sliding-window manifest emission, and SCTE-35-aware SSAI. The VOD path doesn't
+          transfer; live is its own product.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'observability',
+    title: 'Observability & QoE',
+    blurb: "How to know whether your viewers are happy — and which tweak made it better.",
+    render: () => (
+      <>
+        <p>
+          Streaming quality is the product. <strong>QoE</strong> (Quality of Experience) is the
+          composite metric every encoding, packaging, CDN and player change is judged on.
+          Operators monitor it in real time and slice it by every dimension that could explain
+          regressions.
+        </p>
+        <h3>Core metrics</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Metric</th><th>Definition</th></tr></thead>
+          <tbody>
+            <tr><td>Startup time</td><td>From "play tapped" to "first frame on screen". Target: &lt; 2 s.</td></tr>
+            <tr><td>Video Start Failure (VSF)</td><td>% of play attempts that never produced a first frame. Target: &lt; 1%.</td></tr>
+            <tr><td>Exit Before Video Start (EBVS)</td><td>User gave up before VSF determined. Bundled with startup time tuning.</td></tr>
+            <tr><td>Rebuffer ratio</td><td>Time stalled during play / total play time. Target: &lt; 0.5%.</td></tr>
+            <tr><td>Average bitrate</td><td>Mean rendition selected. Higher = nicer picture, lower = less data risk.</td></tr>
+            <tr><td>Bitrate switches / min</td><td>How often ABR oscillates. High = unstable connection or bad ABR algo.</td></tr>
+            <tr><td>Video Playback Failure (VPF)</td><td>Started but errored mid-stream.</td></tr>
+            <tr><td>Concurrent viewers</td><td>Capacity-planning input. Real-time + historical for autoscaling.</td></tr>
+          </tbody>
+        </table>
+        <h3>Vendors</h3>
+        <ul>
+          <li><strong>Conviva</strong> — analytics + real-time multi-CDN switching. Industry de-facto.</li>
+          <li><strong>Mux Data</strong> — modern API-first. Pairs with Mux Video JIT packaging.</li>
+          <li><strong>Bitmovin Analytics</strong> — bundled with Bitmovin player.</li>
+          <li><strong>NPAW (YOUBORA)</strong> — broadcaster favourite, European stronghold.</li>
+          <li><strong>Datazoom</strong> — collector layer; pipes events to any backend.</li>
+        </ul>
+        <h3>How instrumentation flows</h3>
+        <p>
+          Player-side: hook into the events from the previous chapter, fire telemetry via XHR
+          or sendBeacon. Batch and gzip locally. Vendor SDKs handle this for you. Server-side:
+          {' '}<strong>CMCD</strong> (CTA-5004) attaches session-level telemetry to every
+          segment request as HTTP headers, so the CDN log and the player log share a session
+          ID and can be joined.
+        </p>
+        <h3>Dimensions that matter</h3>
+        <p>
+          Roll up metrics by CDN, ISP, geo, device family, OS, app version, content type,
+          title, encoding profile. A 10% rebuffer ratio overall might be 0.2% in NA-cellular
+          and 65% in APAC-CDN-X — averages hide localised fires.
+        </p>
+        <h3>Alerting</h3>
+        <p>
+          Static thresholds (rebuffer &gt; 5%, VSF &gt; 3%) catch crashes. Anomaly detection
+          per dimension catches degradation — e.g., a CDN PoP that started rebuffering 3x
+          normal in Tokyo at 9pm.
+        </p>
+        <h3>What this demo skips</h3>
+        <p>
+          Zero observability. No client-side telemetry, no CMCD headers, no aggregation, no
+          dashboards. Closest thing is the job timeline in the asset detail — backend pipeline
+          health, not viewer experience.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'cost',
+    title: 'Cost model',
+    blurb: 'Where the dollars go: CDN egress, encoding, storage, DRM, content acquisition.',
+    render: () => (
+      <>
+        <p>
+          OTT P&amp;L is dominated by a few line items that scale linearly with viewer hours.
+          Understanding the breakdown is what turns "should we do AV1?" from a tech question
+          into a financial one.
+        </p>
+        <h3>The big four (2026 order of magnitude)</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Line</th><th>Cost range</th></tr></thead>
+          <tbody>
+            <tr><td>CDN egress</td><td>$0.005-0.085 / GB. Negotiated heavily at scale. By far the dominant variable cost.</td></tr>
+            <tr><td>Encoding (cloud)</td><td>$0.015-0.075 / output minute (AWS MediaConvert, Mux). Per-rendition.</td></tr>
+            <tr><td>Storage</td><td>$0.023 / GB-month S3 Standard, $0.0125 Infrequent Access, $0.004 Glacier. Catalog tier to IA after first 90 days.</td></tr>
+            <tr><td>DRM license issuance</td><td>$0.0001-0.001 / license. Free for hobbyist scale; enterprise contracts at low fractions of a cent.</td></tr>
+          </tbody>
+        </table>
+        <h3>Worked example</h3>
+        <p>1 million viewer-hours of a 5 Mbps stream:</p>
+        <ul>
+          <li>Bits delivered: 5 Mbps × 3600 s × 1M ≈ 2.25 PB</li>
+          <li>At $0.02/GB CDN: 2.25M GB × $0.02 = <strong>$45,000</strong></li>
+          <li>At $0.005/GB (top-tier negotiated): <strong>$11,250</strong></li>
+        </ul>
+        <p>
+          Per viewer-hour: ~4.5 cents at $0.02/GB. That's the cost a SVOD subscription must
+          cover — and then content acquisition, marketing, payments, customer support, profit.
+        </p>
+        <h3>Hardware vs cloud encoding</h3>
+        <p>
+          Cloud encoding billed per minute is convenient but ~10× the marginal cost of a colo'd
+          GPU. NVENC on a $300/mo NVIDIA L4 can encode ~8 simultaneous H.264 4K @ 60 FPS
+          streams. Once you're transcoding more than ~100 hours/day you save by going on-prem
+          or spot-instance GPU.
+        </p>
+        <h3>Non-linear costs</h3>
+        <ul>
+          <li><strong>Captioning</strong> — manual transcription: $1-5/min. ML transcription + human review: $0.20-1/min.</li>
+          <li><strong>Audio description</strong> — narrated by voice actors: $3-10/min.</li>
+          <li><strong>QC</strong> — automated tools $$, manual review $$$. Reject rate &gt; 50% on first studio submissions is normal.</li>
+          <li><strong>Per-title encoding</strong> — Netflix-style analysis: extra $0.05-0.20 / output minute, saves 5-30% bitrate at equal quality.</li>
+          <li><strong>Original mastering</strong> — the production cost. Tentpole movie: $100M+. Episodic series: $1-15M/episode. Dwarfs everything above.</li>
+        </ul>
+        <h3>Levers</h3>
+        <ul>
+          <li><strong>Cache hit rate.</strong> A 99% cache hit means the CDN charges the 99% rate; the 1% origin egress is your real cost.</li>
+          <li><strong>Codec efficiency.</strong> AV1 vs H.264 saves ~30% bytes at equal quality → 30% off the egress bill at the cost of encode time.</li>
+          <li><strong>ABR ladder depth.</strong> Each rendition multiplies storage + encoding cost. Drop the highest tier if your viewer mix is mostly mobile.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'catalog',
+    title: 'Catalog & recommendations',
+    blurb: 'The rail-based home page, content vs collaborative filtering, A/B testing video.',
+    render: () => (
+      <>
+        <p>
+          Encoded bytes plus a manifest is the necessary condition for streaming, not the
+          sufficient one. The viewer needs to find something to watch. Catalog UX and
+          recommendations are how production OTT closes that loop.
+        </p>
+        <h3>The rail-based home page</h3>
+        <p>
+          Netflix popularised it; everyone copied it. The home page is a vertical list of
+          horizontal <strong>rails</strong>, each rail a curated or algorithmically-ranked
+          selection of titles. The interaction model: pan along a rail, drop down to the next.
+        </p>
+        <p>Common rail types:</p>
+        <ul>
+          <li><strong>Continue watching</strong> — partially-watched titles with the resume position. Universally first.</li>
+          <li><strong>Because you watched X</strong> — content-based similarity from a recent watch.</li>
+          <li><strong>Trending now</strong> — global popularity, recency-decayed.</li>
+          <li><strong>New releases</strong> — editorial-curated or window-based.</li>
+          <li><strong>Genre rails</strong> — explicit category, often expanded into sub-genres.</li>
+          <li><strong>For you</strong> — personalised collaborative-filtering output.</li>
+          <li><strong>Sponsored / featured</strong> — promoted, paid placement.</li>
+        </ul>
+        <h3>Recommendation systems</h3>
+        <ul>
+          <li><strong>Content-based.</strong> Vector similarity over program metadata (genre, cast, year, mood embeddings). Works for cold-start titles. Misses surprising connections.</li>
+          <li><strong>Collaborative filtering.</strong> Matrix factorisation on watch history: "viewers who watched A also watched B". Strongest with lots of overlap; cold-starts poorly for new titles or new viewers.</li>
+          <li><strong>Hybrid + multi-stage.</strong> Production systems retrieve candidates with a fast model, rerank with a heavier one, post-process for diversity and freshness.</li>
+          <li><strong>Sequence models.</strong> Treat watch history as a token sequence; predict the next title with a transformer. State of the art at YouTube and TikTok-style apps.</li>
+        </ul>
+        <h3>Personalisation signals</h3>
+        <p>
+          Beyond explicit watch / not-watch: completion rate, dwell time on the title card,
+          time-of-day, device, language preference, search history, household profile (kid vs
+          adult). Most regulators treat watch history as personal data under GDPR / CCPA.
+        </p>
+        <h3>A/B testing video</h3>
+        <p>
+          Netflix's famous thumbnail tests: different artwork per title per cohort, measure
+          click-through and play-rate. Same applies to:
+        </p>
+        <ul>
+          <li>Auto-play preview on hover vs no preview.</li>
+          <li>Preroll trailer vs landing on the title page.</li>
+          <li>Rail ordering on the home page.</li>
+          <li>Search ranking signals.</li>
+        </ul>
+        <p>
+          Every test has a "stop the bleeding" guard rail — if completion rate drops 10% in
+          treatment, kill it immediately.
+        </p>
+        <h3>Editorial curation</h3>
+        <p>
+          Algorithms can't yet match a human editor for the front rail of a launch week. Most
+          catalogs blend automation with a small editorial team that owns the home page hero,
+          the trending rail seeding, and seasonal collections (Halloween, World Cup, holiday).
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'standards',
+    title: 'Standards & organisations',
+    blurb: 'Who defines what — SMPTE, ISO/MPEG, IETF, W3C, CTA, IAB, AOMedia.',
+    render: () => (
+      <>
+        <p>
+          Video is a thicker stack of standards than almost any other software domain. Knowing
+          who publishes what helps when an SDK release note name-drops a spec.
+        </p>
+        <table className="docs-gaps">
+          <thead><tr><th>Body</th><th>What they publish</th></tr></thead>
+          <tbody>
+            <tr><td><strong>SMPTE</strong> — Society of Motion Picture and Television Engineers</td><td>Broadcast standards — color spaces, timecode, MXF, IMF (SMPTE 2067), ST 2110 (uncompressed IP). The Hollywood / studio side.</td></tr>
+            <tr><td><strong>ISO/IEC MPEG</strong> — Moving Picture Experts Group</td><td>Video codecs (MPEG-2, H.264 / AVC, H.265 / HEVC, H.266 / VVC), MPEG-DASH, CMAF (ISO/IEC 23000-19), CENC (ISO/IEC 23001-7).</td></tr>
+            <tr><td><strong>IETF</strong> — Internet Engineering Task Force</td><td>Transport protocols — HLS (RFC 8216, an Apple-authored draft adopted by IETF), HTTP/2 + 3, the WebRTC IETF side, SRT, RIST.</td></tr>
+            <tr><td><strong>W3C</strong> — World Wide Web Consortium</td><td>Browser-side APIs — HTML5 video, Media Source Extensions, Encrypted Media Extensions, WebCodecs, schema.org / VideoObject.</td></tr>
+            <tr><td><strong>CTA</strong> — Consumer Technology Association</td><td>CTA-5004 (CMCD), CTA-WAVE (cross-vendor streaming test suite), Connected TV certification.</td></tr>
+            <tr><td><strong>IAB Tech Lab</strong></td><td>Ad-tech standards — VAST, VMAP, VPAID (legacy), OpenRTB, ads.txt, IFA (Identifier For Advertising). The ad ecosystem's standards body.</td></tr>
+            <tr><td><strong>AOMedia</strong> — Alliance for Open Media</td><td>AV1, AV2 (in progress), royalty-free codec stewardship.</td></tr>
+            <tr><td><strong>ATSC</strong> — Advanced Television Systems Committee</td><td>North American broadcast TV — ATSC 1.0 (digital terrestrial), ATSC 3.0 (NextGen TV, IP-based).</td></tr>
+            <tr><td><strong>DVB</strong> — Digital Video Broadcasting</td><td>European broadcast standards — DVB-T / S / C / IPTV. The OTT-relevant pieces (DVB-DASH) overlap with MPEG-DASH.</td></tr>
+            <tr><td><strong>CableLabs</strong></td><td>Cable / MSO standards — ADI 3.0 (video metadata exchange), DOCSIS (the cable modem standard), Reliable Broadcast Transport.</td></tr>
+            <tr><td><strong>EBU</strong> — European Broadcasting Union</td><td>R128 (loudness), EBU-TT-D (captions), broadcast workflow standards.</td></tr>
+            <tr><td><strong>MovieLabs</strong></td><td>Studio-driven security and metadata. ML Common Security Model, Enhanced Content Protection. Sets the bar for forensic watermarking.</td></tr>
+            <tr><td><strong>Dolby Laboratories</strong></td><td>Proprietary but de-facto standards — AC-3, E-AC-3, Atmos, Dolby Vision. Licensed.</td></tr>
+          </tbody>
+        </table>
+        <h3>How to read this</h3>
+        <p>
+          A spec like "Widevine modular DRM" lives at the intersection of W3C EME (browser
+          API), ISO CENC (encryption format), and Google's proprietary CDM. "HLS with
+          Widevine" pulls in IETF (HLS), W3C (EME), ISO (CENC) and CableLabs (encryption test
+          vectors). Almost nothing in this stack lives inside a single organisation.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'compliance',
+    title: 'Compliance & accessibility',
+    blurb: 'WCAG, EAA, CVAA, age gates, loudness norms — what regulators require.',
+    render: () => (
+      <>
+        <p>
+          Operating a streaming service means complying with regulators in every market. The
+          rules cluster into accessibility, age-appropriate content, loudness and data
+          protection.
+        </p>
+        <h3>Accessibility regulation</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Region</th><th>Rule</th></tr></thead>
+          <tbody>
+            <tr><td>US — federal</td><td>21st Century Communications and Video Accessibility Act (CVAA, 2010) — requires captions, audio description, accessible player UI. Enforced by the FCC.</td></tr>
+            <tr><td>US — federal contracts</td><td>Section 508 — IT used by federal agencies must meet WCAG 2.0 AA. Vendors comply to remain eligible.</td></tr>
+            <tr><td>US — civil rights</td><td>ADA (Americans with Disabilities Act) — used in lawsuits against streaming UIs that aren't screen-reader compatible.</td></tr>
+            <tr><td>EU</td><td>European Accessibility Act (EAA, mandatory June 2025) — covers audiovisual on-demand services. Penalty regime per member state.</td></tr>
+            <tr><td>UK</td><td>Equality Act 2010; Ofcom Code requires statutory caption / AD / sign-language minimums.</td></tr>
+            <tr><td>Canada</td><td>Accessible Canada Act + AODA (Ontario). Mandatory captions and AD percentages.</td></tr>
+          </tbody>
+        </table>
+        <h3>WCAG 2.2 for video (AA-level checks)</h3>
+        <ul>
+          <li><strong>1.2.2 Captions (Prerecorded)</strong> — caption track required for all pre-recorded audio content.</li>
+          <li><strong>1.2.3 Audio Description (Prerecorded)</strong> — audio description or full-text alternative.</li>
+          <li><strong>1.2.5 Audio Description (AA)</strong> — audio description required, no text alternative substitute.</li>
+          <li><strong>1.4.5 Images of text</strong> — caption track, not burned-in subtitles.</li>
+          <li><strong>2.1 Keyboard</strong> — all player controls reachable without a pointer.</li>
+          <li><strong>2.3.1 Three flashes</strong> — no content that flashes more than 3 times/sec (epilepsy trigger).</li>
+          <li><strong>4.1.2 Name, Role, Value</strong> — screen reader can announce play / pause / seek state.</li>
+        </ul>
+        <h3>Captioning vs subtitles vs audio description</h3>
+        <ul>
+          <li><strong>Captions</strong> — for deaf or hard-of-hearing viewers. Include speaker IDs, sound effects, music descriptions.</li>
+          <li><strong>Subtitles</strong> — for hearing viewers who don't speak the audio language. Dialogue only.</li>
+          <li><strong>SDH (Subtitles for the Deaf and Hard-of-hearing)</strong> — combines both: target-language captions with HoH cues.</li>
+          <li><strong>Audio description (AD)</strong> — narrated description of on-screen action between dialogue. Required by CVAA, EAA. Studios contract voice actors for this.</li>
+        </ul>
+        <h3>Ratings & age gates</h3>
+        <p>
+          Every region has a content ratings body whose codes must appear on the title page
+          and gate playback for minors:
+        </p>
+        <ul>
+          <li><strong>MPAA</strong> — US (G / PG / PG-13 / R / NC-17).</li>
+          <li><strong>BBFC</strong> — UK (U / PG / 12 / 15 / 18).</li>
+          <li><strong>FSK</strong> — Germany (0 / 6 / 12 / 16 / 18).</li>
+          <li><strong>CSA</strong> — France (TP / -10 / -12 / -16 / -18).</li>
+          <li><strong>GRAC</strong> — South Korea.</li>
+          <li><strong>CERO</strong> — Japan.</li>
+          <li><strong>NRTA</strong> — China (strict content review, not just rating).</li>
+        </ul>
+        <p>
+          Profile-level parental controls enforce these per household. Some regions (DE, FR)
+          have mandatory time-of-day curfews for higher-rated content even per profile.
+        </p>
+        <h3>Loudness compliance</h3>
+        <ul>
+          <li><strong>US — CALM Act / ATSC A/85</strong> — -24 LKFS ±2 dB. FCC enforces.</li>
+          <li><strong>EU — EBU R128</strong> — -23 LUFS ±1 dB. Required across DVB and most VOD.</li>
+          <li><strong>Streaming (non-regulated, de-facto)</strong> — -16 LUFS (Spotify, Apple), -14 LUFS (YouTube).</li>
+        </ul>
+        <h3>Data protection</h3>
+        <p>
+          Viewing data is personal data. GDPR (EU), CCPA (California) and similar regional
+          rules require explicit consent for non-essential telemetry, the right to download
+          history, and the right to delete.
+        </p>
+        <h3>What this demo skips</h3>
+        <p>
+          Zero compliance scaffolding. No captions, no AD, no ratings, no loudness checks, no
+          consent UI, no profile-level parental controls. The player is keyboard-navigable
+          because the underlying HTML5 <code>&lt;video&gt;</code> tag is — that's it.
         </p>
       </>
     ),
