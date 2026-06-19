@@ -506,6 +506,14 @@ segment_002.m4s
           <GOPFramesFigure />
         </div>
         <h3>Video codecs</h3>
+        <p>
+          Each generation aims to shrink the file at the same visual quality (~30-50% on the
+          predecessor). Adoption lags because hardware decoders catch up slowly and patent
+          pools delay every transition.
+        </p>
+        <div className="docs-figure">
+          <CodecEfficiencyFigure />
+        </div>
         <table className="docs-gaps">
           <thead>
             <tr>
