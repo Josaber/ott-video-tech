@@ -2005,6 +2005,243 @@ export function AuthRefreshFlowFigure() {
 }
 
 // ---------------------------------------------------------------------------
+// Trick-play — main playlist and I-frame playlist sharing the same segments
+// ---------------------------------------------------------------------------
+export function TrickPlayFigure() {
+  const segmentCount = 6
+  const segW = 92
+  const segGap = 8
+  const xStart = (720 - (segmentCount * segW + (segmentCount - 1) * segGap)) / 2
+
+  return (
+    <svg
+      viewBox="0 0 720 332"
+      width="100%"
+      role="img"
+      aria-label="Trick-play I-frame playlist parallels the main playlist"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="tp-arrow" />
+      </defs>
+
+      {/* MAIN PLAYLIST row */}
+      <text x={36} y={32} fontSize={10.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.1em">
+        MAIN PLAYLIST · #EXT-X-STREAM-INF
+      </text>
+      <text x={684} y={32} textAnchor="end" fontSize={9.5} fill="#64748b">
+        every frame in order
+      </text>
+
+      {Array.from({ length: segmentCount }).map((_, i) => {
+        const x = xStart + i * (segW + segGap)
+        return (
+          <g key={`main-${i}`}>
+            <rect x={x} y={42} width={segW} height={44} rx={4} fill="#1e293b" stroke="#22d3ee" />
+            {/* Frames inside the segment: I P B B P B B P (8 frames, ~10px each) */}
+            {['I', 'P', 'B', 'B', 'P', 'B', 'B', 'P'].map((t, fi) => {
+              const fx = x + 4 + fi * 11
+              const accent = t === 'I' ? '#22d3ee' : t === 'P' ? '#1d4ed8' : '#475569'
+              return (
+                <g key={fi}>
+                  <rect x={fx} y={48} width={10} height={20} rx={1.5} fill={accent} opacity={t === 'I' ? 1 : 0.85} />
+                  <text x={fx + 5} y={62} textAnchor="middle" fontSize={8.5} fontWeight={700} fill={t === 'I' ? '#0f172a' : '#f1f5f9'}>
+                    {t}
+                  </text>
+                </g>
+              )
+            })}
+            <text x={x + segW / 2} y={80} textAnchor="middle" fontSize={9} fill="#94a3b8" fontFamily="ui-monospace, monospace">
+              segment_{String(i).padStart(3, '0')}.ts
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Shared .ts strip in the middle */}
+      <text x={36} y={120} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.1em">
+        SAME .TS FILES ON DISK
+      </text>
+      {Array.from({ length: segmentCount }).map((_, i) => {
+        const x = xStart + i * (segW + segGap)
+        return (
+          <g key={`disk-${i}`}>
+            {/* Down arrow from main */}
+            <line x1={x + segW / 2} y1={86} x2={x + segW / 2} y2={126} stroke="#475569" strokeWidth={1.2} markerEnd="url(#tp-arrow)" />
+            <rect x={x} y={128} width={segW} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+            <text x={x + segW / 2} y={140} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#cbd5e1" fontFamily="ui-monospace, monospace">
+              segment_{String(i).padStart(3, '0')}.ts
+            </text>
+            <text x={x + segW / 2} y={154} textAnchor="middle" fontSize={9} fill="#64748b">
+              shared bytes
+            </text>
+            {/* Down arrow to I-frame */}
+            <line x1={x + segW / 2} y1={160} x2={x + segW / 2} y2={196} stroke="#475569" strokeWidth={1.2} markerEnd="url(#tp-arrow)" />
+          </g>
+        )
+      })}
+
+      {/* I-FRAME PLAYLIST row */}
+      <text x={36} y={216} fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.1em">
+        I-FRAME PLAYLIST · #EXT-X-I-FRAME-STREAM-INF
+      </text>
+      <text x={684} y={216} textAnchor="end" fontSize={9.5} fill="#64748b">
+        keyframes only · BYTERANGE into the same .ts
+      </text>
+
+      {Array.from({ length: segmentCount }).map((_, i) => {
+        const x = xStart + i * (segW + segGap)
+        return (
+          <g key={`iframe-${i}`}>
+            <rect x={x} y={226} width={segW} height={36} rx={4} fill="#1e293b" stroke="#f59e0b" />
+            {/* Just one I-frame */}
+            <rect x={x + 4} y={232} width={10} height={20} rx={1.5} fill="#22d3ee" />
+            <text x={x + 9} y={246} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#0f172a">I</text>
+            <text x={x + segW / 2 + 12} y={244} textAnchor="middle" fontSize={9} fill="#94a3b8" fontFamily="ui-monospace, monospace">
+              48000@0
+            </text>
+            <text x={x + segW / 2} y={258} textAnchor="middle" fontSize={9} fill="#64748b">
+              #EXT-X-BYTERANGE
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Footer caption */}
+      <rect x={36} y={280} width={648} height={42} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={297} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        TRICK-PLAY = SAME SEGMENTS · DIFFERENT INDEX
+      </text>
+      <text x={360} y={313} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        the I-frame playlist references just the keyframe byte ranges → 8× / 4× / 2× FF needs ~10% the bandwidth
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Forensic watermark — A/B variant sequence encoding a per-viewer ID
+// ---------------------------------------------------------------------------
+export function ForensicWatermarkFigure() {
+  const segCount = 10
+  const segW = 50
+  const segGap = 8
+  const xStart = (720 - (segCount * segW + (segCount - 1) * segGap)) / 2
+  // 10-bit example viewer ID; per segment, 0 = pick A, 1 = pick B
+  const bits = [0, 1, 1, 0, 0, 1, 0, 0, 1, 1]
+
+  return (
+    <svg
+      viewBox="0 0 720 360"
+      width="100%"
+      role="img"
+      aria-label="Forensic watermark A/B variant stitching"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="wm-arrow" />
+      </defs>
+
+      {/* Variant A library */}
+      <text x={36} y={32} fontSize={10.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.1em">
+        VARIANT A LIBRARY · bit shift +1 LSB
+      </text>
+      {Array.from({ length: segCount }).map((_, i) => {
+        const x = xStart + i * (segW + segGap)
+        return (
+          <g key={`a-${i}`}>
+            <rect x={x} y={42} width={segW} height={36} rx={4} fill="#1e293b" stroke="#22d3ee" />
+            <text x={x + segW / 2} y={58} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" fontFamily="ui-monospace, monospace">
+              {String(i).padStart(2, '0')}A
+            </text>
+            <text x={x + segW / 2} y={72} textAnchor="middle" fontSize={9} fill="#94a3b8">
+              ts
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Variant B library */}
+      <text x={36} y={106} fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.1em">
+        VARIANT B LIBRARY · bit shift -1 LSB
+      </text>
+      {Array.from({ length: segCount }).map((_, i) => {
+        const x = xStart + i * (segW + segGap)
+        return (
+          <g key={`b-${i}`}>
+            <rect x={x} y={116} width={segW} height={36} rx={4} fill="#1e293b" stroke="#f59e0b" />
+            <text x={x + segW / 2} y={132} textAnchor="middle" fontSize={11} fontWeight={700} fill="#f59e0b" fontFamily="ui-monospace, monospace">
+              {String(i).padStart(2, '0')}B
+            </text>
+            <text x={x + segW / 2} y={146} textAnchor="middle" fontSize={9} fill="#94a3b8">
+              ts
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Selector arrows pulling A or B per position */}
+      {bits.map((bit, i) => {
+        const x = xStart + i * (segW + segGap) + segW / 2
+        const sourceY = bit === 0 ? 78 : 152
+        return (
+          <line
+            key={`sel-${i}`}
+            x1={x}
+            y1={sourceY + 2}
+            x2={x}
+            y2={206}
+            stroke={bit === 0 ? '#22d3ee' : '#f59e0b'}
+            strokeWidth={1.4}
+            markerEnd="url(#wm-arrow)"
+          />
+        )
+      })}
+
+      {/* Per-viewer stitched playlist */}
+      <text x={36} y={196} fontSize={10.5} fontWeight={700} fill="#e2e8f0" letterSpacing="0.1em">
+        PER-VIEWER MANIFEST · stitched at playback time
+      </text>
+      {bits.map((bit, i) => {
+        const x = xStart + i * (segW + segGap)
+        const accent = bit === 0 ? '#22d3ee' : '#f59e0b'
+        return (
+          <g key={`sel-${i}-stitched`}>
+            <rect x={x} y={208} width={segW} height={44} rx={4} fill="#1e293b" stroke={accent} strokeWidth={1.5} />
+            <text x={x + segW / 2} y={224} textAnchor="middle" fontSize={11} fontWeight={700} fill={accent} fontFamily="ui-monospace, monospace">
+              {String(i).padStart(2, '0')}{bit === 0 ? 'A' : 'B'}
+            </text>
+            <text x={x + segW / 2} y={244} textAnchor="middle" fontSize={11} fontWeight={700} fill="#cbd5e1" fontFamily="ui-monospace, monospace">
+              {bit}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Bit string + ID decoded */}
+      <rect x={36} y={266} width={648} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={48} y={286} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        VIEWER ID =
+      </text>
+      <text x={156} y={286} fontSize={11.5} fontWeight={700} fill="#22d3ee" fontFamily="ui-monospace, monospace" letterSpacing="0.16em">
+        {bits.join('')}
+      </text>
+      <text x={344} y={286} fontSize={11} fill="#cbd5e1" fontFamily="ui-monospace, monospace">
+        = 0x{parseInt(bits.join(''), 2).toString(16).toUpperCase().padStart(3, '0')} = decimal {parseInt(bits.join(''), 2)}
+      </text>
+
+      {/* Footer */}
+      <text x={360} y={324} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        ~30 SEGMENTS · ENOUGH FOR 1 BILLION UNIQUE VIEWERS
+      </text>
+      <text x={360} y={342} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        leaked screen-capture → run forensic detector → recover bit sequence → look up account
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // DRM-lite end-to-end flow (this demo's actual encryption + signed URL)
 // ---------------------------------------------------------------------------
 export function DRMLiteFlowFigure() {

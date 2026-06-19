@@ -23,6 +23,8 @@ import {
   HomeRailsFigure,
   AuthRefreshFlowFigure,
   DRMLiteFlowFigure,
+  TrickPlayFigure,
+  ForensicWatermarkFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -877,6 +879,9 @@ segment_000.ts
           <li><strong>Pre-baked A/B variants.</strong> Encode bit-shifted versions of every segment; the per-viewer manifest stitches a unique sequence (segment 0 = variant A, 1 = variant B...). A 30-bit ID needs 30 segments — easy in a VOD movie.</li>
           <li><strong>Server-side watermark.</strong> Insert the per-viewer ID into the bitstream at packaging time. More CPU at packaging, less storage.</li>
         </ul>
+        <div className="docs-figure">
+          <ForensicWatermarkFigure />
+        </div>
         <p>
           When a leak appears on a piracy site, the studio runs a forensic tool over the
           captured frames, recovers the ID, traces it back to the account, terminates and
@@ -1782,6 +1787,9 @@ sprite.jpg#xywh=320,0,160,90`}</code></pre>
           UIs actually do fast-forward. Instead, HLS publishes a separate I-frame-only playlist
           — the same timeline but containing only the I-frames (one frame every ~2 s):
         </p>
+        <div className="docs-figure">
+          <TrickPlayFigure />
+        </div>
         <pre><code>{`# master.m3u8
 #EXT-X-I-FRAME-STREAM-INF:BANDWIDTH=200000,RESOLUTION=1280x720,
     CODECS="avc1.64001f",URI="720p/iframes.m3u8"
