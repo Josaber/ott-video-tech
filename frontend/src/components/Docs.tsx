@@ -146,15 +146,6 @@ const CHAPTERS: Chapter[] = [
           and becomes visible to the play API.
         </p>
 
-        <h3>What this demo skips</h3>
-        <p>
-          Everything in this chapter. <code>VideoAssetEntity</code> is a flat record with no
-          program / season / episode structure, no rights window, no localisation, no external
-          identifiers. The catalog endpoint is just "list every asset visible to this user" — no
-          filtering, sorting, or merchandising. The first half of <em>Production gaps</em>
-          (multi-tenancy, geofencing, ratings) are all metadata-driven concerns that need this
-          layer before they can be implemented at all.
-        </p>
       </>
     ),
   },
@@ -216,12 +207,6 @@ const CHAPTERS: Chapter[] = [
           functions: <strong>PQ</strong> (Perceptual Quantizer — Dolby Vision / HDR10, absolute
           brightness reference) or <strong>HLG</strong> (Hybrid Log-Gamma — BBC, NHK,
           backwards-compatible with SDR displays).
-        </p>
-        <h3>What this demo skips</h3>
-        <p>
-          Everything in this chapter. The upload endpoint takes any <code>video/*</code> MIME,
-          runs FFmpeg with default settings, ships the result. A real catalog rejects 99% of
-          submissions at QC and sends them back to the studio with a report.
         </p>
       </>
     ),
@@ -882,12 +867,6 @@ segment_000.ts
           time-of-day clustering — and downgrades or challenges suspected shared accounts.
           Netflix's 2023 crackdown is the canonical example.
         </p>
-        <h3>What this demo skips</h3>
-        <p>
-          All of it. The license endpoint returns the AES-128 key to anyone with a valid signed
-          URL; no HDCP query, no watermark, no geofence, no concurrent-stream tracking. The
-          threat model is "show how the moving pieces fit", not "protect studio content".
-        </p>
       </>
     ),
   },
@@ -1150,13 +1129,6 @@ segment_000.ts
           server intercepts and stitches a per-viewer ad pod in. Same shape as VOD SSAI but
           running in real time on a 60-second budget.
         </p>
-        <h3>What this demo skips</h3>
-        <p>
-          Everything in this chapter. Going live would require a separate ingest service (or
-          FFmpeg in segmenter mode), a state machine to track active streams,
-          sliding-window manifest emission, and SCTE-35-aware SSAI. The VOD path doesn't
-          transfer; live is its own product.
-        </p>
       </>
     ),
   },
@@ -1213,12 +1185,6 @@ segment_000.ts
           Static thresholds (rebuffer &gt; 5%, VSF &gt; 3%) catch crashes. Anomaly detection
           per dimension catches degradation — e.g., a CDN PoP that started rebuffering 3x
           normal in Tokyo at 9pm.
-        </p>
-        <h3>What this demo skips</h3>
-        <p>
-          Zero observability. No client-side telemetry, no CMCD headers, no aggregation, no
-          dashboards. Closest thing is the job timeline in the asset detail — backend pipeline
-          health, not viewer experience.
         </p>
       </>
     ),
@@ -1451,77 +1417,140 @@ segment_000.ts
           rules require explicit consent for non-essential telemetry, the right to download
           history, and the right to delete.
         </p>
-        <h3>What this demo skips</h3>
-        <p>
-          Zero compliance scaffolding. No captions, no AD, no ratings, no loudness checks, no
-          consent UI, no profile-level parental controls. The player is keyboard-navigable
-          because the underlying HTML5 <code>&lt;video&gt;</code> tag is — that's it.
-        </p>
       </>
     ),
   },
   {
     slug: 'gaps',
     title: 'Production gaps',
-    blurb: 'What this demo deliberately skips, and where you would add it in real OTT.',
+    blurb: 'Every part of real OTT this demo deliberately leaves out, in one place.',
     render: () => (
       <>
         <p>
-          This is a teaching demo — it covers the spine of an OTT publishing platform but
-          deliberately leaves out everything operational. The list below is what you would build
-          before sending traffic to humans.
+          This is a teaching demo: it covers the spine of an OTT publishing platform but
+          deliberately leaves out everything operational. Each row below names a thing that real
+          OTT does, the chapter that explains why, and the closest pointer at how production
+          handles it.
         </p>
+        <h3>Content & catalog</h3>
         <table className="docs-gaps">
-          <thead>
-            <tr>
-              <th>Gap</th>
-              <th>Real solution</th>
-            </tr>
-          </thead>
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
           <tbody>
             <tr>
-              <td>No multi-tenancy</td>
-              <td><code>VideoAssetEntity</code> has no <code>owner_id</code>. Add it + an authorization rule in the controller.</td>
+              <td>No editorial hierarchy</td>
+              <td><code>VideoAssetEntity</code> stores only title + description. Production has Brand → Program → Season → Episode → Asset with rights windows and external IDs (EIDR, Gracenote). See <em>Video metadata</em>.</td>
             </tr>
             <tr>
-              <td>No CDN</td>
-              <td>Backend serves segments directly. Production hides origin behind CloudFront / Fastly / Akamai with token-signed URLs.</td>
+              <td>No multi-tenancy</td>
+              <td>No <code>owner_id</code> on assets, no per-tenant catalog scoping. Add an owner column + an authorization rule on every list/read.</td>
             </tr>
+            <tr>
+              <td>No catalog UX</td>
+              <td>No rails, no recommendations, no search ranking. A real home page mixes editorial + content-based + collaborative filtering. See <em>Catalog & recommendations</em>.</td>
+            </tr>
+            <tr>
+              <td>No mezzanine pipeline / QC</td>
+              <td>Accepts whatever the browser uploads. Real ingest demands a spec'd mezzanine (ProRes / IMF) and auto-QC (Aurora / Vidchecker / Baton). See <em>Mezzanine & mastering</em>.</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Encoding & packaging</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
+          <tbody>
             <tr>
               <td>Single rendition</td>
-              <td>Real ABR ladder: 360p / 480p / 720p / 1080p, keyframe-aligned, signaled in master playlist.</td>
+              <td>One H.264 output. Production ladders 360p → 4K HDR with keyframe alignment across renditions. See <em>Transcoding & packaging</em>.</td>
             </tr>
             <tr>
-              <td>DRM-lite, not real DRM</td>
-              <td>Widevine / FairPlay / PlayReady via EME + license server. See the DRM chapter.</td>
+              <td>No HEVC / AV1</td>
+              <td>libx264 only. Production ships dual H.264 (compatibility) + HEVC or AV1 (efficiency). See <em>Codecs</em>.</td>
+            </tr>
+            <tr>
+              <td>.ts segments only</td>
+              <td>MPEG-TS works everywhere but CMAF .m4s lets one segment set serve both HLS and DASH. See <em>Video containers</em>.</td>
             </tr>
             <tr>
               <td>No captions / multi-audio</td>
-              <td>Add <code>EXT-X-MEDIA TYPE=SUBTITLES</code> and <code>TYPE=AUDIO</code> groups; ship WebVTT / TTML sidecars.</td>
+              <td>No <code>EXT-X-MEDIA TYPE=SUBTITLES</code> or <code>TYPE=AUDIO</code> groups, no WebVTT / TTML sidecars, no dub tracks.</td>
+            </tr>
+            <tr>
+              <td>No loudness / color compliance</td>
+              <td>No EBU R128 / ATSC A/85 loudness pass, no BT.709 vs BT.2020 handling, no PQ / HLG. See <em>Mezzanine & mastering</em>.</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Delivery & playback</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>No CDN</td>
+              <td>Backend serves bytes directly. Real OTT hides origin behind CloudFront / Fastly / Akamai with origin shield, edge cache, signed URLs. See <em>CDN & delivery network</em>.</td>
+            </tr>
+            <tr>
+              <td>No multi-CDN</td>
+              <td>Single origin = single point of failure. Real OTT routes per-session via Conviva or NPAW.</td>
             </tr>
             <tr>
               <td>No live streaming</td>
-              <td>Demo is VOD only. Live requires an encoder feeding HLS / LL-HLS or DASH, with SCTE-35 ad cues.</td>
+              <td>VOD only. Live needs ingest (RTMP / SRT / WHIP), sliding-window manifests, LL-HLS, SCTE-35-aware ad insertion. See <em>Live streaming pipeline</em>.</td>
+            </tr>
+            <tr>
+              <td>No QoE telemetry</td>
+              <td>Zero client telemetry, no CMCD headers, no dashboards. Real OTT runs Conviva / Mux / Bitmovin Analytics. See <em>Observability & QoE</em>.</td>
+            </tr>
+          </tbody>
+        </table>
+        <h3>Security & rights</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
+          <tbody>
+            <tr>
+              <td>DRM-lite, not real DRM</td>
+              <td>AES-128 + HMAC-signed URL. Real OTT uses Widevine / FairPlay / PlayReady via EME + a CDM. See <em>DRM</em>.</td>
+            </tr>
+            <tr>
+              <td>No HDCP enforcement</td>
+              <td>Key endpoint returns the AES-128 key to anyone with a valid signature; no output-protection query. Real DRMs require HDCP 2.2 for 4K HDR. See <em>Anti-piracy beyond DRM</em>.</td>
+            </tr>
+            <tr>
+              <td>No forensic watermark</td>
+              <td>Leaked captures can't be traced. Production bakes per-viewer A/B variants or stitches server-side.</td>
+            </tr>
+            <tr>
+              <td>No geofencing / ratings</td>
+              <td>Key endpoint doesn't consult per-asset country allowlists or content ratings before issuing.</td>
+            </tr>
+            <tr>
+              <td>No concurrent-stream enforcement</td>
+              <td>License endpoint doesn't track per-account active streams. Account sharing is unconstrained.</td>
             </tr>
             <tr>
               <td>No rate limiting</td>
               <td><code>/auth/login</code> and <code>/auth/register</code> accept unlimited attempts. Add bucket4j + IP + username pacing.</td>
             </tr>
             <tr>
-              <td>No password policy</td>
+              <td>Weak password policy</td>
               <td>Min length only. Production wants entropy checks + breach-database lookups (HIBP API).</td>
             </tr>
-            <tr>
-              <td>No geofencing or ratings</td>
-              <td>License URL endpoint would consult a per-asset country whitelist + content rating before issuing the key.</td>
-            </tr>
-            <tr>
-              <td>No QoE telemetry</td>
-              <td>Send CMCD headers from the player, ingest player events server-side, surface in a Conviva / Mux Data dashboard.</td>
-            </tr>
+          </tbody>
+        </table>
+        <h3>Operations</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Gap</th><th>Real solution</th></tr></thead>
+          <tbody>
             <tr>
               <td>Synchronous ad cold-start</td>
               <td>Ad-service uses on-demand FFmpeg; first <code>/vast</code> takes ~48 s. Warm the catalog at boot or pre-bake renditions.</td>
+            </tr>
+            <tr>
+              <td>No accessibility scaffolding</td>
+              <td>No captions, no audio description, no profile-level parental controls, no consent UI. CVAA, EAA, WCAG 2.2 all demand these. See <em>Compliance & accessibility</em>.</td>
+            </tr>
+            <tr>
+              <td>No data-protection plumbing</td>
+              <td>Viewing data is personal data under GDPR / CCPA but there's no consent UI, no export, no delete.</td>
             </tr>
           </tbody>
         </table>
@@ -1536,58 +1565,115 @@ segment_000.ts
   },
 ]
 
-function readHashChapter(): number {
+// Part / chapter grouping. Reading order is computed from this — the CHAPTERS
+// array's own order is irrelevant for navigation now, only used as a slug
+// lookup. Adding a new chapter: drop it in the CHAPTERS array, then list its
+// slug under the appropriate part below.
+const PARTS: { name: string; slugs: string[] }[] = [
+  {
+    name: 'Foundations',
+    slugs: ['overview', 'hls', 'containers', 'codecs', 'manifest'],
+  },
+  {
+    name: 'The publishing pipeline',
+    slugs: ['mezzanine', 'transcode-package', 'ssai'],
+  },
+  {
+    name: 'Delivery & playback',
+    slugs: ['cdn', 'player', 'live', 'observability'],
+  },
+  {
+    name: 'Content & business',
+    slugs: ['metadata', 'catalog', 'cost', 'compliance'],
+  },
+  {
+    name: 'Security',
+    slugs: ['auth', 'drm', 'anti-piracy'],
+  },
+  {
+    name: 'Reference',
+    slugs: ['standards', 'gaps', 'glossary'],
+  },
+]
+
+const READING_ORDER: string[] = PARTS.flatMap((p) => p.slugs)
+
+const CHAPTERS_BY_SLUG: Record<string, Chapter> = Object.fromEntries(
+  CHAPTERS.map((c) => [c.slug, c]),
+)
+
+function readHashSlug(): string {
   const m = /^#\/docs\/([\w-]+)/.exec(window.location.hash)
-  if (!m) return 0
-  const idx = CHAPTERS.findIndex((c) => c.slug === m[1])
-  return idx >= 0 ? idx : 0
+  if (m && CHAPTERS_BY_SLUG[m[1]]) return m[1]
+  return READING_ORDER[0]
 }
 
+const ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII', 'IX', 'X']
+
 export function Docs() {
-  const [active, setActive] = useState<number>(() => readHashChapter())
+  const [activeSlug, setActiveSlug] = useState<string>(readHashSlug)
 
   useEffect(() => {
-    const next = CHAPTERS[active]
-    if (next && window.location.hash !== `#/docs/${next.slug}`) {
-      window.history.replaceState(null, '', `#/docs/${next.slug}`)
+    if (window.location.hash !== `#/docs/${activeSlug}`) {
+      window.history.replaceState(null, '', `#/docs/${activeSlug}`)
     }
-  }, [active])
+  }, [activeSlug])
 
   useEffect(() => {
-    const onHash = () => setActive(readHashChapter())
+    const onHash = () => setActiveSlug(readHashSlug())
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
 
-  const ch = CHAPTERS[active]
-  const prev = active > 0 ? CHAPTERS[active - 1] : null
-  const next = active < CHAPTERS.length - 1 ? CHAPTERS[active + 1] : null
+  const ch = CHAPTERS_BY_SLUG[activeSlug] ?? CHAPTERS_BY_SLUG[READING_ORDER[0]]
+  const idx = READING_ORDER.indexOf(activeSlug)
+  const prevSlug = idx > 0 ? READING_ORDER[idx - 1] : null
+  const nextSlug = idx >= 0 && idx < READING_ORDER.length - 1 ? READING_ORDER[idx + 1] : null
+  const prev = prevSlug ? CHAPTERS_BY_SLUG[prevSlug] : null
+  const next = nextSlug ? CHAPTERS_BY_SLUG[nextSlug] : null
 
   return (
     <div className="docs-layout">
       <aside className="docs-toc">
-        <div className="docs-toc-label">Chapters</div>
-        <ol>
-          {CHAPTERS.map((c, i) => (
-            <li key={c.slug} className={i === active ? 'active' : ''}>
-              <button onClick={() => setActive(i)}>
-                <span className="docs-toc-num">{String(i + 1).padStart(2, '0')}</span>
-                <span className="docs-toc-title">{c.title}</span>
-              </button>
-            </li>
-          ))}
-        </ol>
+        {PARTS.map((part, partIdx) => (
+          <div className="docs-toc-part" key={part.name}>
+            <div className="docs-toc-part-label">
+              <span className="docs-toc-part-num">PART {ROMAN[partIdx] ?? String(partIdx + 1)}</span>
+              <span className="docs-toc-part-name">{part.name}</span>
+            </div>
+            <ol>
+              {part.slugs.map((slug) => {
+                const c = CHAPTERS_BY_SLUG[slug]
+                if (!c) return null
+                const overallIdx = READING_ORDER.indexOf(slug)
+                return (
+                  <li key={slug} className={slug === activeSlug ? 'active' : ''}>
+                    <button onClick={() => setActiveSlug(slug)}>
+                      <span className="docs-toc-num">
+                        {String(overallIdx + 1).padStart(2, '0')}
+                      </span>
+                      <span className="docs-toc-title">{c.title}</span>
+                    </button>
+                  </li>
+                )
+              })}
+            </ol>
+          </div>
+        ))}
       </aside>
       <article className="docs-content panel">
         <div className="docs-chapter-eyebrow">
-          Chapter {active + 1} of {CHAPTERS.length}
+          Chapter {idx + 1} of {READING_ORDER.length}
         </div>
         <h1 className="docs-chapter-title">{ch.title}</h1>
         <p className="docs-chapter-blurb">{ch.blurb}</p>
         <div className="docs-prose">{ch.render()}</div>
         <nav className="docs-pager">
           {prev ? (
-            <button className="secondary docs-pager-link" onClick={() => setActive(active - 1)}>
+            <button
+              className="secondary docs-pager-link"
+              onClick={() => setActiveSlug(prev.slug)}
+            >
               <ChevronLeft size={14} />
               <span>
                 <span className="docs-pager-dir">Previous</span>
@@ -1600,7 +1686,7 @@ export function Docs() {
           {next ? (
             <button
               className="secondary docs-pager-link docs-pager-link-right"
-              onClick={() => setActive(active + 1)}
+              onClick={() => setActiveSlug(next.slug)}
             >
               <span>
                 <span className="docs-pager-dir">Next</span>
