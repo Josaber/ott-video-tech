@@ -2027,36 +2027,43 @@ export function DRMLiteFlowFigure() {
         ① PUBLISH · runs once per asset
       </text>
 
+      {/* Top-strip step boxes — uniform 170px step (140 box + 30 gap) so all
+          four boxes fit inside the cyan outer frame (x=20–700) with even
+          spacing. Earlier draft mis-spaced the last pair (STORE KEY at
+          x=400, WRITE M3U8 at x=540) and they touched edge-to-edge. */}
       {[
-        { x: 40,  label: 'GENERATE',  detail: 'random 16-byte AES-128 key',   accent: '#22d3ee' },
-        { x: 220, label: 'ENCRYPT',   detail: 'every .ts segment in place',     accent: '#22d3ee' },
-        { x: 400, label: 'STORE KEY', detail: 'on disk · drm_key_id + key',     accent: '#22d3ee' },
-        { x: 540, label: 'WRITE M3U8', detail: 'placeholder #EXT-X-KEY URI',    accent: '#22d3ee' },
-      ].map((s, i) => (
-        <g key={s.label}>
-          <rect x={s.x} y={46} width={140} height={84} rx={6} fill="#1e293b" stroke={s.accent} />
-          <text x={s.x + 70} y={66} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.accent} letterSpacing="0.06em">
-            {s.label}
-          </text>
-          <text x={s.x + 70} y={86} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
-            {s.detail}
-          </text>
-          <text x={s.x + 70} y={102} textAnchor="middle" fontSize={9} fill="#64748b" fontFamily="ui-monospace, monospace">
-            step {i + 1}
-          </text>
-          {i < 3 && (
-            <line
-              x1={s.x + 142}
-              y1={88}
-              x2={s.x + (i === 2 ? 138 : 178)}
-              y2={88}
-              stroke="#475569"
-              strokeWidth={1.4}
-              markerEnd="url(#drm-arrow)"
-            />
-          )}
-        </g>
-      ))}
+        { label: 'GENERATE',  detail: 'random 16-byte AES-128 key',  accent: '#22d3ee' },
+        { label: 'ENCRYPT',   detail: 'every .ts segment in place',  accent: '#22d3ee' },
+        { label: 'STORE KEY', detail: 'on disk · drm_key_id + key',  accent: '#22d3ee' },
+        { label: 'WRITE M3U8', detail: 'placeholder #EXT-X-KEY URI', accent: '#22d3ee' },
+      ].map((s, i) => {
+        const x = 40 + i * 170
+        return (
+          <g key={s.label}>
+            <rect x={x} y={46} width={140} height={84} rx={6} fill="#1e293b" stroke={s.accent} />
+            <text x={x + 70} y={66} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.accent} letterSpacing="0.06em">
+              {s.label}
+            </text>
+            <text x={x + 70} y={86} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+              {s.detail}
+            </text>
+            <text x={x + 70} y={102} textAnchor="middle" fontSize={9} fill="#64748b" fontFamily="ui-monospace, monospace">
+              step {i + 1}
+            </text>
+            {i < 3 && (
+              <line
+                x1={x + 142}
+                y1={88}
+                x2={x + 168}
+                y2={88}
+                stroke="#475569"
+                strokeWidth={1.4}
+                markerEnd="url(#drm-arrow)"
+              />
+            )}
+          </g>
+        )
+      })}
 
       {/* BOTTOM STRIP — PLAYBACK path */}
       <rect x={20} y={170} width={680} height={196} rx={8} fill="#0f172a" stroke="#f59e0b" strokeWidth={1.2} />
