@@ -1006,3 +1006,491 @@ export function EMELicenseSequenceFigure() {
     </svg>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Account → Profiles → Devices tree
+// ---------------------------------------------------------------------------
+export function AccountProfilesDevicesFigure() {
+  const profiles = [
+    { x: 80,  label: 'PROFILE · adult', sub: 'no maturity gate' },
+    { x: 280, label: 'PROFILE · adult', sub: '"For Mom"' },
+    { x: 480, label: 'PROFILE · kid',   sub: 'PG-13 max · no ads' },
+  ]
+  const devicesPerProfile = ['phone', 'TV', 'laptop']
+
+  return (
+    <svg
+      viewBox="0 0 720 360"
+      width="100%"
+      role="img"
+      aria-label="Account, profiles and devices hierarchy"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="apd-arrow" />
+      </defs>
+
+      {/* Account */}
+      <rect x={260} y={14} width={200} height={56} rx={6} fill="#1e293b" stroke="#22d3ee" strokeWidth={1.5} />
+      <text x={360} y={34} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">ACCOUNT</text>
+      <text x={360} y={50} textAnchor="middle" fontSize={10} fill="#cbd5e1">jane@example.com · Premium tier</text>
+      <text x={360} y={64} textAnchor="middle" fontSize={9.5} fill="#94a3b8">billing · entitlement · region</text>
+
+      {/* Lines from account to profiles */}
+      {profiles.map((p) => (
+        <line
+          key={p.x}
+          x1={360}
+          y1={70}
+          x2={p.x + 80}
+          y2={106}
+          stroke="#475569"
+          strokeWidth={1.4}
+          markerEnd="url(#apd-arrow)"
+        />
+      ))}
+
+      {/* Profiles */}
+      {profiles.map((p) => (
+        <g key={p.label + p.x}>
+          <rect x={p.x} y={108} width={160} height={56} rx={6} fill="#1e293b" stroke="#e2e8f0" />
+          <text x={p.x + 80} y={128} textAnchor="middle" fontSize={11} fontWeight={700} fill="#e2e8f0" letterSpacing="0.06em">
+            {p.label}
+          </text>
+          <text x={p.x + 80} y={144} textAnchor="middle" fontSize={9.5} fill="#94a3b8">{p.sub}</text>
+          <text x={p.x + 80} y={158} textAnchor="middle" fontSize={9} fill="#64748b">history · queue · recs</text>
+        </g>
+      ))}
+
+      {/* Lines from each profile down to device row */}
+      {profiles.map((p) =>
+        devicesPerProfile.map((_, i) => (
+          <line
+            key={`${p.x}-${i}`}
+            x1={p.x + 80}
+            y1={164}
+            x2={p.x + 20 + i * 56}
+            y2={206}
+            stroke="#475569"
+            strokeWidth={1.1}
+            markerEnd="url(#apd-arrow)"
+          />
+        )),
+      )}
+
+      {/* Devices */}
+      {profiles.map((p) =>
+        devicesPerProfile.map((name, i) => (
+          <g key={`dev-${p.x}-${i}`}>
+            <rect x={p.x + i * 56} y={208} width={48} height={36} rx={4} fill="#1e293b" stroke="#f59e0b" />
+            <text x={p.x + i * 56 + 24} y={224} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.06em">
+              DEVICE
+            </text>
+            <text x={p.x + i * 56 + 24} y={236} textAnchor="middle" fontSize={9} fill="#94a3b8">{name}</text>
+          </g>
+        )),
+      )}
+
+      {/* Caps note */}
+      <rect x={60} y={272} width={600} height={66} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={290} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        ENFORCED LIMITS
+      </text>
+      <text x={360} y={306} textAnchor="middle" fontSize={10} fill="#cbd5e1">
+        max 5 profiles per account · 4 concurrent streams · ~10 registered devices
+      </text>
+      <text x={360} y={322} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        concurrency check happens at license-issue time, not at session start
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Search & discovery — query pipeline
+// ---------------------------------------------------------------------------
+export function SearchPipelineFigure() {
+  const stages = [
+    { label: 'INPUT',       note: 'typed / voice' },
+    { label: 'AUTOCOMPLETE', note: 'n-gram suggester' },
+    { label: 'RETRIEVAL',   note: 'ES / Algolia' },
+    { label: 'RERANK',      note: 'ML scoring' },
+    { label: 'DIVERSIFY',   note: 'MMR / dedup' },
+    { label: 'RENDER',      note: 'rail / grid' },
+  ]
+  const boxW = 96
+  const gap = 12
+  const total = stages.length * boxW + (stages.length - 1) * gap
+  const xStart = (720 - total) / 2
+
+  return (
+    <svg
+      viewBox="0 0 720 240"
+      width="100%"
+      role="img"
+      aria-label="Search pipeline"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="search-arrow" />
+      </defs>
+
+      {/* Stage boxes */}
+      {stages.map((s, i) => {
+        const x = xStart + i * (boxW + gap)
+        const isFirst = i === 0
+        const isLast = i === stages.length - 1
+        const accent = isFirst ? '#22d3ee' : isLast ? '#10b981' : '#334155'
+        return (
+          <g key={s.label}>
+            <rect x={x} y={70} width={boxW} height={84} rx={6} fill="#1e293b" stroke={accent} />
+            <text x={x + boxW / 2} y={94} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">
+              {s.label}
+            </text>
+            <text x={x + boxW / 2} y={112} textAnchor="middle" fontSize={10} fill="#94a3b8">
+              {s.note}
+            </text>
+            {/* Step number */}
+            <text x={x + boxW / 2} y={140} textAnchor="middle" fontSize={11} fontWeight={700} fill="#64748b" fontFamily="ui-monospace, monospace">
+              {String(i + 1).padStart(2, '0')}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Arrows between stages */}
+      {stages.slice(0, -1).map((_, i) => {
+        const fromX = xStart + i * (boxW + gap) + boxW
+        const toX = xStart + (i + 1) * (boxW + gap)
+        return (
+          <line
+            key={i}
+            x1={fromX + 2}
+            y1={112}
+            x2={toX - 2}
+            y2={112}
+            stroke="#475569"
+            strokeWidth={1.5}
+            markerEnd="url(#search-arrow)"
+          />
+        )
+      })}
+
+      {/* Ranking-signals strip */}
+      <rect x={xStart} y={176} width={total} height={42} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={194} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        RANKING SIGNALS
+      </text>
+      <text x={360} y={210} textAnchor="middle" fontSize={10} fill="#cbd5e1">
+        text match · popularity · recency · personalisation · regional availability · rights
+      </text>
+
+      {/* Top label */}
+      <text x={360} y={36} textAnchor="middle" fontSize={10} fill="#64748b" letterSpacing="0.12em">
+        QUERY · ~100 ms BUDGET
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Subscription state machine
+// ---------------------------------------------------------------------------
+export function SubscriptionStateMachineFigure() {
+  const states = {
+    TRIAL:    { x: 88,  y: 50,  w: 140, h: 60, accent: '#22d3ee' },
+    ACTIVE:   { x: 300, y: 50,  w: 140, h: 60, accent: '#10b981' },
+    PAST_DUE: { x: 512, y: 150, w: 140, h: 60, accent: '#f59e0b' },
+    DUNNING:  { x: 300, y: 250, w: 140, h: 60, accent: '#f97316' },
+    CANCELED: { x: 88,  y: 250, w: 140, h: 60, accent: '#94a3b8' },
+  } as const
+
+  const transitions: { from: keyof typeof states; to: keyof typeof states; label: string; dx?: number; dy?: number }[] = [
+    { from: 'TRIAL',    to: 'ACTIVE',   label: 'trial ends · charge ok' },
+    { from: 'TRIAL',    to: 'CANCELED', label: 'user cancels' },
+    { from: 'ACTIVE',   to: 'PAST_DUE', label: 'charge fails' },
+    { from: 'ACTIVE',   to: 'CANCELED', label: 'user cancels' },
+    { from: 'PAST_DUE', to: 'ACTIVE',   label: 'retry ok' },
+    { from: 'PAST_DUE', to: 'DUNNING',  label: 'retry fails' },
+    { from: 'DUNNING',  to: 'ACTIVE',   label: 'recovered' },
+    { from: 'DUNNING',  to: 'CANCELED', label: 'max retries' },
+    { from: 'CANCELED', to: 'ACTIVE',   label: 're-subscribe' },
+  ]
+
+  const center = (key: keyof typeof states) => {
+    const s = states[key]
+    return { cx: s.x + s.w / 2, cy: s.y + s.h / 2, s }
+  }
+
+  return (
+    <svg
+      viewBox="0 0 720 340"
+      width="100%"
+      role="img"
+      aria-label="Subscription state machine"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="sub-arrow" color="#475569" />
+      </defs>
+
+      {/* Transition lines (drawn before nodes so arrowheads land on box edges) */}
+      {transitions.map((t, i) => {
+        const a = center(t.from)
+        const b = center(t.to)
+        // Compute edge-to-edge segment by clipping the line to the box boundaries
+        const dx = b.cx - a.cx
+        const dy = b.cy - a.cy
+        const len = Math.sqrt(dx * dx + dy * dy)
+        const ux = dx / len
+        const uy = dy / len
+        // Approximate edge offset using half-width or half-height depending on dominant axis
+        const inset = (s: typeof a.s) =>
+          Math.abs(ux) * (s.w / 2) > Math.abs(uy) * (s.h / 2)
+            ? s.w / 2 + 4
+            : s.h / 2 + 4
+        const x1 = a.cx + ux * inset(a.s)
+        const y1 = a.cy + uy * inset(a.s)
+        const x2 = b.cx - ux * inset(b.s)
+        const y2 = b.cy - uy * inset(b.s)
+        const mx = (x1 + x2) / 2
+        const my = (y1 + y2) / 2
+        return (
+          <g key={i}>
+            <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#475569" strokeWidth={1.3} markerEnd="url(#sub-arrow)" />
+            <rect x={mx - 56} y={my - 9} width={112} height={16} rx={3} fill="#0f172a" opacity={0.92} />
+            <text x={mx} y={my + 3} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+              {t.label}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* States */}
+      {(Object.keys(states) as (keyof typeof states)[]).map((key) => {
+        const s = states[key]
+        return (
+          <g key={key}>
+            <rect x={s.x} y={s.y} width={s.w} height={s.h} rx={8} fill="#1e293b" stroke={s.accent} strokeWidth={1.5} />
+            <text x={s.x + s.w / 2} y={s.y + 30} textAnchor="middle" fontSize={13} fontWeight={700} fill={s.accent} letterSpacing="0.08em">
+              {key}
+            </text>
+            <text x={s.x + s.w / 2} y={s.y + 48} textAnchor="middle" fontSize={9.5} fill="#94a3b8">
+              {key === 'ACTIVE' ? 'plays everything' :
+               key === 'TRIAL' ? 'plays · no charge yet' :
+               key === 'PAST_DUE' ? 'plays · retry in progress' :
+               key === 'DUNNING' ? 'plays · 7-day grace' :
+               'access cut'}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Privacy & consent — TCF gate data flow
+// ---------------------------------------------------------------------------
+export function ConsentFlowFigure() {
+  return (
+    <svg
+      viewBox="0 0 720 300"
+      width="100%"
+      role="img"
+      aria-label="Consent flow and TCF gate"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="cf-arrow" />
+        <ArrowMarker id="cf-arrow-block" color="#dc2626" />
+      </defs>
+
+      {/* User */}
+      <rect x={40} y={20} width={160} height={50} rx={6} fill="#1e293b" stroke="#22d3ee" />
+      <text x={120} y={42} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">USER</text>
+      <text x={120} y={58} textAnchor="middle" fontSize={10} fill="#94a3b8">first visit / new device</text>
+
+      {/* CMP */}
+      <line x1={200} y1={45} x2={262} y2={45} stroke="#475569" strokeWidth={1.5} markerEnd="url(#cf-arrow)" />
+      <rect x={264} y={20} width={184} height={50} rx={6} fill="#1e293b" stroke="#f59e0b" />
+      <text x={356} y={42} textAnchor="middle" fontSize={11} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">CMP</text>
+      <text x={356} y={58} textAnchor="middle" fontSize={10} fill="#94a3b8">OneTrust / Sourcepoint / Didomi</text>
+
+      {/* TCF string */}
+      <line x1={448} y1={45} x2={510} y2={45} stroke="#475569" strokeWidth={1.5} markerEnd="url(#cf-arrow)" />
+      <rect x={512} y={20} width={168} height={50} rx={6} fill="#0f172a" stroke="#22d3ee" />
+      <text x={596} y={42} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em" fontFamily="ui-monospace, monospace">
+        TCF v2 STRING
+      </text>
+      <text x={596} y={58} textAnchor="middle" fontSize={9.5} fill="#94a3b8">
+        CPFh3wA…  per-purpose flags
+      </text>
+
+      {/* Down to gates */}
+      <line x1={596} y1={70} x2={596} y2={92} stroke="#475569" strokeWidth={1.5} markerEnd="url(#cf-arrow)" />
+      <line x1={596} y1={92} x2={120} y2={92} stroke="#475569" strokeWidth={1.2} />
+      <line x1={120} y1={92} x2={120} y2={110} stroke="#475569" strokeWidth={1.2} markerEnd="url(#cf-arrow)" />
+      <line x1={336} y1={92} x2={336} y2={110} stroke="#475569" strokeWidth={1.2} markerEnd="url(#cf-arrow)" />
+      <line x1={552} y1={92} x2={552} y2={110} stroke="#475569" strokeWidth={1.2} markerEnd="url(#cf-arrow)" />
+
+      {/* Purpose gates */}
+      {[
+        { x: 40,  label: 'STORAGE',         note: 'localStorage, cookies' },
+        { x: 256, label: 'ANALYTICS',       note: 'product telemetry' },
+        { x: 472, label: 'TARGETED ADS',    note: 'IFA · retargeting' },
+      ].map((g) => (
+        <g key={g.label}>
+          <rect x={g.x} y={112} width={160} height={50} rx={6} fill="#1e293b" stroke="#334155" />
+          <text x={g.x + 80} y={132} textAnchor="middle" fontSize={11} fontWeight={700} fill="#e2e8f0" letterSpacing="0.06em">
+            {g.label}
+          </text>
+          <text x={g.x + 80} y={148} textAnchor="middle" fontSize={9.5} fill="#94a3b8">{g.note}</text>
+          <text x={g.x + 80} y={160} textAnchor="middle" fontSize={9} fill="#64748b">purpose gate</text>
+        </g>
+      ))}
+
+      {/* Down to consumers (allow / block) */}
+      <line x1={120} y1={162} x2={120} y2={206} stroke="#10b981" strokeWidth={1.5} markerEnd="url(#cf-arrow)" />
+      <text x={132} y={186} fontSize={9.5} fill="#10b981">allow</text>
+      <line x1={336} y1={162} x2={336} y2={206} stroke="#10b981" strokeWidth={1.5} markerEnd="url(#cf-arrow)" />
+      <text x={348} y={186} fontSize={9.5} fill="#10b981">allow</text>
+      <line x1={552} y1={162} x2={552} y2={206} stroke="#dc2626" strokeWidth={1.5} markerEnd="url(#cf-arrow-block)" strokeDasharray="4 3" />
+      <text x={564} y={186} fontSize={9.5} fill="#dc2626">blocked</text>
+
+      {/* Consumers */}
+      {[
+        { x: 40,  label: 'DB',           note: 'session, prefs' },
+        { x: 256, label: 'ANALYTICS VENDOR', note: 'Mux, Mixpanel' },
+        { x: 472, label: 'AD SERVER',     note: '— bidless' },
+      ].map((c) => (
+        <g key={c.label}>
+          <rect x={c.x} y={208} width={160} height={42} rx={6} fill="#1e293b" stroke="#334155" />
+          <text x={c.x + 80} y={226} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#cbd5e1" letterSpacing="0.06em">
+            {c.label}
+          </text>
+          <text x={c.x + 80} y={242} textAnchor="middle" fontSize={9.5} fill="#94a3b8">{c.note}</text>
+        </g>
+      ))}
+
+      {/* Footer */}
+      <text x={360} y={278} textAnchor="middle" fontSize={10} fill="#64748b" letterSpacing="0.06em">
+        EVERY DOWNSTREAM CONSUMER MUST READ THE TCF STRING BEFORE PROCESSING
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Device platforms & SDKs
+// ---------------------------------------------------------------------------
+export function DevicePlatformsFigure() {
+  type Leaf = { label: string; sub: string }
+  const families: { name: string; x: number; accent: string; leaves: Leaf[] }[] = [
+    {
+      name: 'WEB',
+      x: 40,
+      accent: '#22d3ee',
+      leaves: [
+        { label: 'Browser', sub: 'hls.js / shaka' },
+      ],
+    },
+    {
+      name: 'MOBILE',
+      x: 200,
+      accent: '#3b82f6',
+      leaves: [
+        { label: 'iOS',     sub: 'AVPlayer · FairPlay' },
+        { label: 'Android', sub: 'ExoPlayer · Widevine' },
+      ],
+    },
+    {
+      name: 'CTV',
+      x: 360,
+      accent: '#10b981',
+      leaves: [
+        { label: 'Apple TV', sub: 'AVPlayer · FairPlay' },
+        { label: 'Roku',     sub: 'BrightScript SDK' },
+        { label: 'Fire TV',  sub: 'Android · Widevine' },
+        { label: 'Tizen',    sub: 'Samsung · PlayReady' },
+        { label: 'webOS',    sub: 'LG · PlayReady' },
+      ],
+    },
+    {
+      name: 'CONSOLE',
+      x: 560,
+      accent: '#f59e0b',
+      leaves: [
+        { label: 'PlayStation', sub: 'Custom · PlayReady' },
+        { label: 'Xbox',        sub: 'UWP · PlayReady' },
+      ],
+    },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 720 360"
+      width="100%"
+      role="img"
+      aria-label="Device platforms tree"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="dp-arrow" />
+      </defs>
+
+      {/* Root */}
+      <rect x={280} y={14} width={160} height={50} rx={6} fill="#1e293b" stroke="#22d3ee" strokeWidth={1.5} />
+      <text x={360} y={34} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">
+        CATALOG API
+      </text>
+      <text x={360} y={50} textAnchor="middle" fontSize={10} fill="#94a3b8">
+        one backend · many clients
+      </text>
+
+      {/* Family headers */}
+      {families.map((f) => {
+        const cx = f.x + 60
+        return (
+          <g key={f.name}>
+            <line x1={360} y1={64} x2={cx} y2={94} stroke="#475569" strokeWidth={1.4} markerEnd="url(#dp-arrow)" />
+            <rect x={f.x} y={96} width={120} height={40} rx={6} fill="#1e293b" stroke={f.accent} />
+            <text x={cx} y={114} textAnchor="middle" fontSize={11} fontWeight={700} fill={f.accent} letterSpacing="0.08em">
+              {f.name}
+            </text>
+            <text x={cx} y={128} textAnchor="middle" fontSize={9} fill="#94a3b8">
+              {f.leaves.length} {f.leaves.length === 1 ? 'target' : 'targets'}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Leaves */}
+      {families.flatMap((f, fi) => {
+        const cx = f.x + 60
+        return f.leaves.map((leaf, li) => {
+          const yBase = 156
+          const ly = yBase + li * 38
+          return (
+            <g key={`${f.name}-${leaf.label}`}>
+              <line x1={cx} y1={li === 0 ? 136 : ly - 8} x2={cx} y2={ly} stroke="#475569" strokeWidth={1.1} />
+              <rect x={f.x} y={ly} width={120} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+              <text x={cx} y={ly + 14} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#cbd5e1">
+                {leaf.label}
+              </text>
+              <text x={cx} y={ly + 26} textAnchor="middle" fontSize={9} fill="#94a3b8">
+                {leaf.sub}
+              </text>
+            </g>
+          )
+        })
+      })}
+
+      {/* Footer: shared layer */}
+      <rect x={40} y={330} width={640} height={22} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={345} textAnchor="middle" fontSize={10} fill="#64748b" letterSpacing="0.06em">
+        SHARED · HLS / DASH manifests · CMAF segments · TCF string · entitlement service
+      </text>
+    </svg>
+  )
+}

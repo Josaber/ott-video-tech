@@ -12,6 +12,11 @@ import {
   SSAISequenceFigure,
   PlayerStackFigure,
   EditorialHierarchyFigure,
+  AccountProfilesDevicesFigure,
+  SearchPipelineFigure,
+  SubscriptionStateMachineFigure,
+  ConsentFlowFigure,
+  DevicePlatformsFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -1799,6 +1804,391 @@ segment_001.ts`}</code></pre>
     ),
   },
   {
+    slug: 'identity',
+    title: 'Identity, profiles & devices',
+    blurb: 'Account vs profile model, device registration, MVPD federation, OAuth providers.',
+    render: () => (
+      <>
+        <p>
+          Auth covered "is this JWT valid". This chapter covers the layer above — the data model
+          that lets one household share an account, the system that tracks which devices a
+          subscription has signed in on, and the federation paths real OTT uses for sign-in.
+        </p>
+        <div className="docs-figure">
+          <AccountProfilesDevicesFigure />
+        </div>
+
+        <h3>Account vs profile</h3>
+        <p>
+          One <strong>account</strong> = one billing relationship, one entitlement, one set of
+          household-level settings (region, language, payment method). Inside it, the user
+          creates <strong>profiles</strong> — each with its own watch history, queue, maturity
+          rating, recommendations, language preference. Netflix popularised the 5-profile cap;
+          most platforms followed.
+        </p>
+        <ul>
+          <li><strong>Adult profile</strong> — full catalog at the account's maturity tier.</li>
+          <li><strong>Kid profile</strong> — content filtered to a kid rating (PG-13 etc.). No targeted ads (COPPA). Often forces SDH captions on.</li>
+          <li><strong>Restricted profile</strong> — PIN-locked, age-gated. Optional.</li>
+        </ul>
+
+        <h3>Device registration</h3>
+        <p>
+          A device is whatever runs the player — a phone, a TV app, a console. The platform
+          tracks <strong>registered devices</strong> (max ~10) and <strong>concurrent streams
+          </strong> (max 4 for Premium tier, 2 for Standard, 1 for Basic). The concurrency
+          check fires at <em>license-issue time</em> — not at app start — so signing in on a
+          new device doesn't sign anyone out until they hit Play.
+        </p>
+        <p>
+          Sign-out-everywhere is a single button in account settings. Under the hood it bumps
+          a per-account <code>token_version</code> (same pattern this demo uses) so all
+          previously-issued access tokens fail their next refresh.
+        </p>
+
+        <h3>MVPD / TV Everywhere federation</h3>
+        <p>
+          In the US, premium cable channels (HBO via Comcast, ESPN via DirecTV) authenticate via
+          {' '}<strong>TVE</strong> (TV Everywhere) using <strong>Adobe Pass</strong> /
+          <strong>Comcast SSO</strong>. The viewer enters their cable provider; the OTT app
+          redirects to the MVPD's auth flow; on success the MVPD returns an entitlement token
+          asserting "this household has the channel subscribed". The OTT app issues a session
+          based on that — no separate username / password.
+        </p>
+
+        <h3>OAuth providers</h3>
+        <p>
+          Apple Sign In, Google Sign In, Facebook Login. Each issues an OIDC ID token; your
+          backend verifies the signature, extracts an external user ID, looks up or creates an
+          internal account. Apple Sign In has the relay-email caveat: the email is opaque
+          unless the user opts to share, so you need a stable subject ID for account linking.
+        </p>
+
+        <h3>Magic links & passkeys</h3>
+        <ul>
+          <li><strong>Magic link</strong> — email or SMS containing a one-time-use signed URL. Bypasses passwords entirely. Common for CTV apps where typing a password on a remote is painful.</li>
+          <li><strong>Passkeys (WebAuthn)</strong> — public-key auth tied to the device's secure enclave. Phishing-resistant, but CTV support is patchy.</li>
+        </ul>
+
+        <h3>Account recovery</h3>
+        <p>
+          Password reset via email is table stakes. Production also handles: lost device
+          (revoke that device's registration), forgotten email (CS-mediated via billing
+          provider), account takeover detection (sudden geography change, mass password resets
+          → freeze account, force email confirmation).
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'search',
+    title: 'Search & discovery',
+    blurb: 'Query, autocomplete, retrieval, rerank — the search box and its ranking signals.',
+    render: () => (
+      <>
+        <p>
+          Recommendations are how the home page surfaces content the viewer didn't ask for.{' '}
+          <strong>Search</strong> is how they find what they did. Both live in the same
+          discovery layer of the catalog — share the same metadata, the same personalisation
+          signals — but search has a 100 ms latency budget end-to-end and has to be perfect
+          on the first character.
+        </p>
+        <div className="docs-figure">
+          <SearchPipelineFigure />
+        </div>
+
+        <h3>Query input</h3>
+        <ul>
+          <li><strong>Typed</strong> — keyboard, on-screen IME, mobile autocorrect.</li>
+          <li><strong>Voice</strong> — phone mics, CTV remote with voice, smart-speaker integrations (Alexa, Google Home). ASR (Whisper / Google Speech / AWS Transcribe) → text → same pipeline.</li>
+          <li><strong>Deep links</strong> — search-engine results pointing at <code>/search?q=loki</code>. Same pipeline, no UI keystroke.</li>
+        </ul>
+
+        <h3>Autocomplete</h3>
+        <p>
+          The dropdown that appears after the first character. Implemented with one of:
+        </p>
+        <ul>
+          <li><strong>Edge n-grams</strong> in ElasticSearch — index every prefix of every title; query the user's prefix; return matches sorted by popularity.</li>
+          <li><strong>Completion suggester</strong> — ES's <code>completion</code> field type, optimised for prefix lookup. Fast but rigid.</li>
+          <li><strong>Algolia / Typesense</strong> — hosted search-as-a-service, autocomplete out of the box with typo tolerance.</li>
+        </ul>
+
+        <h3>Retrieval</h3>
+        <p>
+          The first-stage match: pull ~200 candidate titles for the query. Most teams build
+          on <strong>ElasticSearch</strong> / <strong>OpenSearch</strong> with a BM25 index;
+          some use <strong>Algolia</strong> hosted; a few build with <strong>Vespa</strong> for
+          vector + lexical hybrid retrieval. Fields scored: title (boost ×5), cast and
+          director (×2), synopsis (×1), keywords.
+        </p>
+
+        <h3>Rerank</h3>
+        <p>
+          The first-stage retrieval is fast but coarse. A second-stage model reranks the top
+          100-200 candidates using richer signals: personalised similarity to the viewer's
+          watch history, recency, regional availability, rights window. ML model (gradient
+          boosting, LambdaRank) scores each candidate with the query as context.
+        </p>
+
+        <h3>Diversify</h3>
+        <p>
+          A pure relevance ranker often returns five seasons of the same show. <strong>MMR
+          </strong> (Maximal Marginal Relevance) or simple per-program deduplication drops the
+          near-duplicates and surfaces variety in the top 10.
+        </p>
+
+        <h3>Query understanding</h3>
+        <ul>
+          <li><strong>Typo tolerance</strong> — edit-distance-2 fuzzy match. ES <code>fuzziness: AUTO</code>.</li>
+          <li><strong>Synonyms</strong> — "war movies" → action, drama, military, biographical. Curated synonym dictionaries.</li>
+          <li><strong>Semantic expansion</strong> — embed the query, retrieve titles by vector similarity. Catches "movies about loneliness" hitting <em>Lost in Translation</em>.</li>
+          <li><strong>Intent classification</strong> — distinguish "search for a title" vs "navigate to settings" vs "play".</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'payments',
+    title: 'Payments & billing',
+    blurb: "Subscription lifecycle, App Store IAP, family plans, cross-platform entitlement.",
+    render: () => (
+      <>
+        <p>
+          OTT revenue maps onto a small state machine of subscriptions and a fan-out of
+          purchase paths (web checkout, App Store IAP, Play Store IAP, third-party MVPD
+          bundles). Engineering work is mostly: model the states correctly, reconcile across
+          purchase paths, never let entitlement drift from the source of truth.
+        </p>
+
+        <h3>Subscription state machine</h3>
+        <div className="docs-figure">
+          <SubscriptionStateMachineFigure />
+        </div>
+        <ul>
+          <li><strong>TRIAL → ACTIVE.</strong> Trial end + first charge succeeds.</li>
+          <li><strong>ACTIVE → PAST_DUE.</strong> Recurring charge fails (declined card, expired card, insufficient funds).</li>
+          <li><strong>PAST_DUE → ACTIVE.</strong> Smart retry (Stripe Adaptive Acceptance, Adyen Risk Engine) recovers the charge within ~3-7 days.</li>
+          <li><strong>PAST_DUE → DUNNING.</strong> Retry budget exhausted. Now in an explicit grace period (typically 7 days) during which the viewer can still play but receives in-app reminders.</li>
+          <li><strong>DUNNING → CANCELED.</strong> Grace expires without payment. Access cut at the next license-issue check.</li>
+          <li><strong>CANCELED → ACTIVE.</strong> Re-subscribe.</li>
+        </ul>
+
+        <h3>App Store / Play Store IAP</h3>
+        <p>
+          Apple and Google require their billing for any digital subscription consumed inside
+          their respective apps — and take a 15-30% cut. Engineering reality:
+        </p>
+        <ul>
+          <li><strong>Receipt validation.</strong> Both stores issue signed receipts. Back-end validates with Apple / Google's verification endpoint, never trusts the client.</li>
+          <li><strong>Server-to-server notifications.</strong> Renewal events, refunds, grace-period transitions arrive as webhooks (Apple App Store Server Notifications, Google Real-Time Developer Notifications).</li>
+          <li><strong>No outbound link to web checkout.</strong> Apple's anti-steering rules forbid the app from linking out to your web payment page — though the 2024 Epic Games settlement carved out exceptions in some regions.</li>
+          <li><strong>Web-purchased subscriptions still work in the iOS app.</strong> The viewer can sign up on your website, then sign in on iOS and watch. Their entitlement just doesn't flow through Apple IAP.</li>
+        </ul>
+
+        <h3>Family plans</h3>
+        <p>
+          Disney+ Premier Access, Netflix Standard with extra members, Apple One Family. One
+          billing account, multiple <em>secondary members</em>, each with their own login and
+          profile but sharing the entitlement. Implementation: a one-to-many{' '}
+          <code>account → linked_users</code> table with per-member limits.
+        </p>
+
+        <h3>Regional pricing & taxation</h3>
+        <ul>
+          <li><strong>Regional pricing.</strong> Netflix charges $7.99 in the US and ₹149 in India. PPP-adjusted, market-positioned.</li>
+          <li><strong>Tax.</strong> VAT in the EU, GST in India, sales tax in some US states. Calculated by Stripe Tax / Vertex / Avalara at checkout time.</li>
+          <li><strong>Currency.</strong> Charge in local currency; settle in USD or another reporting currency. FX rates locked at charge time.</li>
+        </ul>
+
+        <h3>Entitlement service</h3>
+        <p>
+          The single source of truth for "can this viewer play this content right now". Sits
+          in front of the license endpoint. Inputs: account ID, profile ID, asset rights
+          (window, region), device, payment status, concurrent stream count. Output: yes / no
+          / yes-with-degradation (e.g., SD-only on a non-HDCP device).
+        </p>
+        <p>
+          Production OTT runs the entitlement service in a tier-0 SLO: it's on the play path.
+          If it goes down, no one watches anything. Common pattern: read replicas + aggressive
+          edge caching keyed on (account, asset).
+        </p>
+
+        <h3>Chargebacks & refunds</h3>
+        <p>
+          Credit-card chargebacks arrive 60-120 days after the charge. The platform owes the
+          processor the chargeback fee (~$15) and forfeits the original revenue. High
+          chargeback rates (&gt;1%) get the merchant account flagged. Engineering work: fraud
+          scoring at sign-up, address verification (AVS), 3-D Secure, and rapid refunds for
+          accidental subscriptions before they hit dispute.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'privacy',
+    title: 'Privacy & consent',
+    blurb: 'TCF v2, IFA / IDFA / GAID, ATT, COPPA — the engineering side of data protection.',
+    render: () => (
+      <>
+        <p>
+          Compliance named the regulators (GDPR, CCPA, EAA, CVAA). This chapter names the
+          engineering primitives that implement compliance: consent strings, advertising IDs,
+          platform tracking policies, kids-content carve-outs. Production OTT keeps a privacy
+          team adjacent to the platform team because every new feature that touches user data
+          gets reviewed against these rules.
+        </p>
+        <div className="docs-figure">
+          <ConsentFlowFigure />
+        </div>
+
+        <h3>IAB TCF v2.2 consent string</h3>
+        <p>
+          The industry-standard wire format for a viewer's consent choices. A short
+          base64-encoded string that encodes:
+        </p>
+        <ul>
+          <li><strong>Purposes</strong> — 10 enumerated data-processing purposes (storage, personalisation, ad measurement, analytics, etc.). Per-purpose <code>YES</code> / <code>NO</code>.</li>
+          <li><strong>Vendors</strong> — which of the ~1,000 registered ad-tech vendors the user has consented to.</li>
+          <li><strong>Special features</strong> — geolocation, device scan.</li>
+          <li><strong>Legitimate interest</strong> overrides where the vendor processes under that legal basis instead of consent.</li>
+        </ul>
+        <p>
+          Every downstream consumer (ad server, analytics, recommendation pipeline) reads the
+          TCF string before processing. If the relevant purposes aren't consented, the data
+          path short-circuits. CMP vendors: <strong>OneTrust</strong>,{' '}
+          <strong>Sourcepoint</strong>, <strong>Didomi</strong>, <strong>TrustArc</strong>.
+        </p>
+
+        <h3>Advertising identifiers</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Identifier</th><th>Platform</th></tr></thead>
+          <tbody>
+            <tr><td>IDFA</td><td>iOS — opt-in via App Tracking Transparency (ATT) since iOS 14.5. Default OFF; opt-in rate is ~25% globally.</td></tr>
+            <tr><td>GAID / AAID</td><td>Android — opt-out. Google announced full deprecation by 2026, replaced by Privacy Sandbox on Android.</td></tr>
+            <tr><td>Roku ID for Advertising (RIDA)</td><td>Roku — per-device, resettable.</td></tr>
+            <tr><td>Tizen TIFA / LG LGUDID</td><td>Smart-TV vendor-specific.</td></tr>
+            <tr><td>OTT identifier</td><td>Industry effort — a hashed-email-based or first-party device ID that survives platform opt-outs. UID2 / RampID / ID5.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>iOS App Tracking Transparency (ATT)</h3>
+        <p>
+          Since iOS 14.5, any app that tracks the user across apps / sites must show a system
+          prompt asking permission. Decline → IDFA returns as zeros, retargeting paths
+          deactivate. The OTT impact: ad CPMs on iOS dropped 30-50% after ATT; targeted
+          recommendations using ad-tech vendors went dark for 75% of iOS users.
+        </p>
+
+        <h3>COPPA — kids content</h3>
+        <p>
+          US COPPA (Children's Online Privacy Protection Act): no behavioural tracking on
+          under-13 content. Engineering carve-outs:
+        </p>
+        <ul>
+          <li>Kid profiles get no IFA, no behavioural analytics, no targeted ads.</li>
+          <li>Content classified as kids-directed sets a "kids" flag on the manifest, which the ad server uses to serve only contextual ads.</li>
+          <li>Verifiable parental consent (VPC) gate for any data collection beyond minimum operational.</li>
+        </ul>
+
+        <h3>Data Subject Access Requests (DSAR)</h3>
+        <p>
+          GDPR Article 15 (access) and 17 (erasure). Implementation: a self-service portal +
+          a backend pipeline that snapshots every system the user's data lives in (account
+          DB, viewing history, recommendation embeddings, ad-tracking, support tickets),
+          packages a JSON / CSV export, and on deletion request, purges or anonymises across
+          all of them within 30 days. Tools: <strong>OneTrust</strong>,{' '}
+          <strong>Transcend</strong>, <strong>DataGrail</strong> automate the fan-out.
+        </p>
+
+        <h3>Cookieless tracking landscape</h3>
+        <p>
+          Third-party cookies are being phased out on Chrome (Privacy Sandbox) and already gone
+          on Safari + Firefox. OTT's response: <strong>first-party identifiers</strong>{' '}
+          (the platform's own signed-in user ID, used cross-device with proper consent),
+          {' '}<strong>data clean rooms</strong> (Snowflake, InfoSum, Habu — let two parties
+          intersect their audiences without exchanging raw data), and{' '}
+          <strong>contextual targeting</strong> (target by content category instead of by
+          viewer identity).
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'devices',
+    title: 'Device platforms & SDKs',
+    blurb: 'Where the OTT app actually ships — web, mobile, CTV, console.',
+    render: () => (
+      <>
+        <p>
+          The backend is one stack; the clients are many. Each device family has its own SDK,
+          its own player constraints, its own UX patterns, and its own store / certification
+          process. Production OTT typically maintains 8-12 client codebases simultaneously.
+        </p>
+        <div className="docs-figure">
+          <DevicePlatformsFigure />
+        </div>
+
+        <h3>Web</h3>
+        <p>
+          Single codebase, runs everywhere a modern browser does. Uses hls.js / shaka-player
+          + EME with Widevine on Chrome / Firefox / Edge and FairPlay on Safari. Easiest to
+          ship, frequent updates, no store gatekeeper.
+        </p>
+
+        <h3>Mobile</h3>
+        <ul>
+          <li><strong>iOS / iPadOS / tvOS</strong> — native Swift with AVPlayer + FairPlay. App Store submission, 15-30% revenue cut, weekly review timeline.</li>
+          <li><strong>Android</strong> — native Kotlin or Java with ExoPlayer (now Media3) + Widevine. Play Store similar economics, faster review.</li>
+          <li><strong>Cross-platform</strong> — React Native + react-native-video, Flutter + video_player. Trades some native quality for one codebase.</li>
+        </ul>
+
+        <h3>CTV — Connected TV</h3>
+        <p>
+          The hardest tier. Each smart-TV vendor has their own SDK, OS, performance ceiling
+          and store. UX is "10-foot UI" — large fonts, big focus rings, D-pad navigation
+          (no touch).
+        </p>
+        <table className="docs-gaps">
+          <thead><tr><th>Platform</th><th>What it takes</th></tr></thead>
+          <tbody>
+            <tr><td>Apple TV (tvOS)</td><td>Swift with AVPlayer + FairPlay. Best dev ergonomics of the CTV family.</td></tr>
+            <tr><td>Roku</td><td>BrightScript + SceneGraph. Proprietary language, unique ecosystem. Massive US install base (~70M devices). Roku-specific player APIs (PlayReady DRM with custom interfaces).</td></tr>
+            <tr><td>Fire TV / Android TV / Google TV</td><td>Android SDK with Leanback library. ExoPlayer + Widevine. Largest CTV install base globally.</td></tr>
+            <tr><td>Samsung Tizen</td><td>JavaScript + Web APIs + Samsung Smart TV Studio. PlayReady DRM. SDK quirks, slow review.</td></tr>
+            <tr><td>LG webOS</td><td>JavaScript + webOS SDK. PlayReady DRM. Similar workflow to Tizen.</td></tr>
+            <tr><td>Chromecast / Google Cast</td><td>Receiver app (HTML5 + Cast SDK) + sender SDKs on iOS / Android / web. Different UX paradigm: phone is the remote, TV is just display.</td></tr>
+            <tr><td>Vizio SmartCast / Hisense VIDAA</td><td>Smaller stores, regional. Often outsourced or built on a partner SDK.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>Console</h3>
+        <ul>
+          <li><strong>PlayStation</strong> — Sony's proprietary SDK. Custom player layer + PlayReady DRM. Cert process is rigorous (weeks).</li>
+          <li><strong>Xbox</strong> — UWP (Universal Windows Platform) or Microsoft Store native app. PlayReady DRM (Microsoft's). Easier than PlayStation but still cert-gated.</li>
+        </ul>
+
+        <h3>Code sharing strategies</h3>
+        <p>
+          Three practical patterns:
+        </p>
+        <ul>
+          <li><strong>Native per platform.</strong> Best player quality, highest engineering cost. Tier-1 OTT (Netflix, Disney+) does this.</li>
+          <li><strong>React Native or Flutter for mobile + native CTV.</strong> Compromise — share business logic across iOS/Android, native for everything else.</li>
+          <li><strong>Web-everywhere.</strong> Build a web app, wrap it for CTV (Tizen / webOS / Roku BrightScript-bridged web view). Lowest cost, lowest quality. Smaller streamers + FAST channels.</li>
+        </ul>
+
+        <h3>What's shared regardless</h3>
+        <p>
+          The backend (catalog API, license endpoint, entitlement service, recommendations),
+          the media itself (HLS / DASH / CMAF manifests + segments), the consent string, the
+          entitlement model. The clients differ; everything north of the network is one
+          implementation.
+        </p>
+      </>
+    ),
+  },
+  {
     slug: 'multi-drm',
     title: 'Multi-DRM in production',
     blurb: 'Wiring Widevine + FairPlay + PlayReady through a DRM-as-a-Service vendor.',
@@ -1909,15 +2299,15 @@ const PARTS: { name: string; slugs: string[] }[] = [
   },
   {
     name: 'Delivery & playback',
-    slugs: ['cdn', 'player', 'trick-play', 'live', 'observability'],
+    slugs: ['cdn', 'player', 'trick-play', 'live', 'observability', 'devices'],
   },
   {
     name: 'Content & business',
-    slugs: ['metadata', 'catalog', 'cost', 'compliance'],
+    slugs: ['metadata', 'catalog', 'search', 'cost', 'payments', 'compliance', 'privacy'],
   },
   {
-    name: 'Security',
-    slugs: ['auth', 'drm', 'multi-drm', 'anti-piracy'],
+    name: 'Identity & security',
+    slugs: ['auth', 'identity', 'drm', 'multi-drm', 'anti-piracy'],
   },
   {
     name: 'Reference',
