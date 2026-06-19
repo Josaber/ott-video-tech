@@ -19,6 +19,10 @@ import {
   DevicePlatformsFigure,
   ContainerStructureFigure,
   CodecEfficiencyFigure,
+  MasteringPipelineFigure,
+  HomeRailsFigure,
+  AuthRefreshFlowFigure,
+  DRMLiteFlowFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -199,6 +203,9 @@ const CHAPTERS: Chapter[] = [
           Baselight) → audio mix → render (proxy → conform → output) → mezzanine → ingest. Each
           step is usually a separate team and facility for tentpole content.
         </p>
+        <div className="docs-figure">
+          <MasteringPipelineFigure />
+        </div>
         <h3>Quality control</h3>
         <p>
           Automated QC tools enforce spec compliance before ingest: <strong>Tektronix Aurora
@@ -780,6 +787,9 @@ segment_002.m4s
           production DRM — see the comparison at the end. It is, however, the same shape: <em>
           opaque encrypted segments + a separate "license" path the server controls</em>.
         </p>
+        <div className="docs-figure">
+          <DRMLiteFlowFigure />
+        </div>
         <h3>What the player sees</h3>
         <pre><code>{`#EXTM3U
 #EXT-X-VERSION:3
@@ -917,6 +927,9 @@ segment_000.ts
           secret but carry a distinguishing <code>typ</code> claim — <code>access</code> vs
           <code>refresh</code>.
         </p>
+        <div className="docs-figure">
+          <AuthRefreshFlowFigure />
+        </div>
         <h3>Why two decoders</h3>
         <p>
           The backend wires <strong>two</strong> <code>JwtDecoder</code> beans, each with an{' '}

@@ -1689,3 +1689,419 @@ export function CodecEfficiencyFigure() {
     </svg>
   )
 }
+
+// ---------------------------------------------------------------------------
+// Mastering pipeline — capture → edit → color → mix → render → QC → mezzanine
+// ---------------------------------------------------------------------------
+export function MasteringPipelineFigure() {
+  const stages = [
+    { label: 'CAPTURE',     tool: 'camera · ARRI / RED',     accent: '#22d3ee' },
+    { label: 'EDIT',        tool: 'Avid · Premiere · Resolve', accent: '#334155' },
+    { label: 'COLOR GRADE', tool: 'DaVinci · Baselight',     accent: '#334155' },
+    { label: 'AUDIO MIX',   tool: 'Pro Tools',                accent: '#334155' },
+    { label: 'RENDER',      tool: 'NLE export',               accent: '#334155' },
+    { label: 'QC',          tool: 'Aurora · Vidchecker · Baton', accent: '#334155' },
+    { label: 'MEZZANINE',   tool: 'ProRes / IMF / DNxHR',     accent: '#f59e0b' },
+    { label: 'INGEST',      tool: 'catalog · transcode',      accent: '#10b981' },
+  ]
+  const boxW = 82
+  const gap = 8
+  const total = stages.length * boxW + (stages.length - 1) * gap
+  const xStart = (720 - total) / 2
+
+  return (
+    <svg
+      viewBox="0 0 720 244"
+      width="100%"
+      role="img"
+      aria-label="Mastering pipeline from capture to ingest"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="mp-arrow" />
+      </defs>
+
+      {/* Top swimlane label */}
+      <text x={36} y={30} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.12em">
+        STUDIO / POST-HOUSE
+      </text>
+      <text x={684} y={30} textAnchor="end" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.12em">
+        OTT PLATFORM
+      </text>
+      <line x1={36} y1={38} x2={684} y2={38} stroke="#334155" />
+
+      {/* Stage boxes */}
+      {stages.map((s, i) => {
+        const x = xStart + i * (boxW + gap)
+        const isLast = i === stages.length - 1
+        return (
+          <g key={s.label}>
+            <rect x={x} y={66} width={boxW} height={92} rx={6} fill="#1e293b" stroke={s.accent} />
+            <text x={x + boxW / 2} y={90} textAnchor="middle" fontSize={10} fontWeight={700} fill={s.accent === '#334155' ? '#e2e8f0' : s.accent} letterSpacing="0.06em">
+              {s.label}
+            </text>
+            <foreignObject x={x + 4} y={100} width={boxW - 8} height={54}>
+              <div
+                style={{
+                  fontSize: 9.5,
+                  color: '#94a3b8',
+                  textAlign: 'center',
+                  lineHeight: 1.3,
+                  fontFamily:
+                    "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+                }}
+              >
+                {s.tool}
+              </div>
+            </foreignObject>
+            {!isLast && (
+              <line
+                x1={x + boxW + 1}
+                y1={112}
+                x2={x + boxW + gap - 1}
+                y2={112}
+                stroke="#475569"
+                strokeWidth={1.3}
+                markerEnd="url(#mp-arrow)"
+              />
+            )}
+          </g>
+        )
+      })}
+
+      {/* Span markers for Studio vs OTT */}
+      {(() => {
+        const splitIdx = 6 // mezzanine handoff is between QC (5) and MEZZANINE (6)
+        const splitX = xStart + splitIdx * (boxW + gap) - gap / 2
+        return (
+          <g>
+            <line x1={splitX} y1={48} x2={splitX} y2={170} stroke="#f59e0b" strokeWidth={1.5} strokeDasharray="4 3" />
+            <rect x={splitX - 64} y={172} width={128} height={20} rx={4} fill="#0f172a" stroke="#f59e0b" />
+            <text x={splitX} y={186} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
+              MEZZANINE HANDOFF
+            </text>
+          </g>
+        )
+      })()}
+
+      {/* Footer caption */}
+      <rect x={36} y={206} width={648} height={30} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={222} textAnchor="middle" fontSize={10} fill="#64748b">
+        weeks of studio work → one mezzanine file → seconds of platform ingest → days in the catalog
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Catalog rail-based home page mock
+// ---------------------------------------------------------------------------
+export function HomeRailsFigure() {
+  // Tile dimensions
+  const tileW = 70
+  const tileH = 42
+  const tileGap = 10
+  const railLabelH = 22
+  const railHeight = railLabelH + tileH + 12
+  const numTilesPerRail = 8
+
+  const rails = [
+    { name: 'CONTINUE WATCHING',    note: 'resume positions' },
+    { name: 'BECAUSE YOU WATCHED…', note: 'content-based · per profile' },
+    { name: 'TRENDING NOW',         note: 'global · recency-decayed' },
+    { name: 'NEW RELEASES',         note: 'editorial' },
+    { name: 'FOR YOU',              note: 'collaborative filtering' },
+  ]
+
+  // Hero banner area
+  const heroH = 84
+
+  return (
+    <svg
+      viewBox="0 0 720 480"
+      width="100%"
+      role="img"
+      aria-label="Catalog home page rail layout"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {/* Phone / TV frame */}
+      <rect x={20} y={14} width={680} height={452} rx={10} fill="#0f172a" stroke="#334155" strokeWidth={1.5} />
+
+      {/* Top nav */}
+      <rect x={40} y={32} width={640} height={24} rx={4} fill="#1e293b" />
+      <text x={56} y={48} fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">
+        ★ STREAMR
+      </text>
+      <text x={296} y={48} fontSize={10} fill="#94a3b8" letterSpacing="0.06em">Home · Shows · Movies · My List</text>
+      <circle cx={664} cy={44} r={7} fill="#1e293b" stroke="#475569" />
+
+      {/* Hero banner */}
+      <rect x={40} y={68} width={640} height={heroH} rx={6} fill="#1e293b" stroke="#22d3ee" strokeWidth={1.2} />
+      <text x={60} y={90} fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">FEATURED</text>
+      <text x={60} y={108} fontSize={14} fontWeight={700} fill="#e2e8f0">"The Last Lighthouse"</text>
+      <text x={60} y={124} fontSize={10} fill="#94a3b8">a journey to the edge of the world — premieres Friday</text>
+      <rect x={60} y={132} width={84} height={20} rx={4} fill="#22d3ee" />
+      <text x={102} y={146} textAnchor="middle" fontSize={10} fontWeight={700} fill="#0f172a">▶ PLAY</text>
+      <rect x={156} y={132} width={84} height={20} rx={4} fill="transparent" stroke="#475569" />
+      <text x={198} y={146} textAnchor="middle" fontSize={10} fill="#cbd5e1">+ MY LIST</text>
+
+      {/* Rails */}
+      {rails.map((rail, ri) => {
+        const yRail = 168 + ri * railHeight
+        return (
+          <g key={rail.name}>
+            <text x={56} y={yRail + 12} fontSize={10} fontWeight={700} fill="#e2e8f0" letterSpacing="0.06em">
+              {rail.name}
+            </text>
+            <text x={680} y={yRail + 12} textAnchor="end" fontSize={9} fill="#64748b" letterSpacing="0.04em">
+              {rail.note}
+            </text>
+            {/* Tiles */}
+            {Array.from({ length: numTilesPerRail }).map((_, ti) => {
+              const x = 56 + ti * (tileW + tileGap)
+              const isFocused = ri === 0 && ti === 0
+              return (
+                <g key={ti}>
+                  <rect
+                    x={x}
+                    y={yRail + railLabelH}
+                    width={tileW}
+                    height={tileH}
+                    rx={3}
+                    fill="#1e293b"
+                    stroke={isFocused ? '#22d3ee' : '#334155'}
+                    strokeWidth={isFocused ? 2 : 1}
+                  />
+                  {/* Tiny decorative title bar */}
+                  <line
+                    x1={x + 6}
+                    y1={yRail + railLabelH + tileH - 6}
+                    x2={x + tileW - 6}
+                    y2={yRail + railLabelH + tileH - 6}
+                    stroke="#475569"
+                    strokeWidth={1}
+                  />
+                </g>
+              )
+            })}
+          </g>
+        )
+      })}
+
+      {/* Focus annotation */}
+      <text x={56} y={462} fontSize={9.5} fill="#64748b" fontStyle="italic">
+        rail order and tile order are personalised — the focused tile is the first decision the recommender makes
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Auth & session — JWT issuance, refresh, token_version revocation
+// ---------------------------------------------------------------------------
+export function AuthRefreshFlowFigure() {
+  const lanes = [
+    { x: 130, name: 'Client',  sub: 'SPA · localStorage' },
+    { x: 360, name: 'Backend', sub: 'Spring Security' },
+    { x: 590, name: 'DB',      sub: 'Postgres · Caffeine cache' },
+  ]
+  const steps: {
+    y: number
+    from: number
+    to: number
+    type?: 'self'
+    label: string
+  }[] = [
+    { y: 92,  from: 0, to: 1, label: 'POST /auth/login {user, pw}' },
+    { y: 122, from: 1, to: 2, label: 'SELECT user, token_version' },
+    { y: 152, from: 1, to: 0, label: 'access (15 m, tv=N) + refresh (24 h, tv=N)' },
+    { y: 184, from: 0, to: 1, label: 'GET /api/... Bearer expired access' },
+    { y: 208, from: 1, to: 1, type: 'self', label: 'EME-style 401: typ ok, exp failed' },
+    { y: 232, from: 0, to: 1, label: 'POST /auth/refresh {refresh}' },
+    { y: 256, from: 1, to: 2, label: 'check tv matches user.token_version' },
+    { y: 286, from: 1, to: 0, label: 'fresh access + refresh, retry original' },
+    { y: 316, from: 1, to: 2, type: 'self', label: 'change-password: UPDATE token_version = N+1' },
+    { y: 346, from: 1, to: 0, label: 'tokens stamped tv=N+1 (caller stays signed in)' },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 720 384"
+      width="100%"
+      role="img"
+      aria-label="JWT issue, refresh and token_version revocation"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="auth-arrow" color="#22d3ee" />
+        <ArrowMarker id="auth-arrow-amber" color="#f59e0b" />
+      </defs>
+
+      {/* Lane headers */}
+      {lanes.map((lane) => (
+        <g key={lane.name}>
+          <rect x={lane.x - 70} y={14} width={140} height={44} rx={6} fill="#1e293b" stroke="#334155" />
+          <text x={lane.x} y={32} textAnchor="middle" fontSize={11.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">
+            {lane.name.toUpperCase()}
+          </text>
+          <text x={lane.x} y={48} textAnchor="middle" fontSize={9.5} fill="#94a3b8">
+            {lane.sub}
+          </text>
+        </g>
+      ))}
+
+      {/* Lifelines */}
+      {lanes.map((lane) => (
+        <line
+          key={lane.x}
+          x1={lane.x}
+          y1={58}
+          x2={lane.x}
+          y2={372}
+          stroke="#334155"
+          strokeWidth={1}
+          strokeDasharray="3 4"
+        />
+      ))}
+
+      {/* Steps */}
+      {steps.map((step, i) => {
+        if (step.type === 'self') {
+          const lane = lanes[step.from]
+          return (
+            <g key={i}>
+              <rect x={lane.x - 130} y={step.y - 12} width={260} height={22} rx={4} fill="#0f172a" stroke="#475569" strokeDasharray="3 3" />
+              <text x={lane.x} y={step.y + 3} textAnchor="middle" fontSize={10} fill="#cbd5e1">
+                {step.label}
+              </text>
+            </g>
+          )
+        }
+        const from = lanes[step.from]
+        const to = lanes[step.to]
+        const reverse = from.x > to.x
+        const color = reverse ? '#f59e0b' : '#22d3ee'
+        const marker = reverse ? 'url(#auth-arrow-amber)' : 'url(#auth-arrow)'
+        return (
+          <g key={i}>
+            <line
+              x1={from.x + (reverse ? -4 : 4)}
+              y1={step.y}
+              x2={to.x + (reverse ? 4 : -4)}
+              y2={step.y}
+              stroke={color}
+              strokeWidth={1.5}
+              markerEnd={marker}
+            />
+            <text x={(from.x + to.x) / 2} y={step.y - 6} textAnchor="middle" fontSize={10} fill={color}>
+              {step.label}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// DRM-lite end-to-end flow (this demo's actual encryption + signed URL)
+// ---------------------------------------------------------------------------
+export function DRMLiteFlowFigure() {
+  return (
+    <svg
+      viewBox="0 0 720 380"
+      width="100%"
+      role="img"
+      aria-label="This demo's DRM-lite encryption and signed-URL flow"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="drm-arrow" color="#22d3ee" />
+        <ArrowMarker id="drm-arrow-amber" color="#f59e0b" />
+      </defs>
+
+      {/* TOP STRIP — PUBLISH path */}
+      <rect x={20} y={14} width={680} height={140} rx={8} fill="#0f172a" stroke="#22d3ee" strokeWidth={1.2} />
+      <text x={36} y={32} fontSize={10.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">
+        ① PUBLISH · runs once per asset
+      </text>
+
+      {[
+        { x: 40,  label: 'GENERATE',  detail: 'random 16-byte AES-128 key',   accent: '#22d3ee' },
+        { x: 220, label: 'ENCRYPT',   detail: 'every .ts segment in place',     accent: '#22d3ee' },
+        { x: 400, label: 'STORE KEY', detail: 'on disk · drm_key_id + key',     accent: '#22d3ee' },
+        { x: 540, label: 'WRITE M3U8', detail: 'placeholder #EXT-X-KEY URI',    accent: '#22d3ee' },
+      ].map((s, i) => (
+        <g key={s.label}>
+          <rect x={s.x} y={46} width={140} height={84} rx={6} fill="#1e293b" stroke={s.accent} />
+          <text x={s.x + 70} y={66} textAnchor="middle" fontSize={11} fontWeight={700} fill={s.accent} letterSpacing="0.06em">
+            {s.label}
+          </text>
+          <text x={s.x + 70} y={86} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+            {s.detail}
+          </text>
+          <text x={s.x + 70} y={102} textAnchor="middle" fontSize={9} fill="#64748b" fontFamily="ui-monospace, monospace">
+            step {i + 1}
+          </text>
+          {i < 3 && (
+            <line
+              x1={s.x + 142}
+              y1={88}
+              x2={s.x + (i === 2 ? 138 : 178)}
+              y2={88}
+              stroke="#475569"
+              strokeWidth={1.4}
+              markerEnd="url(#drm-arrow)"
+            />
+          )}
+        </g>
+      ))}
+
+      {/* BOTTOM STRIP — PLAYBACK path */}
+      <rect x={20} y={170} width={680} height={196} rx={8} fill="#0f172a" stroke="#f59e0b" strokeWidth={1.2} />
+      <text x={36} y={188} fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
+        ② PLAYBACK · runs per viewer per play
+      </text>
+
+      {/* Two lanes inside bottom strip */}
+      <text x={120} y={210} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">PLAYER</text>
+      <text x={600} y={210} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">BACKEND</text>
+
+      <line x1={120} y1={218} x2={120} y2={354} stroke="#334155" strokeDasharray="3 4" />
+      <line x1={600} y1={218} x2={600} y2={354} stroke="#334155" strokeDasharray="3 4" />
+
+      {/* Playback steps */}
+      {[
+        { y: 236, label: 'GET master.m3u8 + Bearer token', dir: 'forward' },
+        { y: 264, label: 'rewrite #EXT-X-KEY URI = HMAC-signed URL (user, exp, nonce, sig)', dir: 'self-backend' },
+        { y: 290, label: 'manifest with signed key URL', dir: 'backward' },
+        { y: 318, label: 'GET license.key?user=...&exp=...&nonce=...&sig=... (no Bearer)', dir: 'forward' },
+        { y: 346, label: 'validate signature + claim nonce + return 16-byte key', dir: 'backward' },
+      ].map((step, i) => {
+        if (step.dir === 'self-backend') {
+          return (
+            <g key={i}>
+              <rect x={470} y={step.y - 12} width={260} height={22} rx={4} fill="#1e293b" stroke="#475569" strokeDasharray="3 3" />
+              <text x={600} y={step.y + 3} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+                {step.label}
+              </text>
+            </g>
+          )
+        }
+        const reverse = step.dir === 'backward'
+        const color = reverse ? '#f59e0b' : '#22d3ee'
+        const marker = reverse ? 'url(#drm-arrow-amber)' : 'url(#drm-arrow)'
+        const x1 = reverse ? 596 : 124
+        const x2 = reverse ? 124 : 596
+        return (
+          <g key={i}>
+            <line x1={x1} y1={step.y} x2={x2} y2={step.y} stroke={color} strokeWidth={1.5} markerEnd={marker} />
+            <text x={360} y={step.y - 6} textAnchor="middle" fontSize={9.5} fill={color}>
+              {step.label}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
