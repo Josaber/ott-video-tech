@@ -1818,14 +1818,15 @@ export function HomeRailsFigure() {
 
   return (
     <svg
-      viewBox="0 0 720 480"
+      viewBox="0 0 720 580"
       width="100%"
       role="img"
       aria-label="Catalog home page rail layout"
       style={{ display: 'block', maxWidth: '100%' }}
     >
-      {/* Phone / TV frame */}
-      <rect x={20} y={14} width={680} height={452} rx={10} fill="#0f172a" stroke="#334155" strokeWidth={1.5} />
+      {/* Phone / TV frame — 5 rails at y=168 + 76 each end at y=548, so
+          frame bottom needs to be past that. */}
+      <rect x={20} y={14} width={680} height={552} rx={10} fill="#0f172a" stroke="#334155" strokeWidth={1.5} />
 
       {/* Top nav */}
       <rect x={40} y={32} width={640} height={24} rx={4} fill="#1e293b" />
@@ -1888,8 +1889,8 @@ export function HomeRailsFigure() {
         )
       })}
 
-      {/* Focus annotation */}
-      <text x={56} y={462} fontSize={9.5} fill="#64748b" fontStyle="italic">
+      {/* Focus annotation — below the last rail's tile row (y=560). */}
+      <text x={56} y={560} fontSize={9.5} fill="#64748b" fontStyle="italic">
         rail order and tile order are personalised — the focused tile is the first decision the recommender makes
       </text>
     </svg>
@@ -2063,26 +2064,28 @@ export function DRMLiteFlowFigure() {
         ② PLAYBACK · runs per viewer per play
       </text>
 
-      {/* Two lanes inside bottom strip */}
+      {/* Two lanes inside bottom strip — Backend pulled inward from x=600
+          to x=580 so the self-action rect centered on it (width 240) ends
+          at x=700, the outer frame's right edge, instead of overflowing. */}
       <text x={120} y={210} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">PLAYER</text>
-      <text x={600} y={210} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">BACKEND</text>
+      <text x={580} y={210} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">BACKEND</text>
 
       <line x1={120} y1={218} x2={120} y2={354} stroke="#334155" strokeDasharray="3 4" />
-      <line x1={600} y1={218} x2={600} y2={354} stroke="#334155" strokeDasharray="3 4" />
+      <line x1={580} y1={218} x2={580} y2={354} stroke="#334155" strokeDasharray="3 4" />
 
       {/* Playback steps */}
       {[
         { y: 236, label: 'GET master.m3u8 + Bearer token', dir: 'forward' },
-        { y: 264, label: 'rewrite #EXT-X-KEY URI = HMAC-signed URL (user, exp, nonce, sig)', dir: 'self-backend' },
+        { y: 264, label: 'rewrite #EXT-X-KEY URI → signed license URL', dir: 'self-backend' },
         { y: 290, label: 'manifest with signed key URL', dir: 'backward' },
-        { y: 318, label: 'GET license.key?user=...&exp=...&nonce=...&sig=... (no Bearer)', dir: 'forward' },
+        { y: 318, label: 'GET license.key?user=…&exp=…&nonce=…&sig=… (no Bearer)', dir: 'forward' },
         { y: 346, label: 'validate signature + claim nonce + return 16-byte key', dir: 'backward' },
       ].map((step, i) => {
         if (step.dir === 'self-backend') {
           return (
             <g key={i}>
-              <rect x={470} y={step.y - 12} width={260} height={22} rx={4} fill="#1e293b" stroke="#475569" strokeDasharray="3 3" />
-              <text x={600} y={step.y + 3} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+              <rect x={460} y={step.y - 12} width={240} height={22} rx={4} fill="#1e293b" stroke="#475569" strokeDasharray="3 3" />
+              <text x={580} y={step.y + 3} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
                 {step.label}
               </text>
             </g>
@@ -2091,12 +2094,12 @@ export function DRMLiteFlowFigure() {
         const reverse = step.dir === 'backward'
         const color = reverse ? '#f59e0b' : '#22d3ee'
         const marker = reverse ? 'url(#drm-arrow-amber)' : 'url(#drm-arrow)'
-        const x1 = reverse ? 596 : 124
-        const x2 = reverse ? 124 : 596
+        const x1 = reverse ? 576 : 124
+        const x2 = reverse ? 124 : 576
         return (
           <g key={i}>
             <line x1={x1} y1={step.y} x2={x2} y2={step.y} stroke={color} strokeWidth={1.5} markerEnd={marker} />
-            <text x={360} y={step.y - 6} textAnchor="middle" fontSize={9.5} fill={color}>
+            <text x={350} y={step.y - 6} textAnchor="middle" fontSize={9.5} fill={color}>
               {step.label}
             </text>
           </g>
