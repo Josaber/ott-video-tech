@@ -2,6 +2,12 @@ import { useEffect, useState } from 'react'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { ArchitectureDiagram } from './ArchitectureDiagram'
 import { Glossary } from './Glossary'
+import {
+  HLSManifestFigure,
+  CDNCacheFigure,
+  LiveLatencyFigure,
+  EMELicenseSequenceFigure,
+} from './DocFigures'
 
 interface Chapter {
   slug: string
@@ -228,6 +234,9 @@ const CHAPTERS: Chapter[] = [
           </strong> lists the segments for one variant. The player can switch between variants
           mid-stream — this is ABR (adaptive bitrate).
         </p>
+        <div className="docs-figure">
+          <HLSManifestFigure />
+        </div>
         <pre><code>{`# master.m3u8
 #EXTM3U
 #EXT-X-STREAM-INF:BANDWIDTH=2400000,RESOLUTION=1280x720
@@ -938,6 +947,9 @@ segment_000.ts
           <li><strong>Tier-2 / regional PoPs</strong> — large mid-tier caches feeding edges in their region.</li>
           <li><strong>Tier-1 / edge PoPs</strong> — what viewers actually connect to. Usually hundreds globally.</li>
         </ol>
+        <div className="docs-figure">
+          <CDNCacheFigure />
+        </div>
         <p>
           For VOD a popular asset reaches near-100% edge cache hit rate. For live the moving
           edge is harder: every viewer wants the latest segment, and the cache is cold for
@@ -1109,19 +1121,18 @@ segment_000.ts
           Drops latency to ~2-3 s, comparable to LL-DASH.
         </p>
         <h3>Latency budget</h3>
-        <p>Classic HLS, viewer to encoder:</p>
-        <ul>
-          <li>Encoder I-frame interval / GOP: 2-4 s</li>
-          <li>Contribution to packager: 1-2 s</li>
-          <li>Packager segmenting + writing: 0-1 s</li>
-          <li>CDN propagation: 0-1 s</li>
-          <li>Player buffer (safe ABR target): 6-15 s</li>
-          <li><strong>Total: 9-23 s</strong></li>
-        </ul>
         <p>
-          WebRTC end-to-end pushes the total to ~500 ms — at the cost of MSE / EME ecosystem
-          support and ABR sophistication.
+          Glass-to-glass latency — from the encoder's camera to the viewer's screen — is the sum
+          of every step in the chain. Three reference points:
         </p>
+        <div className="docs-figure">
+          <LiveLatencyFigure />
+        </div>
+        <ul>
+          <li><strong>Classic HLS, 9–23 s.</strong> Encoder GOP (2-4 s) + contribution (1-2 s) + packaging (0-1 s) + CDN propagation (0-1 s) + player buffer for safe ABR (6-15 s).</li>
+          <li><strong>LL-HLS, 2–3 s.</strong> Partial segments + blocking playlist reload + HTTP/2 push cut the buffer drastically.</li>
+          <li><strong>WebRTC, ~500 ms.</strong> UDP-based, no segment-level abstraction. The cost is no MSE / EME ecosystem and minimal ABR sophistication.</li>
+        </ul>
         <h3>Live SSAI</h3>
         <p>
           SCTE-35 markers inside the contribution feed flag "ad break in 5 seconds, 90 seconds
@@ -1801,6 +1812,9 @@ segment_001.ts`}</code></pre>
         </ul>
 
         <h3>License request flow</h3>
+        <div className="docs-figure">
+          <EMELicenseSequenceFigure />
+        </div>
         <ol>
           <li>Player encounters an encrypted segment, fires the EME <code>encrypted</code> event.</li>
           <li>Player requests a media key session from the CDM (Widevine / FairPlay / PlayReady).</li>
