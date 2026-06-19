@@ -1625,7 +1625,7 @@ export function CodecEfficiencyFigure() {
 
   return (
     <svg
-      viewBox="0 0 720 290"
+      viewBox="0 0 720 344"
       width="100%"
       role="img"
       aria-label="Codec efficiency comparison"
@@ -1676,12 +1676,14 @@ export function CodecEfficiencyFigure() {
         )
       })}
 
-      {/* Footer note */}
-      <rect x={36} y={244} width={624} height={36} rx={4} fill="#0f172a" stroke="#334155" />
-      <text x={348} y={260} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+      {/* Footer note — sits BELOW the % grid labels (which land at y=280
+          for 5 rows). Earlier draft placed the rect at y=244 which clipped
+          the VVC bar at y=224–256. */}
+      <rect x={36} y={296} width={624} height={36} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={348} y={312} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
         EFFICIENCY GAINS ≠ ADOPTION
       </text>
-      <text x={348} y={274} textAnchor="middle" fontSize={9.5} fill="#64748b">
+      <text x={348} y={326} textAnchor="middle" fontSize={9.5} fill="#64748b">
         H.264 still dominates because hardware decode is universal · AV1 + VVC are limited by encode time and ecosystem support
       </text>
     </svg>
