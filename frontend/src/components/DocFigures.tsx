@@ -2094,14 +2094,14 @@ export function TrickPlayFigure() {
         return (
           <g key={`iframe-${i}`}>
             <rect x={x} y={226} width={segW} height={36} rx={4} fill="#1e293b" stroke="#f59e0b" />
-            {/* Just one I-frame */}
-            <rect x={x + 4} y={232} width={10} height={20} rx={1.5} fill="#22d3ee" />
-            <text x={x + 9} y={246} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#0f172a">I</text>
-            <text x={x + segW / 2 + 12} y={244} textAnchor="middle" fontSize={9} fill="#94a3b8" fontFamily="ui-monospace, monospace">
+            {/* I-frame indicator on the left, byterange value centered on the
+                right half — keeps both clear of each other and lets the
+                row-level "BYTERANGE into the same .ts" annotation above
+                serve as the tag explanation. */}
+            <rect x={x + 6} y={232} width={12} height={20} rx={1.5} fill="#22d3ee" />
+            <text x={x + 12} y={246} textAnchor="middle" fontSize={8.5} fontWeight={700} fill="#0f172a">I</text>
+            <text x={x + segW / 2 + 14} y={248} textAnchor="middle" fontSize={10} fill="#94a3b8" fontFamily="ui-monospace, monospace">
               48000@0
-            </text>
-            <text x={x + segW / 2} y={258} textAnchor="middle" fontSize={9} fill="#64748b">
-              #EXT-X-BYTERANGE
             </text>
           </g>
         )
