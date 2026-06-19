@@ -2242,6 +2242,280 @@ export function ForensicWatermarkFigure() {
 }
 
 // ---------------------------------------------------------------------------
+// Audio sampling — continuous wave + discrete samples
+// ---------------------------------------------------------------------------
+export function AudioSamplingFigure() {
+  const xStart = 60
+  const xEnd = 660
+  const yMid = 110
+  const amp = 60
+  const cycles = 2.5
+  const numSamples = 20
+
+  // Continuous wave path
+  const wavePoints: string[] = []
+  for (let i = 0; i <= 240; i++) {
+    const x = xStart + (i / 240) * (xEnd - xStart)
+    const phase = (i / 240) * cycles * 2 * Math.PI
+    const y = yMid - amp * Math.sin(phase)
+    wavePoints.push(`${i === 0 ? 'M' : 'L'} ${x.toFixed(1)} ${y.toFixed(1)}`)
+  }
+
+  // Discrete sample dots
+  const samples: { x: number; y: number }[] = []
+  for (let i = 0; i < numSamples; i++) {
+    const x = xStart + (i / (numSamples - 1)) * (xEnd - xStart)
+    const phase = (i / (numSamples - 1)) * cycles * 2 * Math.PI
+    const y = yMid - amp * Math.sin(phase)
+    samples.push({ x, y })
+  }
+
+  return (
+    <svg
+      viewBox="0 0 720 240"
+      width="100%"
+      role="img"
+      aria-label="Audio sampling — continuous wave and discrete samples"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {/* Axis */}
+      <line x1={xStart} y1={yMid} x2={xEnd} y2={yMid} stroke="#334155" strokeDasharray="3 4" />
+      <text x={36} y={yMid + 4} fontSize={10} fill="#64748b">0</text>
+      <text x={36} y={yMid - amp + 4} fontSize={10} fill="#64748b">+1</text>
+      <text x={36} y={yMid + amp + 4} fontSize={10} fill="#64748b">−1</text>
+
+      {/* Continuous wave */}
+      <path d={wavePoints.join(' ')} stroke="#22d3ee" strokeWidth={1.5} fill="none" opacity={0.7} strokeDasharray="2 3" />
+
+      {/* Sample sticks + dots */}
+      {samples.map((p, i) => (
+        <g key={i}>
+          <line x1={p.x} y1={yMid} x2={p.x} y2={p.y} stroke="#f59e0b" strokeWidth={1} opacity={0.5} />
+          <circle cx={p.x} cy={p.y} r={3.5} fill="#f59e0b" />
+        </g>
+      ))}
+
+      {/* Labels */}
+      <text x={xStart} y={28} fontSize={10.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">
+        CONTINUOUS PRESSURE WAVE
+      </text>
+      <text x={xEnd} y={28} textAnchor="end" fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
+        DISCRETE SAMPLES · {numSamples} pts shown
+      </text>
+
+      {/* Footer caption */}
+      <rect x={60} y={196} width={600} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={212} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        SAMPLE RATE = SAMPLES / SECOND
+      </text>
+      <text x={360} y={224} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        Nyquist: must exceed 2× the highest frequency you want to preserve · 44.1 kHz covers 22 kHz, beyond audible
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Chroma subsampling — 4:4:4 / 4:2:2 / 4:2:0 grids
+// ---------------------------------------------------------------------------
+export function ChromaSubsamplingFigure() {
+  const cellSize = 30
+  const gridCols = 4
+  const gridRows = 4
+  const gridWidth = cellSize * gridCols
+  const gridHeight = cellSize * gridRows
+  const gap = 60
+  const xStart = (720 - (3 * gridWidth + 2 * gap)) / 2
+
+  // For each format, decide which cells get chroma samples
+  type Fmt = { name: string; sub: string; chromaPositions: [number, number][] }
+  const allPositions: [number, number][] = []
+  for (let r = 0; r < gridRows; r++) for (let c = 0; c < gridCols; c++) allPositions.push([r, c])
+  const formats: Fmt[] = [
+    {
+      name: '4:4:4',
+      sub: 'full chroma · mastering',
+      chromaPositions: allPositions,
+    },
+    {
+      name: '4:2:2',
+      sub: 'half horizontal · broadcast',
+      chromaPositions: allPositions.filter(([, c]) => c % 2 === 0),
+    },
+    {
+      name: '4:2:0',
+      sub: 'half horizontal + vertical · streaming default',
+      chromaPositions: allPositions.filter(([r, c]) => r % 2 === 0 && c % 2 === 0),
+    },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 720 260"
+      width="100%"
+      role="img"
+      aria-label="Chroma subsampling 4:4:4 vs 4:2:2 vs 4:2:0"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {formats.map((fmt, fi) => {
+        const x0 = xStart + fi * (gridWidth + gap)
+        const y0 = 36
+        return (
+          <g key={fmt.name}>
+            {/* Title */}
+            <text x={x0 + gridWidth / 2} y={24} textAnchor="middle" fontSize={13} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">
+              {fmt.name}
+            </text>
+            {/* Grid cells with luma dot */}
+            {allPositions.map(([r, c]) => {
+              const cx = x0 + c * cellSize + cellSize / 2
+              const cy = y0 + r * cellSize + cellSize / 2
+              return (
+                <g key={`luma-${r}-${c}`}>
+                  <rect x={x0 + c * cellSize} y={y0 + r * cellSize} width={cellSize} height={cellSize} fill="#1e293b" stroke="#334155" />
+                  <circle cx={cx} cy={cy} r={3.5} fill="#e2e8f0" />
+                </g>
+              )
+            })}
+            {/* Chroma overlay */}
+            {fmt.chromaPositions.map(([r, c]) => {
+              const cx = x0 + c * cellSize + cellSize / 2
+              const cy = y0 + r * cellSize + cellSize / 2
+              return <circle key={`chroma-${r}-${c}`} cx={cx + 7} cy={cy - 6} r={3.5} fill="#f59e0b" />
+            })}
+            {/* Sub-label */}
+            <text x={x0 + gridWidth / 2} y={y0 + gridHeight + 18} textAnchor="middle" fontSize={10} fill="#94a3b8">
+              {fmt.sub}
+            </text>
+            <text x={x0 + gridWidth / 2} y={y0 + gridHeight + 32} textAnchor="middle" fontSize={9.5} fontWeight={700} fill="#cbd5e1" fontFamily="ui-monospace, monospace">
+              {fmt.chromaPositions.length} / {gridRows * gridCols} chroma samples
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Legend */}
+      <g transform="translate(60, 224)">
+        <circle cx={6} cy={8} r={4} fill="#e2e8f0" />
+        <text x={18} y={12} fontSize={10.5} fill="#cbd5e1">
+          <tspan fontWeight={700}>luma</tspan> (Y · full grid in all modes)
+        </text>
+        <circle cx={266} cy={8} r={4} fill="#f59e0b" />
+        <text x={278} y={12} fontSize={10.5} fill="#cbd5e1">
+          <tspan fontWeight={700}>chroma</tspan> (Cb / Cr · subsampled)
+        </text>
+      </g>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Gamut comparison — schematic CIE chromaticity with nested primary triangles
+// ---------------------------------------------------------------------------
+export function GamutFigure() {
+  // Map CIE x in [0, 0.8] → SVG x in [60, 540]
+  // Map CIE y in [0, 0.9] → SVG y in [340, 20] (inverted)
+  const X0 = 60
+  const X1 = 540
+  const Y0 = 340
+  const Y1 = 20
+  const sx = (x: number) => X0 + (x / 0.8) * (X1 - X0)
+  const sy = (y: number) => Y0 - (y / 0.9) * (Y0 - Y1)
+
+  // Approximate CIE 1931 horseshoe with sampled points (wavelength → x,y)
+  const horseshoe: [number, number][] = [
+    [0.175, 0.005], [0.165, 0.018], [0.155, 0.030], [0.140, 0.045], [0.120, 0.060],
+    [0.090, 0.100], [0.060, 0.180], [0.045, 0.260], [0.040, 0.354], [0.040, 0.500],
+    [0.080, 0.700], [0.170, 0.800], [0.230, 0.825], [0.290, 0.815], [0.355, 0.785],
+    [0.450, 0.500], [0.540, 0.450], [0.620, 0.380], [0.730, 0.265], [0.735, 0.265],
+  ]
+  const horseshoePoints = horseshoe.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(' ')
+
+  // Color space primaries (CIE x,y)
+  const spaces = [
+    {
+      name: 'sRGB / BT.709',
+      accent: '#94a3b8',
+      pts: [[0.64, 0.33], [0.30, 0.60], [0.15, 0.06]] as [number, number][],
+    },
+    {
+      name: 'DCI-P3',
+      accent: '#22d3ee',
+      pts: [[0.68, 0.32], [0.265, 0.69], [0.15, 0.06]] as [number, number][],
+    },
+    {
+      name: 'BT.2020',
+      accent: '#f59e0b',
+      pts: [[0.708, 0.292], [0.170, 0.797], [0.131, 0.046]] as [number, number][],
+    },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 720 400"
+      width="100%"
+      role="img"
+      aria-label="Color gamut comparison on the CIE 1931 chromaticity diagram"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {/* Title */}
+      <text x={36} y={28} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        CIE 1931 CHROMATICITY · schematic
+      </text>
+
+      {/* Horseshoe outline of visible colors */}
+      <polygon points={horseshoePoints + ' ' + horseshoePoints.split(' ')[0]} fill="#0f172a" stroke="#475569" strokeWidth={1.2} />
+      <text x={sx(0.4)} y={sy(0.05) + 4} textAnchor="middle" fontSize={9.5} fill="#64748b" fontStyle="italic">
+        visible spectrum
+      </text>
+
+      {/* D65 white point */}
+      <circle cx={sx(0.3127)} cy={sy(0.329)} r={4} fill="#e2e8f0" />
+      <text x={sx(0.3127) + 10} y={sy(0.329) + 4} fontSize={10} fill="#cbd5e1">
+        D65 white
+      </text>
+
+      {/* Color-space triangles */}
+      {spaces.map((s) => {
+        const pts = s.pts.map(([x, y]) => `${sx(x).toFixed(1)},${sy(y).toFixed(1)}`).join(' ')
+        return (
+          <g key={s.name}>
+            <polygon points={pts} fill={s.accent} fillOpacity={0.08} stroke={s.accent} strokeWidth={1.6} />
+          </g>
+        )
+      })}
+
+      {/* Legend at right */}
+      <g transform="translate(560, 60)">
+        <text x={0} y={0} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+          GAMUT
+        </text>
+        {spaces.map((s, i) => (
+          <g key={s.name} transform={`translate(0, ${24 + i * 36})`}>
+            <rect x={0} y={0} width={20} height={14} rx={2} fill={s.accent} fillOpacity={0.35} stroke={s.accent} />
+            <text x={28} y={11} fontSize={11} fontWeight={700} fill={s.accent}>
+              {s.name}
+            </text>
+            <text x={28} y={24} fontSize={9.5} fill="#94a3b8">
+              {i === 0 ? 'web · HD SDR' : i === 1 ? 'cinema · Apple' : 'UHD HDR'}
+            </text>
+          </g>
+        ))}
+      </g>
+
+      {/* Footer caption */}
+      <rect x={36} y={360} width={648} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={376} textAnchor="middle" fontSize={10} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        EACH SPACE = 3 PRIMARIES + WHITE POINT → REPRODUCIBLE COLORS
+      </text>
+      <text x={360} y={388} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        outside the visible horseshoe is unreachable · larger triangle = more colors but harder display
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // DRM-lite end-to-end flow (this demo's actual encryption + signed URL)
 // ---------------------------------------------------------------------------
 export function DRMLiteFlowFigure() {
