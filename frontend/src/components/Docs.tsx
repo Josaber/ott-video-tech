@@ -1315,6 +1315,9 @@ segment_000.ts
           horizontal <strong>rails</strong>, each rail a curated or algorithmically-ranked
           selection of titles. The interaction model: pan along a rail, drop down to the next.
         </p>
+        <div className="docs-figure">
+          <HomeRailsFigure />
+        </div>
         <p>Common rail types:</p>
         <ul>
           <li><strong>Continue watching</strong> — partially-watched titles with the resume position. Universally first.</li>
