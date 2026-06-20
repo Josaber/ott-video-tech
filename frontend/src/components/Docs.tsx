@@ -40,73 +40,101 @@ interface Chapter {
   render: () => JSX.Element
 }
 
+// Inline chapter link — clicking changes the hash, the Docs component's
+// existing hashchange listener swaps the active slug. Lets the Reading
+// guide chapter point at other chapters without threading setActiveSlug
+// through every render() function.
+function L({ slug, children }: { slug: string; children: React.ReactNode }) {
+  return (
+    <a className="docs-chap-link" href={`#/docs/${slug}`}>
+      {children}
+    </a>
+  )
+}
+
 const CHAPTERS: Chapter[] = [
   {
     slug: 'guide',
     title: 'How to read this',
-    blurb: 'Five reading paths for different audiences — pick the one closest to your role.',
+    blurb: 'Six reading paths for different audiences — pick the one closest to your role.',
     render: () => (
       <>
         <p>
           This doc is built around a working OTT demo, but the topics generalise. Below are
-          five reading paths depending on what you do. The fastest way to find what's relevant
+          six reading paths depending on what you do. The fastest way to find what's relevant
           is to skim each chapter's headings on your path, then read end-to-end only the ones
           that answer a question you already have.
+        </p>
+        <p>
+          Every chapter name below is a link — click to jump.
         </p>
 
         <h3>Backend engineer joining an OTT team</h3>
         <ol>
-          <li><em>Overview</em> — what you're building.</li>
-          <li><em>HLS essentials</em> + <em>Manifest deep-dive</em> — the protocol the team writes against.</li>
-          <li><em>Server-Side Ad Insertion</em> — the most code-heavy thing the platform does.</li>
-          <li><em>Multi-DRM in production</em> — how the entitlement layer plugs into vendor licence servers.</li>
-          <li><em>Production gaps</em> — what's intentionally missing from the demo.</li>
+          <li><L slug="overview">Overview</L> — what you're building.</li>
+          <li><L slug="time-timestamps">Time, clocks & timestamps</L> + <L slug="crypto-basics">Cryptography primitives</L> — load-bearing primitives the rest of the codebase assumes.</li>
+          <li><L slug="hls">HLS essentials</L> + <L slug="manifest">Manifest deep-dive</L> — the protocol the team writes against.</li>
+          <li><L slug="ssai">Server-Side Ad Insertion</L> — the most code-heavy thing the platform does.</li>
+          <li><L slug="multi-drm">Multi-DRM in production</L> — how the entitlement layer plugs into vendor licence servers.</li>
+          <li><L slug="gaps">Production gaps</L> — what's intentionally missing from the demo.</li>
         </ol>
 
         <h3>Frontend / web-player engineer</h3>
         <ol>
-          <li><em>HLS essentials</em> · <em>Containers</em> · <em>Codecs</em> — what your player has to decode.</li>
-          <li><em>Player & client architecture</em> — your daily tools (hls.js / shaka / native).</li>
-          <li><em>Trick-play & thumbnails</em> — the seek-bar UX users complain about.</li>
-          <li><em>Multi-DRM in production</em> — what your EME code is actually doing.</li>
-          <li><em>Observability & QoE</em> — what your telemetry instrumentation drives.</li>
+          <li><L slug="audio-basics">Audio fundamentals</L> + <L slug="video-basics">Video fundamentals</L> + <L slug="color-basics">Color, light & vision</L> — what your player is decoding.</li>
+          <li><L slug="hls">HLS essentials</L> · <L slug="containers">Containers</L> · <L slug="codecs">Codecs</L> — the protocol and bitstreams.</li>
+          <li><L slug="player">Player & client architecture</L> — your daily tools (hls.js / shaka / native).</li>
+          <li><L slug="trick-play">Trick-play & thumbnails</L> — the seek-bar UX users complain about.</li>
+          <li><L slug="multi-drm">Multi-DRM in production</L> — what your EME code is actually doing.</li>
+          <li><L slug="observability">Observability & QoE</L> — what your telemetry instrumentation drives.</li>
         </ol>
 
         <h3>Mobile / CTV client engineer</h3>
         <ol>
-          <li><em>Device platforms & SDKs</em> — your platform's quirks.</li>
-          <li><em>Player & client architecture</em> — the JS reference; substitute your native equivalent.</li>
-          <li><em>Multi-DRM in production</em> — Widevine vs FairPlay vs PlayReady depending on your platform.</li>
-          <li><em>Identity, profiles & devices</em> — registration + concurrent stream rules.</li>
-          <li><em>Trick-play & thumbnails</em> — most-shipped feature you'll touch.</li>
+          <li><L slug="devices">Device platforms & SDKs</L> — your platform's quirks.</li>
+          <li><L slug="networking-basics">Networking primitives</L> — TCP / TLS / HTTP/2 / HTTP/3 hit hardest on mobile.</li>
+          <li><L slug="player">Player & client architecture</L> — the JS reference; substitute your native equivalent.</li>
+          <li><L slug="multi-drm">Multi-DRM in production</L> — Widevine vs FairPlay vs PlayReady depending on your platform.</li>
+          <li><L slug="identity">Identity, profiles & devices</L> — registration + concurrent-stream rules.</li>
+          <li><L slug="trick-play">Trick-play & thumbnails</L> — most-shipped feature you'll touch.</li>
         </ol>
 
         <h3>Security / DRM engineer</h3>
         <ol>
-          <li><em>Auth & session</em> — the access-token foundation.</li>
-          <li><em>DRM-lite vs production DRM</em> + <em>Multi-DRM in production</em> — the key-fetch stack.</li>
-          <li><em>Anti-piracy beyond DRM</em> — HDCP, watermarking, geofence, account sharing.</li>
-          <li><em>Identity, profiles & devices</em> — device + concurrent-stream policy.</li>
-          <li><em>Privacy & consent</em> — IFA, TCF, COPPA.</li>
+          <li><L slug="crypto-basics">Cryptography primitives</L> — AES modes, HMAC, nonces, signed URLs.</li>
+          <li><L slug="auth">Auth & session</L> — the access-token foundation.</li>
+          <li><L slug="drm">DRM-lite vs production DRM</L> + <L slug="multi-drm">Multi-DRM in production</L> — the key-fetch stack.</li>
+          <li><L slug="anti-piracy">Anti-piracy beyond DRM</L> — HDCP, watermarking, geofence, account sharing.</li>
+          <li><L slug="identity">Identity, profiles & devices</L> — device + concurrent-stream policy.</li>
+          <li><L slug="privacy">Privacy & consent</L> — IFA, TCF, COPPA.</li>
         </ol>
 
         <h3>PM / business person wanting the lay of the land</h3>
         <ol>
-          <li><em>Overview</em> + <em>Video metadata</em> — catalog model.</li>
-          <li><em>Catalog & recommendations</em> + <em>Search & discovery</em> — discovery UX.</li>
-          <li><em>Cost model</em> + <em>Payments & billing</em> — how revenue and unit economics work.</li>
-          <li><em>Compliance & accessibility</em> + <em>Privacy & consent</em> — what the legal team will ask about.</li>
-          <li><em>Production gaps</em> — the engineering risk list.</li>
+          <li><L slug="overview">Overview</L> + <L slug="metadata">Video metadata</L> — catalog model.</li>
+          <li><L slug="catalog">Catalog & recommendations</L> + <L slug="search">Search & discovery</L> — discovery UX.</li>
+          <li><L slug="cost">Cost model</L> + <L slug="payments">Payments & billing</L> — how revenue and unit economics work.</li>
+          <li><L slug="compliance">Compliance & accessibility</L> + <L slug="privacy">Privacy & consent</L> — what the legal team will ask about.</li>
+          <li><L slug="gaps">Production gaps</L> — the engineering risk list.</li>
+        </ol>
+
+        <h3>Curious about the bits — what's a sample, a pixel, a color?</h3>
+        <ol>
+          <li><L slug="audio-basics">Audio fundamentals</L> — pressure waves, sampling, bit depth.</li>
+          <li><L slug="video-basics">Video fundamentals</L> — pixels, frame rates, chroma subsampling.</li>
+          <li><L slug="color-basics">Color, light & vision</L> — gamut, gamma, HDR transfer functions.</li>
+          <li><L slug="time-timestamps">Time, clocks & timestamps</L> — PTS vs DTS, wall-clock anchoring, A/V sync.</li>
+          <li><L slug="codecs">Codecs</L> + <L slug="containers">Containers</L> — what gets done with all of the above.</li>
         </ol>
 
         <p>
-          The reference Part (<em>Standards & organisations</em> · <em>Production gaps</em> ·{' '}
-          <em>Glossary</em>) is meant for lookup, not sequential reading. Open them when a
-          term sends you scrambling.
+          The reference Part (<L slug="standards">Standards & organisations</L> ·{' '}
+          <L slug="gaps">Production gaps</L> · <L slug="glossary">Glossary</L>) is meant for
+          lookup, not sequential reading. Open them when a term sends you scrambling.
         </p>
         <p>
           Each chapter header shows an estimated read time. Total cover-to-cover is just over
-          three hours; the four reading paths above each fit in 40 minutes.
+          three hours; the six reading paths above each fit in 40-50 minutes.
         </p>
       </>
     ),

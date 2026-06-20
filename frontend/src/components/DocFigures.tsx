@@ -1234,11 +1234,16 @@ export function SubscriptionStateMachineFigure() {
         <ArrowMarker id="sub-arrow" color="#475569" />
       </defs>
 
-      {/* Transition lines (drawn before nodes so arrowheads land on box edges) */}
+      {/* Transition lines (drawn before nodes so arrowheads land on box
+          edges). Bidirectional pairs (ACTIVE↔PAST_DUE, ACTIVE↔CANCELED,
+          DUNNING→ACTIVE etc.) would otherwise overlap at the same line
+          position and their midpoint labels would stack on top of each
+          other. Offset both line endpoints + label perpendicular to the
+          line direction by 8 px — forward and reverse end up on parallel
+          tracks with distinct label positions. */}
       {transitions.map((t, i) => {
         const a = center(t.from)
         const b = center(t.to)
-        // Compute edge-to-edge segment by clipping the line to the box boundaries
         const dx = b.cx - a.cx
         const dy = b.cy - a.cy
         const len = Math.sqrt(dx * dx + dy * dy)
@@ -1249,16 +1254,23 @@ export function SubscriptionStateMachineFigure() {
           Math.abs(ux) * (s.w / 2) > Math.abs(uy) * (s.h / 2)
             ? s.w / 2 + 4
             : s.h / 2 + 4
-        const x1 = a.cx + ux * inset(a.s)
-        const y1 = a.cy + uy * inset(a.s)
-        const x2 = b.cx - ux * inset(b.s)
-        const y2 = b.cy - uy * inset(b.s)
+        // Perpendicular unit vector (rotated 90° CW). Reversing the line
+        // (b→a instead of a→b) flips (ux,uy) and therefore flips this
+        // perpendicular too, so forward and reverse naturally land on
+        // opposite sides.
+        const perpX = -uy
+        const perpY = ux
+        const PARALLEL_OFFSET = 8
+        const x1 = a.cx + ux * inset(a.s) + perpX * PARALLEL_OFFSET
+        const y1 = a.cy + uy * inset(a.s) + perpY * PARALLEL_OFFSET
+        const x2 = b.cx - ux * inset(b.s) + perpX * PARALLEL_OFFSET
+        const y2 = b.cy - uy * inset(b.s) + perpY * PARALLEL_OFFSET
         const mx = (x1 + x2) / 2
         const my = (y1 + y2) / 2
         return (
           <g key={i}>
             <line x1={x1} y1={y1} x2={x2} y2={y2} stroke="#475569" strokeWidth={1.3} markerEnd="url(#sub-arrow)" />
-            <rect x={mx - 56} y={my - 9} width={112} height={16} rx={3} fill="#0f172a" opacity={0.92} />
+            <rect x={mx - 58} y={my - 9} width={116} height={16} rx={3} fill="#0f172a" opacity={0.92} />
             <text x={mx} y={my + 3} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
               {t.label}
             </text>
