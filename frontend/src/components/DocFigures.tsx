@@ -2516,6 +2516,331 @@ export function GamutFigure() {
 }
 
 // ---------------------------------------------------------------------------
+// PTS vs DTS — delivery (decode) order vs display order
+// ---------------------------------------------------------------------------
+export function PtsDtsFigure() {
+  // Frames in DELIVERY order. Each carries (DTS, PTS).
+  // Equivalent display order: I B B P B B P  (positions 0-6)
+  const frames = [
+    { type: 'I', dts: 0, pts: 0 },
+    { type: 'P', dts: 1, pts: 3 },
+    { type: 'B', dts: 2, pts: 1 },
+    { type: 'B', dts: 3, pts: 2 },
+    { type: 'P', dts: 4, pts: 6 },
+    { type: 'B', dts: 5, pts: 4 },
+    { type: 'B', dts: 6, pts: 5 },
+  ]
+  const fw = 64
+  const fg = 18
+  const xStart = (720 - (frames.length * fw + (frames.length - 1) * fg)) / 2
+
+  const color = (t: string) => {
+    if (t === 'I') return { fill: '#22d3ee', text: '#0f172a' }
+    if (t === 'P') return { fill: '#1d4ed8', text: '#f1f5f9' }
+    return { fill: '#475569', text: '#f1f5f9' }
+  }
+
+  const yTop = 60
+  const yBot = 200
+  const boxH = 52
+
+  return (
+    <svg
+      viewBox="0 0 720 304"
+      width="100%"
+      role="img"
+      aria-label="DTS delivery order vs PTS display order"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {/* Row labels */}
+      <text x={36} y={32} fontSize={10.5} fontWeight={700} fill="#22d3ee" letterSpacing="0.08em">
+        DELIVERY ORDER · DTS — what the decoder receives
+      </text>
+      <text x={36} y={184} fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.08em">
+        DISPLAY ORDER · PTS — what the viewer sees
+      </text>
+
+      {/* Delivery row */}
+      {frames.map((f, i) => {
+        const x = xStart + i * (fw + fg)
+        const c = color(f.type)
+        return (
+          <g key={`d-${i}`}>
+            <rect x={x} y={yTop} width={fw} height={boxH} rx={5} fill={c.fill} />
+            <text x={x + fw / 2} y={yTop + 22} textAnchor="middle" fontSize={18} fontWeight={700} fill={c.text}>
+              {f.type}
+            </text>
+            <text x={x + fw / 2} y={yTop + 40} textAnchor="middle" fontSize={9.5} fill={c.text} fontFamily="ui-monospace, monospace">
+              DTS={f.dts}
+            </text>
+            <text x={x + fw / 2} y={yTop - 6} textAnchor="middle" fontSize={9.5} fill="#94a3b8">
+              PTS={f.pts}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Display row — sort frames by PTS */}
+      {[...frames]
+        .sort((a, b) => a.pts - b.pts)
+        .map((f, i) => {
+          const x = xStart + i * (fw + fg)
+          const c = color(f.type)
+          return (
+            <g key={`p-${i}`}>
+              <rect x={x} y={yBot} width={fw} height={boxH} rx={5} fill={c.fill} opacity={0.85} />
+              <text x={x + fw / 2} y={yBot + 22} textAnchor="middle" fontSize={18} fontWeight={700} fill={c.text}>
+                {f.type}
+              </text>
+              <text x={x + fw / 2} y={yBot + 40} textAnchor="middle" fontSize={9.5} fill={c.text} fontFamily="ui-monospace, monospace">
+                PTS={f.pts}
+              </text>
+            </g>
+          )
+        })}
+
+      {/* Connecting lines: each frame at delivery position i goes to display position = f.pts */}
+      {frames.map((f, i) => {
+        const xFrom = xStart + i * (fw + fg) + fw / 2
+        const xTo = xStart + f.pts * (fw + fg) + fw / 2
+        return (
+          <path
+            key={`l-${i}`}
+            d={`M ${xFrom} ${yTop + boxH} C ${xFrom} ${(yTop + yBot) / 2}, ${xTo} ${(yTop + yBot) / 2}, ${xTo} ${yBot}`}
+            stroke={f.type === 'I' ? '#22d3ee' : f.type === 'P' ? '#1d4ed8' : '#475569'}
+            strokeWidth={1.2}
+            fill="none"
+            opacity={0.55}
+            strokeDasharray={f.type === 'B' ? '3 3' : undefined}
+          />
+        )
+      })}
+
+      {/* Footer */}
+      <rect x={36} y={266} width={648} height={32} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={282} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        FOR I/P: DTS = PTS · FOR B: PTS &gt; DTS (decoded before, shown after)
+      </text>
+      <text x={360} y={294} textAnchor="middle" fontSize={9.5} fill="#64748b">
+        the container (MP4 / MPEG-TS / CMAF) stores both timestamps per sample
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// HMAC signed-URL flow — sign + verify
+// ---------------------------------------------------------------------------
+export function HmacFlowFigure() {
+  return (
+    <svg
+      viewBox="0 0 720 280"
+      width="100%"
+      role="img"
+      aria-label="HMAC sign and verify flow"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <ArrowMarker id="hmac-arrow" color="#22d3ee" />
+        <ArrowMarker id="hmac-arrow-amber" color="#f59e0b" />
+      </defs>
+
+      {/* SIGN PANEL (left) */}
+      <text x={170} y={28} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.1em">
+        ① SIGN · server side
+      </text>
+
+      <rect x={40} y={50} width={140} height={48} rx={6} fill="#1e293b" stroke="#22d3ee" />
+      <text x={110} y={68} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">KEY</text>
+      <text x={110} y={84} textAnchor="middle" fontSize={9.5} fill="#94a3b8">secret · never sent</text>
+
+      <rect x={40} y={110} width={260} height={48} rx={6} fill="#1e293b" stroke="#334155" />
+      <text x={170} y={128} textAnchor="middle" fontSize={11} fontWeight={700} fill="#e2e8f0" letterSpacing="0.06em">MESSAGE</text>
+      <text x={170} y={144} textAnchor="middle" fontSize={9} fill="#94a3b8" fontFamily="ui-monospace, monospace">
+        user=alice&exp=1781…
+      </text>
+
+      <line x1={180} y1={74} x2={210} y2={74} stroke="#22d3ee" strokeWidth={1.5} markerEnd="url(#hmac-arrow)" />
+      <line x1={300} y1={134} x2={210} y2={104} stroke="#22d3ee" strokeWidth={1.5} markerEnd="url(#hmac-arrow)" />
+
+      <rect x={210} y={64} width={120} height={48} rx={6} fill="#0f172a" stroke="#22d3ee" strokeWidth={1.5} />
+      <text x={270} y={82} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">HMAC-SHA256</text>
+      <text x={270} y={98} textAnchor="middle" fontSize={9.5} fill="#94a3b8">key + message → tag</text>
+
+      <line x1={330} y1={88} x2={362} y2={88} stroke="#22d3ee" strokeWidth={1.5} markerEnd="url(#hmac-arrow)" />
+
+      <rect x={362} y={64} width={106} height={48} rx={6} fill="#1e293b" stroke="#22d3ee" />
+      <text x={415} y={82} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee" letterSpacing="0.06em">TAG</text>
+      <text x={415} y={98} textAnchor="middle" fontSize={9.5} fill="#94a3b8" fontFamily="ui-monospace, monospace">32 bytes</text>
+
+      {/* URL emitted */}
+      <rect x={40} y={172} width={428} height={28} rx={4} fill="#0f172a" stroke="#475569" />
+      <text x={56} y={190} fontSize={10} fill="#cbd5e1" fontFamily="ui-monospace, monospace">
+        license.key?user=alice&exp=1781…&nonce=…&sig=base64url(tag)
+      </text>
+
+      {/* Right panel — VERIFY */}
+      <text x={604} y={28} textAnchor="middle" fontSize={11} fontWeight={700} fill="#f59e0b" letterSpacing="0.1em">
+        ② VERIFY · receiver
+      </text>
+
+      <rect x={500} y={50} width={194} height={50} rx={6} fill="#1e293b" stroke="#f59e0b" />
+      <text x={597} y={68} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#f59e0b" letterSpacing="0.06em">
+        URL ARRIVES
+      </text>
+      <text x={597} y={82} textAnchor="middle" fontSize={9} fill="#94a3b8">
+        extract message + tag
+      </text>
+      <text x={597} y={94} textAnchor="middle" fontSize={9.5} fill="#cbd5e1" fontStyle="italic">
+        same KEY held server-side
+      </text>
+
+      <line x1={597} y1={102} x2={597} y2={130} stroke="#f59e0b" strokeWidth={1.5} markerEnd="url(#hmac-arrow-amber)" />
+
+      <rect x={500} y={132} width={194} height={42} rx={6} fill="#0f172a" stroke="#f59e0b" />
+      <text x={597} y={150} textAnchor="middle" fontSize={11} fontWeight={700} fill="#f59e0b" letterSpacing="0.06em">RECOMPUTE HMAC</text>
+      <text x={597} y={164} textAnchor="middle" fontSize={9.5} fill="#94a3b8">→ expected_tag</text>
+
+      <line x1={597} y1={174} x2={597} y2={200} stroke="#f59e0b" strokeWidth={1.5} markerEnd="url(#hmac-arrow-amber)" />
+
+      <rect x={500} y={202} width={194} height={42} rx={6} fill="#1e293b" stroke="#f59e0b" strokeDasharray="4 3" />
+      <text x={597} y={222} textAnchor="middle" fontSize={10.5} fontWeight={700} fill="#cbd5e1" letterSpacing="0.06em">
+        constant-time compare
+      </text>
+      <text x={597} y={236} textAnchor="middle" fontSize={9.5} fill="#94a3b8">
+        match → trust · mismatch → 403
+      </text>
+
+      {/* Footer */}
+      <rect x={36} y={254} width={648} height={20} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={268} textAnchor="middle" fontSize={9.5} fill="#64748b" letterSpacing="0.06em">
+        the KEY never leaves the server · anyone can verify with the KEY but no one can forge a TAG without it
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// HTTP versions — first-byte timeline H1 vs H2 vs H3
+// ---------------------------------------------------------------------------
+export function HttpVersionsFigure() {
+  // Setup phases per protocol — TCP / TLS / GET / RESP, in RTT units (1 RTT = 30 ms here).
+  // Each segment shows its phase. Total length = time to first byte.
+  type Phase = { label: string; rttDur: number; fill: string }
+  type Proto = {
+    name: string
+    sub: string
+    phases: Phase[]
+    note: string
+  }
+
+  const PROTO_W = 600
+  const xStart = 100
+  const oneRtt = 70 // px per RTT
+  const protocols: Proto[] = [
+    {
+      name: 'HTTP/1.1',
+      sub: 'TCP + TLS 1.3 · 2 RTT handshake',
+      phases: [
+        { label: 'TCP', rttDur: 1, fill: '#475569' },
+        { label: 'TLS', rttDur: 1, fill: '#1d4ed8' },
+        { label: 'GET', rttDur: 0.5, fill: '#22d3ee' },
+        { label: 'RESP', rttDur: 0.5, fill: '#10b981' },
+      ],
+      note: '3 RTTs to first byte',
+    },
+    {
+      name: 'HTTP/2',
+      sub: 'TCP + TLS 1.3 · multiplexed streams',
+      phases: [
+        { label: 'TCP', rttDur: 1, fill: '#475569' },
+        { label: 'TLS', rttDur: 1, fill: '#1d4ed8' },
+        { label: 'GET', rttDur: 0.5, fill: '#22d3ee' },
+        { label: 'RESP', rttDur: 0.5, fill: '#10b981' },
+      ],
+      note: '3 RTTs — same; later requests reuse the connection (0 RTT each)',
+    },
+    {
+      name: 'HTTP/3',
+      sub: 'QUIC over UDP · 1-RTT or 0-RTT',
+      phases: [
+        { label: 'QUIC + TLS', rttDur: 1, fill: '#1d4ed8' },
+        { label: 'GET', rttDur: 0.5, fill: '#22d3ee' },
+        { label: 'RESP', rttDur: 0.5, fill: '#10b981' },
+      ],
+      note: '2 RTTs first time · 1 RTT (0-RTT) on resume',
+    },
+  ]
+
+  return (
+    <svg
+      viewBox="0 0 720 280"
+      width="100%"
+      role="img"
+      aria-label="HTTP/1.1 vs HTTP/2 vs HTTP/3 first-byte timeline"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      {/* Axis */}
+      <text x={36} y={28} fontSize={10.5} fontWeight={700} fill="#94a3b8" letterSpacing="0.08em">
+        TIME TO FIRST BYTE (cold start)
+      </text>
+      <line x1={xStart} y1={42} x2={xStart + 4 * oneRtt} y2={42} stroke="#334155" />
+      {[0, 1, 2, 3].map((r) => {
+        const x = xStart + r * oneRtt
+        return (
+          <g key={r}>
+            <line x1={x} y1={38} x2={x} y2={46} stroke="#334155" />
+            <text x={x} y={56} textAnchor="middle" fontSize={9.5} fill="#64748b">
+              {r} RTT
+            </text>
+          </g>
+        )
+      })}
+
+      {protocols.map((p, i) => {
+        const y = 80 + i * 60
+        let cursor = xStart
+        return (
+          <g key={p.name}>
+            <text x={92} y={y + 14} textAnchor="end" fontSize={11.5} fontWeight={700} fill="#e2e8f0">
+              {p.name}
+            </text>
+            <text x={92} y={y + 28} textAnchor="end" fontSize={9} fill="#94a3b8">
+              {p.sub}
+            </text>
+
+            {p.phases.map((ph, pi) => {
+              const w = ph.rttDur * oneRtt
+              const sx = cursor
+              cursor += w
+              return (
+                <g key={pi}>
+                  <rect x={sx} y={y} width={w} height={32} rx={3} fill={ph.fill} opacity={0.85} />
+                  {w > 36 && (
+                    <text x={sx + w / 2} y={y + 21} textAnchor="middle" fontSize={10} fontWeight={600} fill="#f1f5f9">
+                      {ph.label}
+                    </text>
+                  )}
+                </g>
+              )
+            })}
+            <text x={cursor + 8} y={y + 21} fontSize={9.5} fill="#64748b">
+              {p.note}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* Footer caption */}
+      <rect x={36} y={246} width={648} height={28} rx={4} fill="#0f172a" stroke="#334155" />
+      <text x={360} y={264} textAnchor="middle" fontSize={10} fill="#64748b" letterSpacing="0.06em">
+        1 RTT ≈ 20–80 ms over Wi-Fi · 200+ ms over poor mobile · each saved RTT shaves startup time
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
 // DRM-lite end-to-end flow (this demo's actual encryption + signed URL)
 // ---------------------------------------------------------------------------
 export function DRMLiteFlowFigure() {

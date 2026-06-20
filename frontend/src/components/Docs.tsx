@@ -28,6 +28,9 @@ import {
   AudioSamplingFigure,
   ChromaSubsamplingFigure,
   GamutFigure,
+  PtsDtsFigure,
+  HmacFlowFigure,
+  HttpVersionsFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -579,6 +582,322 @@ const CHAPTERS: Chapter[] = [
           needs to know all three to map pixel values back to the correct light. The HEVC
           bitstream carries them in metadata (color primaries / transfer characteristics /
           matrix coefficients fields).
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'time-timestamps',
+    title: 'Time, clocks & timestamps',
+    blurb: 'PTS, DTS, media time vs wall clock, A/V sync, the live edge.',
+    render: () => (
+      <>
+        <p>
+          Almost every later chapter — SSAI, Live, Trick-play, Manifest deep-dive — assumes
+          a time model the reader already understands. This chapter is that model: how
+          decoders track media time, how that maps to the viewer's wall clock, and why A/V
+          sync is a real engineering problem.
+        </p>
+
+        <h3>The 90 kHz clock</h3>
+        <p>
+          MPEG decided in 1993 that media time would tick at <strong>90,000 Hz</strong>. Every
+          sample, every frame, every audio packet carries a timestamp in these units. 90 kHz
+          is divisible by every common video frame rate (24, 25, 30, 60) and audio sample rate
+          (8, 16, 32, 48 kHz). One tick ≈ 11.1 µs.
+        </p>
+        <p>
+          ISO BMFF / CMAF use a flexible per-track <code>timescale</code> instead of a fixed
+          90 kHz. The principle is the same: every timestamp is in ticks of the track's clock.
+        </p>
+
+        <h3>PTS vs DTS — decode order ≠ display order</h3>
+        <p>
+          B-frames (covered in <em>Codecs</em>) are predicted from BOTH past and future I/P
+          frames. So the decoder needs the future frame BEFORE it can render the B-frame in
+          between. Decode and display orders are different:
+        </p>
+        <div className="docs-figure">
+          <PtsDtsFigure />
+        </div>
+        <ul>
+          <li><strong>DTS</strong> (Decoding Timestamp) — when this frame should be handed to the decoder.</li>
+          <li><strong>PTS</strong> (Presentation Timestamp) — when the decoded frame should be displayed.</li>
+        </ul>
+        <p>
+          For an I- or P-frame, DTS = PTS. For a B-frame, PTS &gt; DTS — the decoder
+          receives the frame earlier than it's shown. Container formats (MP4, MPEG-TS, CMAF)
+          carry both timestamps per sample.
+        </p>
+
+        <h3>Media time vs wall-clock time</h3>
+        <p>
+          <strong>Media time</strong> starts at 0 at the beginning of the program. The seek
+          bar reads media time. VOD only ever needs this.
+        </p>
+        <p>
+          <strong>Wall-clock time</strong> is the real-world time. Live streaming needs it to
+          answer "how stale am I vs the live edge?" and "what time is it on the air?"
+        </p>
+        <p>
+          HLS anchors the two with <code>#EXT-X-PROGRAM-DATE-TIME</code> on a live media
+          playlist:
+        </p>
+        <pre><code>{`#EXT-X-PROGRAM-DATE-TIME:2026-06-19T14:30:00Z
+#EXTINF:4.000,
+segment_8123.ts`}</code></pre>
+        <p>
+          Every later segment's wall-clock time = anchor + cumulative media duration. DASH
+          uses <code>availabilityStartTime</code> on the MPD root and{' '}
+          <code>presentationTimeOffset</code> per period for the same purpose.
+        </p>
+
+        <h3>PCR — TS-level synchronisation</h3>
+        <p>
+          MPEG Transport Stream (.ts) carries a <strong>Program Clock Reference</strong> at
+          the packet level, embedded periodically in the elementary stream. The decoder uses
+          PCR to re-derive its local 90 kHz clock from the wire — it's how the receiver stays
+          synchronised with the encoder despite network jitter. CMAF doesn't have PCR; the
+          player relies on segment boundaries + the manifest timeline.
+        </p>
+
+        <h3>A/V sync</h3>
+        <p>
+          Video and audio are decoded by independent paths inside the player. Each has its
+          own clock derived from PTS. Modern decoders run a slave-master sync loop: audio is
+          usually the master (a glitch is more annoying than a hiccup), video adjusts to
+          match by dropping or repeating frames.
+        </p>
+        <p>
+          Tolerance: lipsync that lags by more than ~45 ms is detectable; more than ~125 ms
+          is actively distracting. ATSC A/85 and ITU-R BT.1359 specify these thresholds.
+        </p>
+
+        <h3>The live edge</h3>
+        <p>
+          The <strong>live edge</strong> is the most recent segment available. The player's
+          distance from the edge is the latency budget covered in <em>Live streaming pipeline</em>.
+          A player at the edge sees the encoder's most-recent output; a player in DVR mode
+          sees an older segment from the retention window.
+        </p>
+
+        <h3>Time-shift and DVR window</h3>
+        <p>
+          Live HLS keeps the last N segments in the manifest (sliding window). The retention
+          tail is the <strong>DVR window</strong> — pause, scrub-back and restart-from-the-top
+          all key off how far back PROGRAM-DATE-TIME reaches. Real OTT live keeps anywhere
+          from 30 min (sports) to 7 days (catch-up TV) of DVR.
+        </p>
+
+        <h3>Edge cases</h3>
+        <ul>
+          <li><strong>Clock drift across encoders.</strong> Multi-camera live ingests must NTP-sync within ms; otherwise inter-cam switching glitches.</li>
+          <li><strong>Daylight saving.</strong> PROGRAM-DATE-TIME is always UTC. Frontend converts to viewer-local for display.</li>
+          <li><strong>Leap seconds.</strong> Most pipelines use UTC-SLS or smear the leap second to avoid 23:59:60. ESPN famously dropped a frame in 2008.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'crypto-basics',
+    title: 'Cryptography primitives',
+    blurb: 'AES, HMAC, nonces, signed URLs — what the DRM and auth chapters quietly assume.',
+    render: () => (
+      <>
+        <p>
+          DRM-lite uses AES-128 to encrypt segments and HMAC to sign license URLs. Auth uses
+          HMAC-SHA256 to sign JWTs. The chapters describe the wiring but assume the reader
+          knows what these primitives are. This chapter is the assumed background.
+        </p>
+
+        <h3>Symmetric vs asymmetric</h3>
+        <p>
+          <strong>Symmetric</strong> cryptography uses one secret key shared by both sides
+          — fast, but the key has to be distributed securely. AES, HMAC, and DRM content
+          keys are all symmetric.
+        </p>
+        <p>
+          <strong>Asymmetric</strong> uses a key pair (public + private). Slower, but the
+          public half can be published. TLS handshake + JWT signatures (RS256, ES256) use
+          asymmetric. JWT HS256 (this demo) uses symmetric.
+        </p>
+
+        <h3>AES — Advanced Encryption Standard</h3>
+        <p>
+          Block cipher. Takes a 128-bit block of plaintext + a key (128, 192, or 256 bits),
+          produces a 128-bit block of ciphertext. Universal hardware support since ~2010 via
+          AES-NI on Intel / ARMv8 crypto extensions.
+        </p>
+        <p>
+          AES alone only handles one block at a time; to encrypt a long stream you wrap it
+          in a <strong>mode of operation</strong>:
+        </p>
+        <ul>
+          <li><strong>CBC</strong> (Cipher Block Chaining) — each block XORs with the previous ciphertext before encrypt. Needs an IV. Order-dependent. HLS classic <code>#EXT-X-KEY METHOD=AES-128</code> uses CBC.</li>
+          <li><strong>CTR</strong> (Counter mode) — XOR plaintext with AES(counter). Counter increments per block. Parallelisable. Used by CENC <code>cenc</code> scheme.</li>
+          <li><strong>GCM</strong> (Galois/Counter Mode) — CTR + authentication tag in one pass. Most modern. TLS 1.3 uses it.</li>
+          <li><strong>CBCS</strong> — CBC with chunked encryption. Used by CENC <code>cbcs</code> scheme (FairPlay-compatible).</li>
+        </ul>
+
+        <h3>HMAC — keyed hash for authentication</h3>
+        <p>
+          <strong>HMAC</strong> (Hash-based Message Authentication Code) takes a key and a
+          message, produces a fixed-size tag (32 bytes for HMAC-SHA256). Anyone with the key
+          can verify; anyone without the key can't forge a valid tag for a chosen message.
+        </p>
+        <div className="docs-figure">
+          <HmacFlowFigure />
+        </div>
+        <pre><code>{`tag = HMAC(key, "user=alice&exp=1781796000&nonce=abc123")
+url = "license.key?user=alice&exp=1781796000&nonce=abc123&sig=" + base64url(tag)`}</code></pre>
+        <p>
+          The receiver recomputes the HMAC from the URL's query params and compares to the
+          provided sig. Match → trusted; mismatch → 403. The key never leaves the server.
+          Comparison must use <strong>constant-time</strong> equality (e.g., <code>MessageDigest.isEqual</code>)
+          to defeat timing side channels.
+        </p>
+
+        <h3>Nonce, IV, salt — non-secret random values</h3>
+        <ul>
+          <li><strong>Nonce</strong> ("number used once") — single-use random value bound to an operation. Prevents replay attacks. License URLs add a nonce so the same signed URL can't be replayed twice.</li>
+          <li><strong>IV</strong> (Initialisation Vector) — random per-message starting state for a cipher in a chaining mode. AES-CBC requires a different IV per message under the same key.</li>
+          <li><strong>Salt</strong> — random value appended to a password before hashing. Defeats rainbow tables. BCrypt + Argon2 generate salt automatically.</li>
+        </ul>
+
+        <h3>Hash functions</h3>
+        <ul>
+          <li><strong>SHA-256</strong> — 32-byte output. Modern default. Used in HMAC-SHA256, JWT HS256.</li>
+          <li><strong>SHA-1</strong> — 20-byte output. Broken since 2017. Don't use for security.</li>
+          <li><strong>MD5</strong> — 16-byte output. Completely broken since ~2008. Sometimes used as a non-security checksum.</li>
+          <li><strong>BLAKE3</strong> — modern, ~5× SHA-256 throughput. Not yet widespread in OTT but rising.</li>
+        </ul>
+
+        <h3>Key derivation</h3>
+        <p>
+          A password is not a key — keys need to be uniform random bits.{' '}
+          <strong>KDF</strong> functions (PBKDF2, scrypt, Argon2) stretch a password into a
+          key with a salt and an iteration count tuned to be slow. BCrypt is a password-
+          hashing function with this property built in.
+        </p>
+
+        <h3>Signed URLs — the pattern</h3>
+        <p>
+          Used everywhere in OTT — CDN URLs, DRM license URLs, share links. The pattern:
+        </p>
+        <ol>
+          <li>Server constructs a canonical message from the URL's query params: <code>"path=/x&exp=N&user=Y"</code>.</li>
+          <li>Server computes <code>sig = HMAC(secret_key, canonical_message)</code>.</li>
+          <li>Server appends <code>&sig=base64url(sig)</code> to the URL and hands it to the client.</li>
+          <li>The receiving server recomputes the HMAC from the query params and compares with constant-time equality.</li>
+        </ol>
+        <p>
+          Same shape, different consumers: CloudFront / Akamai / Fastly all accept signed
+          URLs, but the canonical-message format and signature encoding differ per vendor.
+          This demo's license endpoint uses the same pattern.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'networking-basics',
+    title: 'Networking primitives',
+    blurb: 'TCP / UDP / QUIC, HTTP/1-2-3, TLS, byte range, CORS — the wire layer everything else rides on.',
+    render: () => (
+      <>
+        <p>
+          Every chapter from CDN onwards assumes the reader knows how the bytes get from
+          origin to viewer. This chapter is that layer — what HTTP / TCP / UDP / TLS
+          guarantee, what HTTP/2 + HTTP/3 changed, and the specific HTTP features (byte
+          range, CORS) the streaming stack relies on.
+        </p>
+
+        <h3>TCP vs UDP vs QUIC</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Protocol</th><th>What it does</th></tr></thead>
+          <tbody>
+            <tr><td>TCP</td><td>Reliable byte stream. Guarantees in-order delivery; retries lost packets. Adds latency under packet loss. Substrate of HTTP/1.1 + HTTP/2.</td></tr>
+            <tr><td>UDP</td><td>Unreliable datagrams. No retries, no ordering, no congestion control. Substrate for QUIC, SRT, RTP, WebRTC.</td></tr>
+            <tr><td>QUIC</td><td>UDP-based but with reliability + congestion control built in. Multiplexed streams without head-of-line blocking. Substrate of HTTP/3.</td></tr>
+          </tbody>
+        </table>
+
+        <h3>HTTP versions</h3>
+        <p>
+          Same semantics (GET, POST, headers, status codes), different wire format and
+          connection behaviour:
+        </p>
+        <div className="docs-figure">
+          <HttpVersionsFigure />
+        </div>
+        <ul>
+          <li><strong>HTTP/1.1</strong> (1997) — one request per TCP connection at a time (pipelining never worked). Browsers open ~6 connections per origin. Plain text.</li>
+          <li><strong>HTTP/2</strong> (2015) — binary framing on a single TCP connection. Multiplexed concurrent streams. Header compression. Server push (now deprecated). LL-HLS leans on it.</li>
+          <li><strong>HTTP/3</strong> (2022) — same semantics as HTTP/2, but runs over QUIC (UDP). No TCP head-of-line blocking. 0-RTT resumption. Better on mobile / lossy networks.</li>
+        </ul>
+
+        <h3>TLS — encryption + identity</h3>
+        <p>
+          <strong>TLS</strong> wraps any transport in encryption + server authentication. The
+          modern version is <strong>TLS 1.3</strong> (2018). The handshake establishes a
+          shared symmetric key via Diffie-Hellman; the server proves it owns its hostname
+          with a certificate signed by a Certificate Authority. After the handshake, all
+          bytes are AES-GCM encrypted.
+        </p>
+        <p>
+          TLS 1.3 is 1-RTT (one round trip before data flows) and supports 0-RTT for resumed
+          sessions. CDN edges terminate TLS to save the origin from the handshake cost on
+          every viewer.
+        </p>
+
+        <h3>HTTP byte range — partial GETs</h3>
+        <p>
+          Trick-play and CMAF need to fetch just part of a file. Standard HTTP:
+        </p>
+        <pre><code>{`GET /segment_001.ts HTTP/1.1
+Range: bytes=48000-99999
+
+HTTP/1.1 206 Partial Content
+Content-Range: bytes 48000-99999/200000
+Content-Length: 52000
+[bytes]`}</code></pre>
+        <p>
+          Every CDN handles byte-range natively. The HLS{' '}
+          <code>#EXT-X-BYTERANGE:length@offset</code> tag in an I-frame playlist resolves to
+          this Range header.
+        </p>
+
+        <h3>CORS — cross-origin resource sharing</h3>
+        <p>
+          Browsers block cross-origin reads by default. To allow a page at{' '}
+          <code>player.example.com</code> to fetch a segment at <code>cdn.example.net</code>,
+          the CDN must respond with <code>Access-Control-Allow-Origin: *</code> (or the
+          specific origin). For non-simple requests (custom headers, non-GET methods), the
+          browser sends a <strong>preflight</strong> OPTIONS request first.
+        </p>
+        <p>
+          Two places this bites OTT:
+        </p>
+        <ul>
+          <li>SSAI: ad-service segments are served from a different origin than the program. Ad-service must send CORS headers.</li>
+          <li>Bearer tokens: the player's <code>xhrSetup</code> shouldn't attach the program JWT to cross-origin segment requests — it leaks the token to whoever serves the segment.</li>
+        </ul>
+
+        <h3>DNS</h3>
+        <p>
+          Hostname resolution. For OTT, the load-bearing detail is that{' '}
+          <strong>geo-routing</strong> often happens here — when a viewer queries{' '}
+          <code>cdn.example.com</code>, the authoritative DNS returns the IP of the nearest
+          CDN PoP based on the resolver's network. Multi-CDN routing is often a DNS-level
+          switch via short-TTL CNAME records.
+        </p>
+
+        <h3>Connection lifecycle</h3>
+        <p>
+          Each new TCP+TLS connection costs 2-3 RTTs of handshake.{' '}
+          <strong>Keep-alive</strong> (HTTP/1.1) and connection reuse (HTTP/2, HTTP/3) avoid
+          re-handshaking per request — a big deal when a player fetches dozens of small
+          segments per minute. Cold connection on slow Wi-Fi can easily add 500 ms of
+          latency to the first frame.
         </p>
       </>
     ),
@@ -2701,7 +3020,7 @@ segment_001.ts`}</code></pre>
 const PARTS: { name: string; slugs: string[] }[] = [
   {
     name: 'Foundations',
-    slugs: ['guide', 'overview', 'audio-basics', 'video-basics', 'color-basics', 'hls', 'containers', 'codecs', 'manifest'],
+    slugs: ['guide', 'overview', 'audio-basics', 'video-basics', 'color-basics', 'time-timestamps', 'crypto-basics', 'networking-basics', 'hls', 'containers', 'codecs', 'manifest'],
   },
   {
     name: 'The publishing pipeline',
@@ -2735,6 +3054,9 @@ const READING_MINUTES: Record<string, number> = {
   'audio-basics': 5,
   'video-basics': 6,
   'color-basics': 6,
+  'time-timestamps': 7,
+  'crypto-basics': 7,
+  'networking-basics': 6,
   hls: 6,
   containers: 5,
   codecs: 7,
@@ -2774,6 +3096,9 @@ const SEE_ALSO: Record<string, string[]> = {
   'audio-basics': ['codecs', 'mezzanine'],
   'video-basics': ['color-basics', 'codecs'],
   'color-basics': ['video-basics', 'mezzanine'],
+  'time-timestamps': ['live', 'ssai', 'trick-play'],
+  'crypto-basics': ['drm', 'auth', 'anti-piracy'],
+  'networking-basics': ['cdn', 'live', 'player'],
   hls: ['manifest', 'containers'],
   containers: ['codecs', 'manifest'],
   codecs: ['audio-basics', 'video-basics', 'transcode-package'],
