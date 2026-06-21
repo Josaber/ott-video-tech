@@ -96,12 +96,11 @@ export function QoeTelemetryFigure() {
         x1={boxes[3].x + boxW / 2}
         y1={laneY + boxH}
         x2={boxes[3].x + boxW / 2}
-        y2={dash.y - 4}
+        y2={dash.y - 2}
         stroke="#f59e0b"
         strokeWidth={1.6}
         markerEnd="url(#qoeArrAmber)"
       />
-      <line x1={boxes[3].x + boxW / 2} y1={dash.y - 4} x2={dash.x + 520 / 2} y2={dash.y - 4} stroke="#f59e0b" strokeWidth={1.4} />
       <rect x={dash.x} y={dash.y} width={520} height={50} rx={6} fill="#f59e0b" fillOpacity={0.22} stroke="#f59e0b" strokeWidth={1.4} />
       <text x={dash.x + 260} y={dash.y + 22} textAnchor="middle" fontSize={13} fontWeight={700} fill="#fbbf24">
         Dashboards · Alerts · A/B
