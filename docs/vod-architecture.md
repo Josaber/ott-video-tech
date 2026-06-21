@@ -1,42 +1,4 @@
-# VOD 视频网站系统架构设计 (v4)
-
-> 相比 v3，本版按第三轮评审落地了以下修正：
->
-> **P0 (语义错误)**
-> - Edge 副标题修正：`媒体 → CDN; API → Gateway; License → 直连 License Server`（license 不经 Gateway）
-> - KMS ↔ Packager **双向连线**（原图只画了 KMS → License 单向）
-> - 搜索 → Embedding 服务 **跨层连线**（语义搜索依赖 AI 层）
-> - "Active-Active" 描述细化：**媒资 Active-Standby，用户数据 Active-Active region-sharded**
-> - Forensic Watermark 标注 **离线 A/B + 运行时 session 拼接** 双形态
->
-> **P1 (补齐)**
-> - **AI 层增加 Row 2 训练闭环**：训练 Pipeline / Model Registry / 离线评估 / 模型 A/B / 向量索引 / 在线学习
-> - **External Systems 独立分层**：支付 / DSP·SSP / CP Feed / IP 库 / 设备指纹 / FCM·APNs / DMCA
-> - **Publish 事件 fan-out**：发布节点带 ★，事件触发 媒资/通知/推荐冷启动/CDN 预热 四方下游
-> - **CMS → Workflow Orchestrator** 触发连线
-> - **DR / Backup / 多 Region** 独立卡片（替代原"多 Region"）
-> - **审计中心** 合并到任务队列卡（中心化日志）
-> - **数据脱敏 / DLP** 合并到 Vault 卡
->
-> **P2 (可视化)**
-> - **Manifest 服务挪到 Row 1** 与 Play Auth / License Server 并列
-> - 评论/弹幕 从 Row 2 移到 Row 3 (engagement)
-> - 推荐编排补 3 条虚线：→ Milvus（召回）、→ Feature Store（在线特征）、→ Triton（已有）
-> - Layer 5 内部连线：训练 → Registry → Triton 热加载
-> - 客户端 PII 脱敏标注
-> - Widevine L1/L2/L3 robustness 标注
->
-> 历史版本说明：
-> - v3 在 v2 基础上拆出 AI 层、移动 License Server、新增 KMS 横切
-> - v2 是初版，包含基本 7 层结构
->
-> **v4 后补丁 (P0 连线)**
-> - 7 条 External Systems ↔ Business 连线（支付/DSP/CP/IP/指纹/FCM/DMCA）
-> - 3 条 Manifest 服务出向（→ 媒资 / ADS / Forensic Watermark）
-> - 完整回源链路（视频 CDN → Origin Shield → 我方 Origin Cluster → Object Storage）
-> - Search → Milvus ANN 检索连线
-
----
+# VOD 视频网站系统架构设计
 
 ## 一、整体架构分层
 
@@ -92,7 +54,7 @@
 
 ---
 
-## 二、关键子系统（仅列变化点，其他参见 v2）
+## 二、关键子系统
 
 ### 1. 媒体管线 fan-out / fan-in
 
@@ -224,7 +186,7 @@ Manifest 请求 → Manifest 服务 → ADS 决策 → VAST 响应
 
 ---
 
-## 四、非功能性设计（同 v2，新增项加粗）
+## 四、非功能性设计
 
 | 维度 | 设计要点 |
 |------|---------|
@@ -254,13 +216,7 @@ Manifest 请求 → Manifest 服务 → ADS 决策 → VAST 响应
 
 ---
 
-## 六、技术选型（同 v2）
-
-略，参见 v2 文档表格。
-
----
-
-## 七、上线分阶段
+## 六、上线分阶段
 
 1. **MVP**：单 DRM、HLS、人工字幕、热门推荐、无广告、单 Region
 2. **V1**：多 DRM + KMS、Manifest 服务 (SSAI+个性化)、ASR 字幕、协同过滤、Image CDN、历史/收藏
