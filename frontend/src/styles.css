@@ -560,14 +560,20 @@ button {
   font-weight: 600;
   cursor: pointer;
   /* inline-flex so SVG icons + label sit on the same axis without
-     relying on the flaky verticalAlign: middle inline-baseline trick. */
+     relying on the flaky verticalAlign: middle inline-baseline trick.
+     line-height: 1 packs the text line-box to exactly font-size, which
+     puts the visible cap-height glyphs in the TOP of that box while the
+     icon's geometric centre is in the MIDDLE of its 14×14 box. Flex
+     align-items: center then centres the boxes but not the visible
+     centres, so the text reads ~2 px high. 1.5 gives the text enough
+     leading that the visible cluster sits at the line-box centre. */
   display: inline-flex;
   align-items: center;
   justify-content: center;
   gap: 6px;
   font-family: inherit;
   font-size: 14px;
-  line-height: 1;
+  line-height: 1.5;
 }
 button:disabled { opacity: 0.5; cursor: not-allowed; }
 button.secondary {
