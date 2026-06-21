@@ -51,10 +51,14 @@ export function QoeTelemetryFigure() {
         every player event flows through this chain; CDN logs join by shared session ID
       </text>
 
-      {/* CMCD lane callout (above main row) */}
-      <rect x={376} y={72} width={boxW + 176} height={28} rx={6} fill="#0b1322" stroke="#22d3ee" />
-      <text x={376 + (boxW + 176) / 2} y={91} textAnchor="middle" fontSize={11} fontWeight={700} fill="#22d3ee">
-        CMCD headers carry session-id on every CDN request — keys the join
+      {/* CMCD lane callout — spans from above the Player box to past Kafka so
+          it visually parallels the main row. Two lines keep it inside the box. */}
+      <rect x={24} y={64} width={W - 48} height={40} rx={6} fill="#0b1322" stroke="#22d3ee" />
+      <text x={W / 2} y={80} textAnchor="middle" fontSize={11.5} fontWeight={700} fill="#22d3ee">
+        CMCD (CTA-5004) — player attaches session-id to every CDN segment request
+      </text>
+      <text x={W / 2} y={96} textAnchor="middle" fontSize={10.5} fill="#cbd5e1">
+        the side channel that lets CDN access logs join the player telemetry by sid
       </text>
 
       {/* Stage boxes in a single row */}
