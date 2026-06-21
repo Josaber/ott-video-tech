@@ -1,21 +1,28 @@
 // ---------------------------------------------------------------------------
-// FAST channel EPG slice — a linear schedule strip with SCTE-35 ad markers
-// drawn as vertical bands inside each program block.
+// FAST channel EPG slice — portrait orientation: time runs top-to-bottom on
+// the left axis, programs stack as horizontal blocks in a single column.
+// SCTE-35 cue points sit as red markers on the *edge* of the schedule column
+// so they never overlap the program-block title text.
 // ---------------------------------------------------------------------------
 export function FastEpgFigure() {
-  const W = 720
-  const H = 280
-  const padL = 56
-  const padR = 24
-  const trackTop = 80
-  const trackH = 60
-  const innerW = W - padL - padR
+  const W = 560
+  const H = 640
 
-  // 6 PM to 11 PM (5 hours)
+  // 18:00 → 23:00 (5 hours) maps to the schedule column.
   const startMin = 18 * 60
   const endMin = 23 * 60
   const totalMin = endMin - startMin
-  const xOf = (min: number) => padL + ((min - startMin) / totalMin) * innerW
+
+  const headerH = 96
+  const padB = 100
+  const colTop = headerH
+  const colBottom = H - padB
+  const colHeight = colBottom - colTop
+  const yOf = (min: number) => colTop + ((min - startMin) / totalMin) * colHeight
+
+  const colLeft = 100
+  const colRight = W - 40
+  const colW = colRight - colLeft
 
   const programs = [
     { title: 'Sitcom: "Apartment 5B"', start: 18 * 60, end: 18 * 60 + 30, color: '#22d3ee' },
@@ -24,7 +31,7 @@ export function FastEpgFigure() {
     { title: 'Feature film: "Northwind"', start: 20 * 60, end: 22 * 60, color: '#f59e0b' },
     { title: 'Late night: "After Hours"', start: 22 * 60, end: 23 * 60, color: '#f43f5e' },
   ]
-  // SCTE-35 ad breaks — vertical markers
+
   const adBreaks = [
     18 * 60 + 15,
     18 * 60 + 55,
@@ -35,80 +42,132 @@ export function FastEpgFigure() {
     22 * 60 + 20,
   ]
 
+  const fmt = (min: number) => `${Math.floor(min / 60)}:${String(min % 60).padStart(2, '0')}`
+
   return (
     <svg
       viewBox={`0 0 ${W} ${H}`}
       width="100%"
       role="img"
-      aria-label="FAST channel evening schedule with SCTE-35 ad markers"
+      aria-label="FAST channel evening schedule with SCTE-35 ad markers (portrait)"
       style={{ display: 'block', maxWidth: '100%' }}
     >
       <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
-      <text x={W / 2} y={24} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
-        FAST CHANNEL EPG · 18:00 → 23:00 · SCTE-35 MARKERS = AD BREAK CUE-OUT POINTS
+
+      {/* Header */}
+      <text x={W / 2} y={26} textAnchor="middle" fontSize={12} fontWeight={700} fill="#f1f5f9" letterSpacing="0.06em">
+        FAST CHANNEL EPG — Drama 24
       </text>
-      <text x={padL} y={48} fontSize={11} fill="#cbd5e1">
-        Channel: Drama 24
+      <text x={W / 2} y={46} textAnchor="middle" fontSize={11} fill="#94a3b8">
+        18:00 → 23:00 · time flows top-to-bottom · SCTE-35 markers = ad break cue points
       </text>
 
-      {/* Time ruler */}
+      {/* Header legend */}
+      <g transform={`translate(${colLeft - 10} 64)`}>
+        <polygon points="0,2 10,2 5,10" fill="#f43f5e" />
+        <text x={18} y={11} fontSize={10.5} fill="#cbd5e1">
+          SCTE-35 CUE-OUT
+        </text>
+        <rect x={150} y={1} width={14} height={12} fill="#22d3ee" fillOpacity={0.35} stroke="#22d3ee" />
+        <text x={170} y={11} fontSize={10.5} fill="#cbd5e1">
+          program block (no seeking)
+        </text>
+      </g>
+
+      {/* Hour rule + tick marks on the left of the schedule column */}
       {[18, 19, 20, 21, 22, 23].map((h) => (
-        <g key={h}>
-          <line x1={xOf(h * 60)} y1={trackTop - 12} x2={xOf(h * 60)} y2={trackTop + trackH + 8} stroke="#1e293b" strokeWidth={1} />
-          <text x={xOf(h * 60)} y={trackTop - 18} textAnchor="middle" fontSize={10} fill="#94a3b8">
+        <g key={`hr-${h}`}>
+          <line
+            x1={colLeft - 6}
+            y1={yOf(h * 60)}
+            x2={colRight}
+            y2={yOf(h * 60)}
+            stroke="#1e293b"
+            strokeWidth={1}
+          />
+          <text
+            x={colLeft - 14}
+            y={yOf(h * 60) + 4}
+            textAnchor="end"
+            fontSize={12}
+            fontWeight={600}
+            fill="#cbd5e1"
+          >
             {String(h).padStart(2, '0')}:00
           </text>
         </g>
       ))}
 
+      {/* Program blocks — horizontal rectangles stacked vertically */}
       {programs.map((p, i) => {
-        const x = xOf(p.start)
-        const w = xOf(p.end) - x
+        const y = yOf(p.start)
+        const h = yOf(p.end) - y
         return (
-          <g key={i}>
-            <rect x={x} y={trackTop} width={w} height={trackH} rx={4} fill={p.color} fillOpacity={0.32} stroke={p.color} />
-            <text x={x + 8} y={trackTop + 22} fontSize={10.5} fontWeight={700} fill="#f1f5f9">
+          <g key={`prog-${i}`}>
+            <rect
+              x={colLeft}
+              y={y}
+              width={colW}
+              height={h}
+              rx={6}
+              fill={p.color}
+              fillOpacity={0.28}
+              stroke={p.color}
+              strokeWidth={1.4}
+            />
+            <text x={colLeft + 12} y={y + 22} fontSize={12.5} fontWeight={700} fill="#f1f5f9">
               {p.title}
             </text>
-            <text x={x + 8} y={trackTop + 38} fontSize={9.5} fill="#cbd5e1">
-              {Math.floor(p.start / 60)}:{String(p.start % 60).padStart(2, '0')} - {Math.floor(p.end / 60)}:{String(p.end % 60).padStart(2, '0')}
+            {h >= 38 && (
+              <text x={colLeft + 12} y={y + 38} fontSize={10.5} fill="#cbd5e1">
+                {fmt(p.start)} - {fmt(p.end)}
+              </text>
+            )}
+          </g>
+        )
+      })}
+
+      {/* SCTE-35 markers on the right edge of the schedule column. Triangle
+          sits OUTSIDE the column pointing left; a short tick reaches into the
+          column. The time label is right-anchored INSIDE the column on the
+          opposite side from the title text so they never collide. */}
+      {adBreaks.map((m, i) => {
+        const my = yOf(m)
+        return (
+          <g key={`ad-${i}`}>
+            <polygon
+              points={`${colRight + 14},${my - 6} ${colRight + 14},${my + 6} ${colRight + 4},${my}`}
+              fill="#f43f5e"
+            />
+            <line
+              x1={colRight + 4}
+              y1={my}
+              x2={colRight - 60}
+              y2={my}
+              stroke="#f43f5e"
+              strokeWidth={1.5}
+              strokeDasharray="3 3"
+            />
+            <text
+              x={colRight - 8}
+              y={my - 4}
+              textAnchor="end"
+              fontSize={10}
+              fill="#f43f5e"
+              fontWeight={700}
+            >
+              {fmt(m)}
             </text>
           </g>
         )
       })}
 
-      {/* SCTE-35 markers — small inverted triangle above the track (cue point)
-          and a tiny tick + dot below, so the program block text stays readable. */}
-      {adBreaks.map((m, i) => {
-        const mx = xOf(m)
-        return (
-          <g key={`ad-${i}`}>
-            {/* tick just above track */}
-            <line x1={mx} y1={trackTop - 8} x2={mx} y2={trackTop - 2} stroke="#f43f5e" strokeWidth={2} />
-            {/* downward triangle pointing at the cue point */}
-            <polygon
-              points={`${mx - 5},${trackTop - 16} ${mx + 5},${trackTop - 16} ${mx},${trackTop - 8}`}
-              fill="#f43f5e"
-            />
-            {/* dot below the track */}
-            <circle cx={mx} cy={trackTop + trackH + 10} r={3.5} fill="#f43f5e" />
-            <line x1={mx} y1={trackTop + trackH + 2} x2={mx} y2={trackTop + trackH + 6} stroke="#f43f5e" strokeWidth={1.5} />
-          </g>
-        )
-      })}
-
-      <g transform={`translate(${padL} ${trackTop + trackH + 40})`}>
-        <polygon points="0,0 10,0 5,8" fill="#f43f5e" />
-        <text x={18} y={8} fontSize={10} fill="#cbd5e1">
-          SCTE-35 CUE-OUT (ad break opportunity)
-        </text>
-        <rect x={240} y={-2} width={14} height={12} fill="#22d3ee" fillOpacity={0.35} stroke="#22d3ee" />
-        <text x={260} y={8} fontSize={10} fill="#cbd5e1">
-          program block (linear, no seeking)
-        </text>
-      </g>
-      <text x={padL} y={H - 16} fontSize={10} fill="#94a3b8">
-        Player tunes in, manifest is sliding-window live (DVR optional); SSAI swaps fills at each marker.
+      {/* Footer */}
+      <text x={W / 2} y={H - 56} textAnchor="middle" fontSize={11} fill="#94a3b8">
+        Player tunes in to a sliding-window live manifest (DVR optional).
+      </text>
+      <text x={W / 2} y={H - 36} textAnchor="middle" fontSize={11} fill="#94a3b8">
+        SSAI replaces filler at every SCTE-35 cue with a fresh ad pod.
       </text>
     </svg>
   )

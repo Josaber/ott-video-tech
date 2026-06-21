@@ -39,6 +39,9 @@ import {
   CmsWorkflowFigure,
   ConcurrentStreamGuardFigure,
   FastEpgFigure,
+  QoeTelemetryFigure,
+  CostBreakdownFigure,
+  CaptionsPipelineFigure,
 } from './figures'
 
 interface Chapter {
@@ -1927,6 +1930,9 @@ segment_000.ts
           <li><strong>Datazoom</strong> — collector layer; pipes events to any backend.</li>
         </ul>
         <h3>How instrumentation flows</h3>
+        <div className="docs-figure">
+          <QoeTelemetryFigure />
+        </div>
         <p>
           Player-side: hook into the events from the previous chapter, fire telemetry via XHR
           or sendBeacon. Batch and gzip locally. Vendor SDKs handle this for you. Server-side:
@@ -1970,6 +1976,10 @@ segment_000.ts
             <tr><td>DRM license issuance</td><td>$0.0001-0.001 / license. Free for hobbyist scale; enterprise contracts at low fractions of a cent.</td></tr>
           </tbody>
         </table>
+        <h3>Per viewer-hour breakdown</h3>
+        <div className="docs-figure">
+          <CostBreakdownFigure />
+        </div>
         <h3>Worked example</h3>
         <p>1 million viewer-hours of a 5 Mbps stream:</p>
         <ul>
@@ -2441,6 +2451,9 @@ en_0.vtt
         </p>
 
         <h3>Authoring & translation workflow</h3>
+        <div className="docs-figure">
+          <CaptionsPipelineFigure />
+        </div>
         <ol>
           <li><strong>Transcribe</strong> source-language audio. Auto (Whisper, Deepgram, AssemblyAI, Rev Reverb) costs ~$0.20-1.00 / minute and hits 92-97% word accuracy. Human transcription costs $1-5 / minute and hits 99%.</li>
           <li><strong>Align + clean.</strong> Force-align cues against the audio, split into reading-rate-compliant lines (max ~17 chars/sec, max 2 lines, max ~36 chars/line), add speaker IDs and sound effects for HoH captions.</li>
