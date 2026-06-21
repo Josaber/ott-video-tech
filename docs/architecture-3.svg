@@ -1,0 +1,687 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 2255" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#EEF2F7"/>
+    </linearGradient>
+
+    <linearGradient id="gClient" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#6366F1"/><stop offset="100%" stop-color="#818CF8"/></linearGradient>
+    <linearGradient id="gEdge"  x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#8B5CF6"/><stop offset="100%" stop-color="#A78BFA"/></linearGradient>
+    <linearGradient id="gGate"  x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#EC4899"/><stop offset="100%" stop-color="#F472B6"/></linearGradient>
+    <linearGradient id="gBiz"   x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#0EA5E9"/><stop offset="100%" stop-color="#38BDF8"/></linearGradient>
+    <linearGradient id="gAI"    x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#14B8A6"/><stop offset="100%" stop-color="#5EEAD4"/></linearGradient>
+    <linearGradient id="gMedia" x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#F59E0B"/><stop offset="100%" stop-color="#FBBF24"/></linearGradient>
+    <linearGradient id="gData"  x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#10B981"/><stop offset="100%" stop-color="#34D399"/></linearGradient>
+    <linearGradient id="gExt"   x1="0" y1="0" x2="1" y2="0"><stop offset="0%" stop-color="#64748B"/><stop offset="100%" stop-color="#94A3B8"/></linearGradient>
+
+    <linearGradient id="cClient" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#EEF2FF"/><stop offset="100%" stop-color="#E0E7FF"/></linearGradient>
+    <linearGradient id="cEdge"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F5F3FF"/><stop offset="100%" stop-color="#EDE9FE"/></linearGradient>
+    <linearGradient id="cGate"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FDF2F8"/><stop offset="100%" stop-color="#FCE7F3"/></linearGradient>
+    <linearGradient id="cBiz"    x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F0F9FF"/><stop offset="100%" stop-color="#E0F2FE"/></linearGradient>
+    <linearGradient id="cAI"     x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F0FDFA"/><stop offset="100%" stop-color="#CCFBF1"/></linearGradient>
+    <linearGradient id="cMedia"  x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#FFFBEB"/><stop offset="100%" stop-color="#FEF3C7"/></linearGradient>
+    <linearGradient id="cData"   x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#ECFDF5"/><stop offset="100%" stop-color="#D1FAE5"/></linearGradient>
+    <linearGradient id="cExt"    x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#F8FAFC"/><stop offset="100%" stop-color="#E2E8F0"/></linearGradient>
+
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feGaussianBlur in="SourceAlpha" stdDeviation="2"/><feOffset dx="0" dy="2"/>
+      <feComponentTransfer><feFuncA type="linear" slope="0.18"/></feComponentTransfer>
+      <feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#64748B"/>
+    </marker>
+    <marker id="arrowOrange" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#F97316"/>
+    </marker>
+    <marker id="arrowOrangeStart" viewBox="0 0 10 10" refX="1" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M10,0 L0,5 L10,10 z" fill="#F97316"/>
+    </marker>
+    <marker id="arrowTeal" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0F766E"/>
+    </marker>
+    <marker id="arrowBlue" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0369A1"/>
+    </marker>
+    <marker id="arrowPink" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#9D174D"/>
+    </marker>
+    <marker id="arrowGreen" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#065F46"/>
+    </marker>
+    <marker id="arrowViolet" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="10" markerHeight="10" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#7C3AED"/>
+    </marker>
+    <marker id="arrowGray" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#94A3B8"/>
+    </marker>
+    <marker id="arrowSky" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="9" markerHeight="9" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#0284C7"/>
+    </marker>
+  </defs>
+
+  <rect width="1600" height="2255" fill="url(#bg)"/>
+
+  <!-- Title -->
+  <text x="800" y="50" text-anchor="middle" font-size="28" font-weight="700" fill="#0F172A">VOD 视频网站 · 整体系统架构</text>
+  <text x="800" y="76" text-anchor="middle" font-size="13" fill="#64748B">推荐训练闭环 · 跨层调用 · Publish fan-out · External Systems · DR/Backup</text>
+
+  <!-- ============ Layer 1: Clients (y=100..240) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="100" width="1520" height="140" rx="14" fill="url(#cClient)" stroke="#C7D2FE"/>
+  </g>
+  <rect x="40" y="100" width="8" height="140" rx="4" fill="url(#gClient)"/>
+  <text x="70" y="132" font-size="16" font-weight="700" fill="#3730A3">客户端层 · Clients</text>
+  <text x="70" y="152" font-size="11" fill="#6366F1">Web · Mobile · TV · OTT · Cast · Player SDK · DRM Client · 离线下载</text>
+
+  <g font-size="13" fill="#312E81">
+    <g><rect x="80" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="177" y="196" text-anchor="middle" font-weight="600">Web Player</text>
+       <text x="177" y="216" text-anchor="middle" font-size="11" fill="#6366F1">HLS.js / Shaka / EME</text></g>
+    <g><rect x="287" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="384" y="196" text-anchor="middle" font-weight="600">iOS App</text>
+       <text x="384" y="216" text-anchor="middle" font-size="11" fill="#6366F1">AVPlayer · FairPlay</text></g>
+    <g><rect x="494" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="591" y="196" text-anchor="middle" font-weight="600">Android App</text>
+       <text x="591" y="216" text-anchor="middle" font-size="11" fill="#6366F1">ExoPlayer · Widevine</text></g>
+    <g><rect x="701" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="798" y="196" text-anchor="middle" font-weight="600">Smart TV / OTT</text>
+       <text x="798" y="216" text-anchor="middle" font-size="11" fill="#6366F1">Tizen · Roku · Fire TV</text></g>
+    <g><rect x="908" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="1005" y="196" text-anchor="middle" font-weight="600">投屏 · Cast/AirPlay</text>
+       <text x="1005" y="216" text-anchor="middle" font-size="11" fill="#6366F1">Receiver SDK</text></g>
+    <g><rect x="1115" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="1212" y="196" text-anchor="middle" font-weight="600">QoS + 业务双埋点</text>
+       <text x="1212" y="216" text-anchor="middle" font-size="11" fill="#6366F1">客户端 PII 脱敏</text></g>
+    <g><rect x="1322" y="170" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#C7D2FE"/>
+       <text x="1419" y="196" text-anchor="middle" font-weight="600">DRM Client</text>
+       <text x="1419" y="216" text-anchor="middle" font-size="11" fill="#6366F1">Widevine L1/L2/L3 · Offline</text></g>
+  </g>
+
+  <!-- ============ Layer 2: Edge / CDN (y=255..395) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="255" width="1520" height="140" rx="14" fill="url(#cEdge)" stroke="#DDD6FE"/>
+  </g>
+  <rect x="40" y="255" width="8" height="140" rx="4" fill="url(#gEdge)"/>
+  <text x="70" y="287" font-size="16" font-weight="700" fill="#5B21B6">边缘层 · Edge / CDN</text>
+  <text x="70" y="307" font-size="11" fill="#7C3AED">分流：媒体 → CDN→Origin Shield；API → Gateway；License → 直连 License Server</text>
+
+  <g font-size="13" fill="#4C1D95">
+    <g><rect x="80" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="193" y="350" text-anchor="middle" font-weight="600">视频 CDN (多家)</text>
+       <text x="193" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">Akamai · Cloudflare · 国内</text></g>
+    <g><rect x="322" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="435" y="350" text-anchor="middle" font-weight="600">Image CDN</text>
+       <text x="435" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">同厂商 · 独立 bucket / TTL</text></g>
+    <g><rect x="564" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="677" y="350" text-anchor="middle" font-weight="600">Origin Shield (CDN 端)</text>
+       <text x="677" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">回源收敛 · 防雪崩</text></g>
+    <g><rect x="806" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="919" y="350" text-anchor="middle" font-weight="600">智能调度</text>
+       <text x="919" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">DNS · 302 · QoS 闭环</text></g>
+    <g><rect x="1048" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="1161" y="350" text-anchor="middle" font-weight="600">CDN 预热 / 切流</text>
+       <text x="1161" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">新片预热 · 故障 SOP</text></g>
+    <g><rect x="1290" y="325" width="226" height="60" rx="10" fill="#FFFFFF" stroke="#DDD6FE"/>
+       <text x="1403" y="350" text-anchor="middle" font-weight="600">CDN Access Log</text>
+       <text x="1403" y="370" text-anchor="middle" font-size="11" fill="#7C3AED">→ 数据层日志分析</text></g>
+  </g>
+
+  <!-- ============ Layer 3: API Gateway (y=410..550) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="410" width="1520" height="140" rx="14" fill="url(#cGate)" stroke="#FBCFE8"/>
+  </g>
+  <rect x="40" y="410" width="8" height="140" rx="4" fill="url(#gGate)"/>
+  <text x="70" y="442" font-size="16" font-weight="700" fill="#9D174D">接入层 · API Gateway / BFF</text>
+  <text x="70" y="462" font-size="11" fill="#BE185D">统一入口 · 鉴权 · 限流 · 风控 · 签名 · QoS+业务双流埋点 (License 不经此层)</text>
+
+  <g font-size="13" fill="#831843">
+    <g><rect x="80" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="177" y="506" text-anchor="middle" font-weight="600">API Gateway</text>
+       <text x="177" y="526" text-anchor="middle" font-size="11" fill="#BE185D">Kong · APISIX</text></g>
+    <g><rect x="287" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="384" y="506" text-anchor="middle" font-weight="600">BFF</text>
+       <text x="384" y="526" text-anchor="middle" font-size="11" fill="#BE185D">页面聚合 / 端定制</text></g>
+    <g><rect x="494" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="591" y="506" text-anchor="middle" font-weight="600">WAF · DDoS</text>
+       <text x="591" y="526" text-anchor="middle" font-size="11" fill="#BE185D">注入 / 爬虫</text></g>
+    <g><rect x="701" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="798" y="506" text-anchor="middle" font-weight="600">Auth / OAuth2</text>
+       <text x="798" y="526" text-anchor="middle" font-size="11" fill="#BE185D">JWT · SSO</text></g>
+    <g><rect x="908" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="1005" y="506" text-anchor="middle" font-weight="600">限流 / 熔断</text>
+       <text x="1005" y="526" text-anchor="middle" font-size="11" fill="#BE185D">Sentinel · 降级</text></g>
+    <g><rect x="1115" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="1212" y="506" text-anchor="middle" font-weight="600">风控 · Anti-Bot</text>
+       <text x="1212" y="526" text-anchor="middle" font-size="11" fill="#BE185D">设备指纹 · 行为</text></g>
+    <g><rect x="1322" y="480" width="195" height="60" rx="10" fill="#FFFFFF" stroke="#FBCFE8"/>
+       <text x="1419" y="506" text-anchor="middle" font-weight="600">埋点网关</text>
+       <text x="1419" y="526" text-anchor="middle" font-size="11" fill="#BE185D">QoS · 业务双流 · A/B 注入</text></g>
+  </g>
+
+  <!-- ============ Layer 4: Business Services (y=565..870) 3 rows × 6 cards ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="565" width="1520" height="305" rx="14" fill="url(#cBiz)" stroke="#BAE6FD"/>
+  </g>
+  <rect x="40" y="565" width="8" height="305" rx="4" fill="url(#gBiz)"/>
+  <text x="70" y="597" font-size="16" font-weight="700" fill="#075985">业务层 · Business Services (运行时)</text>
+  <text x="70" y="617" font-size="11" fill="#0284C7">Row1 运行时核心 · Row2 通用业务 · Row3 用户参与</text>
+
+  <g font-size="13" fill="#0C4A6E">
+    <!-- Row 1 Runtime Core -->
+    <g><rect x="80" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="193" y="661" text-anchor="middle" font-weight="600">用户中心</text>
+       <text x="193" y="681" text-anchor="middle" font-size="11" fill="#0369A1">登录 · 资料 · 设备并发</text>
+       <text x="193" y="695" text-anchor="middle" font-size="10" fill="#0369A1">订阅 · 黑名单</text></g>
+    <g><rect x="322" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="435" y="661" text-anchor="middle" font-weight="600">媒资中心 · Metadata</text>
+       <text x="435" y="681" text-anchor="middle" font-size="11" fill="#0369A1">节目 · 季 · 集 · 版本化</text>
+       <text x="435" y="695" text-anchor="middle" font-size="10" fill="#0369A1">版权窗口 · 多区域 i18n</text></g>
+    <g><rect x="564" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD" stroke-width="2"/>
+       <text x="677" y="661" text-anchor="middle" font-weight="600">Play Auth ★</text>
+       <text x="677" y="681" text-anchor="middle" font-size="11" fill="#0369A1">鉴权 · 心跳 · 续播 · 并发</text>
+       <text x="677" y="695" text-anchor="middle" font-size="10" fill="#0369A1">签 DRM proxy token (JWT)</text></g>
+    <g><rect x="806" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD" stroke-width="2"/>
+       <text x="919" y="661" text-anchor="middle" font-weight="600">License Server ★</text>
+       <text x="919" y="681" text-anchor="middle" font-size="11" fill="#0369A1">Widevine · FPS · PR · Offline</text>
+       <text x="919" y="695" text-anchor="middle" font-size="10" fill="#0369A1">持久 license · 撤销列表</text></g>
+    <g><rect x="1048" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD" stroke-width="2"/>
+       <text x="1161" y="661" text-anchor="middle" font-weight="600">Manifest 服务 ★</text>
+       <text x="1161" y="681" text-anchor="middle" font-size="11" fill="#0369A1">SSAI + 个性化</text>
+       <text x="1161" y="695" text-anchor="middle" font-size="10" fill="#0369A1">码率/字幕/HDCP · session WM</text></g>
+    <g><rect x="1290" y="635" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="1403" y="661" text-anchor="middle" font-weight="600">推荐编排</text>
+       <text x="1403" y="681" text-anchor="middle" font-size="11" fill="#0369A1">召回 · 粗排 · 精排 · 重排</text>
+       <text x="1403" y="695" text-anchor="middle" font-size="10" fill="#0369A1">多目标 · 多样性 · 探索</text></g>
+
+    <!-- Row 2 General Business -->
+    <g><rect x="80" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="193" y="737" text-anchor="middle" font-weight="600">搜索</text>
+       <text x="193" y="757" text-anchor="middle" font-size="11" fill="#0369A1">ES · 联想 · 拼音</text>
+       <text x="193" y="771" text-anchor="middle" font-size="10" fill="#0369A1">语义搜索 → Embedding</text></g>
+    <g><rect x="322" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="435" y="737" text-anchor="middle" font-weight="600">广告决策 · ADS</text>
+       <text x="435" y="757" text-anchor="middle" font-size="11" fill="#0369A1">VAST · VMAP · SSP/DSP</text>
+       <text x="435" y="771" text-anchor="middle" font-size="10" fill="#0369A1">Cap · 黑白名单</text></g>
+    <g><rect x="564" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="677" y="737" text-anchor="middle" font-weight="600">计费 / 支付</text>
+       <text x="677" y="757" text-anchor="middle" font-size="11" fill="#0369A1">订阅 · 单点购 · 对账</text>
+       <text x="677" y="771" text-anchor="middle" font-size="10" fill="#0369A1">Webhook 回调 · 多渠道</text></g>
+    <g><rect x="806" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="919" y="737" text-anchor="middle" font-weight="600">营销 / 优惠券</text>
+       <text x="919" y="757" text-anchor="middle" font-size="11" fill="#0369A1">活动 · 拉新 · 拉活</text>
+       <text x="919" y="771" text-anchor="middle" font-size="10" fill="#0369A1">优惠券 · 邀请</text></g>
+    <g><rect x="1048" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="1161" y="737" text-anchor="middle" font-weight="600">CMS / 运营后台</text>
+       <text x="1161" y="757" text-anchor="middle" font-size="11" fill="#0369A1">编排 · 上架 · 触发管线</text>
+       <text x="1161" y="771" text-anchor="middle" font-size="10" fill="#0369A1">CP Feed · 审计</text></g>
+    <g><rect x="1290" y="711" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="1403" y="737" text-anchor="middle" font-weight="600">A/B 实验 · Flag</text>
+       <text x="1403" y="757" text-anchor="middle" font-size="11" fill="#0369A1">分流 · 指标 · 灰度</text>
+       <text x="1403" y="771" text-anchor="middle" font-size="10" fill="#0369A1">SDK 远程配置下发</text></g>
+
+    <!-- Row 3 Engagement -->
+    <g><rect x="80" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="193" y="813" text-anchor="middle" font-weight="600">观看历史</text>
+       <text x="193" y="833" text-anchor="middle" font-size="11" fill="#0369A1">续播位置 · 跨设备同步</text>
+       <text x="193" y="847" text-anchor="middle" font-size="10" fill="#0369A1">最近观看</text></g>
+    <g><rect x="322" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="435" y="813" text-anchor="middle" font-weight="600">收藏 / 想看</text>
+       <text x="435" y="833" text-anchor="middle" font-size="11" fill="#0369A1">Watchlist · 提醒</text>
+       <text x="435" y="847" text-anchor="middle" font-size="10" fill="#0369A1">追剧订阅</text></g>
+    <g><rect x="564" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="677" y="813" text-anchor="middle" font-weight="600">通知中心</text>
+       <text x="677" y="833" text-anchor="middle" font-size="11" fill="#0369A1">Push · 站内信 · 邮件</text>
+       <text x="677" y="847" text-anchor="middle" font-size="10" fill="#0369A1">新剧 · 续播提醒</text></g>
+    <g><rect x="806" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="919" y="813" text-anchor="middle" font-weight="600">家长控制 / 分级</text>
+       <text x="919" y="833" text-anchor="middle" font-size="11" fill="#0369A1">儿童模式 · PIN</text>
+       <text x="919" y="847" text-anchor="middle" font-size="10" fill="#0369A1">年龄分级</text></g>
+    <g><rect x="1048" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="1161" y="813" text-anchor="middle" font-weight="600">地域版权 · Geo</text>
+       <text x="1161" y="833" text-anchor="middle" font-size="11" fill="#0369A1">IP 库 · GeoFence</text>
+       <text x="1161" y="847" text-anchor="middle" font-size="10" fill="#0369A1">区域 + 设备 + 时间</text></g>
+    <g><rect x="1290" y="787" width="226" height="68" rx="10" fill="#FFFFFF" stroke="#BAE6FD"/>
+       <text x="1403" y="813" text-anchor="middle" font-weight="600">评论 / 弹幕</text>
+       <text x="1403" y="833" text-anchor="middle" font-size="11" fill="#0369A1">UGC · 互动</text>
+       <text x="1403" y="847" text-anchor="middle" font-size="10" fill="#0369A1">实时 / 历史回放</text></g>
+  </g>
+
+  <!-- Play Auth → License Server intra-row arrow -->
+  <g stroke="#0369A1" stroke-width="2" fill="none" marker-end="url(#arrowBlue)">
+    <line x1="790" y1="669" x2="806" y2="669"/>
+  </g>
+  <text x="798" y="664" text-anchor="middle" font-size="9" fill="#0369A1">token</text>
+
+  <!-- ============ Layer 5 (y=885..1080) 2 rows ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="885" width="1520" height="195" rx="14" fill="url(#cAI)" stroke="#5EEAD4"/>
+  </g>
+  <rect x="40" y="885" width="8" height="195" rx="4" fill="url(#gAI)"/>
+  <text x="70" y="917" font-size="16" font-weight="700" fill="#0F766E">AI / 内容智能层 · Intelligence + Training</text>
+  <text x="70" y="937" font-size="11" fill="#14B8A6">推理服务 (Row1) + 训练闭环 (Row2)</text>
+
+  <g font-size="13" fill="#134E4A">
+    <!-- Row 1: Inference -->
+    <g><rect x="80" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="193" y="970" text-anchor="middle" font-weight="600">内容理解 (CV)</text>
+       <text x="193" y="990" text-anchor="middle" font-size="11" fill="#0F766E">读 S3 · 镜头/人脸/场景</text></g>
+    <g><rect x="322" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="435" y="970" text-anchor="middle" font-weight="600">标签 / Taxonomy</text>
+       <text x="435" y="990" text-anchor="middle" font-size="11" fill="#0F766E">分类体系 · 自动打标</text></g>
+    <g><rect x="564" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="677" y="970" text-anchor="middle" font-weight="600">Embedding 服务</text>
+       <text x="677" y="990" text-anchor="middle" font-size="11" fill="#0F766E">用户/物品向量 → Milvus</text></g>
+    <g><rect x="806" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="919" y="970" text-anchor="middle" font-weight="600">模型服务 · Triton</text>
+       <text x="919" y="990" text-anchor="middle" font-size="11" fill="#0F766E">DSSM · DeepFM · DIN</text></g>
+    <g><rect x="1048" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="1161" y="970" text-anchor="middle" font-weight="600">内容审核 / UGC</text>
+       <text x="1161" y="990" text-anchor="middle" font-size="11" fill="#0F766E">机审 + 人审</text></g>
+    <g><rect x="1290" y="948" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="1403" y="970" text-anchor="middle" font-weight="600">反盗版 · 指纹+DMCA</text>
+       <text x="1403" y="990" text-anchor="middle" font-size="11" fill="#0F766E">巡检爬虫 · 取证</text></g>
+
+    <!-- Row 2: Training -->
+    <g><rect x="80" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="193" y="1036" text-anchor="middle" font-weight="600">训练 Pipeline</text>
+       <text x="193" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">Kubeflow / Argo for ML</text></g>
+    <g><rect x="322" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="435" y="1036" text-anchor="middle" font-weight="600">Model Registry</text>
+       <text x="435" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">MLflow · 版本 · 谱系</text></g>
+    <g><rect x="564" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="677" y="1036" text-anchor="middle" font-weight="600">离线评估</text>
+       <text x="677" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">AUC · NDCG · 回归测试</text></g>
+    <g><rect x="806" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="919" y="1036" text-anchor="middle" font-weight="600">模型 A/B 实验</text>
+       <text x="919" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">在线指标对比 · 灰度</text></g>
+    <g><rect x="1048" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="1161" y="1036" text-anchor="middle" font-weight="600">向量索引构建</text>
+       <text x="1161" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">→ Milvus index</text></g>
+    <g><rect x="1290" y="1014" width="226" height="58" rx="10" fill="#FFFFFF" stroke="#5EEAD4"/>
+       <text x="1403" y="1036" text-anchor="middle" font-weight="600">在线学习</text>
+       <text x="1403" y="1056" text-anchor="middle" font-size="11" fill="#0F766E">实时增量更新</text></g>
+  </g>
+
+  <!-- ============ Layer 6 (y=1095..1445) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="1095" width="1520" height="350" rx="14" fill="url(#cMedia)" stroke="#FDE68A"/>
+  </g>
+  <rect x="40" y="1095" width="8" height="350" rx="4" fill="url(#gMedia)"/>
+  <text x="70" y="1127" font-size="16" font-weight="700" fill="#92400E">媒体处理层 · Media Pipeline (离线)</text>
+  <text x="70" y="1147" font-size="11" fill="#B45309">事件驱动 DAG · 视频/音频/字幕 并行 · 共享 KMS (Infra 层) · Publish 事件 fan-out</text>
+
+  <g font-size="13" fill="#78350F">
+    <!-- Upload -->
+    <g><rect x="80" y="1175" width="180" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="170" y="1207" text-anchor="middle" font-weight="600">上传</text>
+       <text x="170" y="1230" text-anchor="middle" font-size="11" fill="#B45309">TUS / S3 Multipart</text>
+       <text x="170" y="1250" text-anchor="middle" font-size="11" fill="#B45309">分片 · 秒传</text>
+       <text x="170" y="1269" text-anchor="middle" font-size="11" fill="#B45309">续传 · 母带桶</text></g>
+    <!-- Probe -->
+    <g><rect x="290" y="1175" width="180" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="380" y="1207" text-anchor="middle" font-weight="600">探针 / 审核</text>
+       <text x="380" y="1230" text-anchor="middle" font-size="11" fill="#B45309">ffprobe</text>
+       <text x="380" y="1250" text-anchor="middle" font-size="11" fill="#B45309">机审 + 人审</text>
+       <text x="380" y="1269" text-anchor="middle" font-size="11" fill="#B45309">分发任务</text></g>
+
+    <!-- Fan-out column -->
+    <g><rect x="500" y="1175" width="210" height="32" rx="8" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="605" y="1192" text-anchor="middle" font-size="12" font-weight="600">视频转码</text>
+       <text x="605" y="1203" text-anchor="middle" font-size="10" fill="#B45309">H.264/265/AV1 · per-title · ABR</text></g>
+    <g><rect x="500" y="1215" width="210" height="32" rx="8" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="605" y="1232" text-anchor="middle" font-size="12" font-weight="600">音频处理</text>
+       <text x="605" y="1243" text-anchor="middle" font-size="10" fill="#B45309">AAC/EAC3/Atmos · R128 · 多音轨</text></g>
+    <g><rect x="500" y="1255" width="210" height="32" rx="8" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="605" y="1272" text-anchor="middle" font-size="12" font-weight="600">字幕生成</text>
+       <text x="605" y="1283" text-anchor="middle" font-size="10" fill="#B45309">ASR · NMT · WebVTT/TTML</text></g>
+    <text x="605" y="1169" text-anchor="middle" font-size="10" font-weight="600" fill="#92400E">▼ 并行 (Fan-out / Fan-in) ▼</text>
+
+    <!-- Package -->
+    <g><rect x="740" y="1175" width="180" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="830" y="1207" text-anchor="middle" font-weight="600">打包 · Package</text>
+       <text x="830" y="1230" text-anchor="middle" font-size="11" fill="#B45309">CMAF (单母版)</text>
+       <text x="830" y="1250" text-anchor="middle" font-size="11" fill="#B45309">HLS + DASH</text>
+       <text x="830" y="1269" text-anchor="middle" font-size="11" fill="#B45309">4-6s GOP 对齐</text></g>
+    <!-- DRM Encrypt -->
+    <g><rect x="950" y="1175" width="180" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="1040" y="1207" text-anchor="middle" font-weight="600">DRM 加密</text>
+       <text x="1040" y="1230" text-anchor="middle" font-size="11" fill="#B45309">CENC · 写 KMS key</text>
+       <text x="1040" y="1250" text-anchor="middle" font-size="11" fill="#B45309">三套 license</text>
+       <text x="1040" y="1269" text-anchor="middle" font-size="11" fill="#B45309">共享同一 key</text></g>
+    <!-- QC -->
+    <g><rect x="1160" y="1175" width="180" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="1250" y="1207" text-anchor="middle" font-weight="600">QC · 质量校验</text>
+       <text x="1250" y="1230" text-anchor="middle" font-size="11" fill="#B45309">VMAF</text>
+       <text x="1250" y="1250" text-anchor="middle" font-size="11" fill="#B45309">封面截图</text>
+       <text x="1250" y="1269" text-anchor="middle" font-size="11" fill="#B45309">Storyboard</text></g>
+    <!-- Publish (with fan-out arrows) -->
+    <g><rect x="1370" y="1175" width="150" height="110" rx="10" fill="#FFFFFF" stroke="#FDE68A" stroke-width="2"/>
+       <text x="1445" y="1207" text-anchor="middle" font-weight="600">发布 ★</text>
+       <text x="1445" y="1230" text-anchor="middle" font-size="11" fill="#B45309">写 Origin</text>
+       <text x="1445" y="1250" text-anchor="middle" font-size="11" fill="#B45309">CDN 预热</text>
+       <text x="1445" y="1269" text-anchor="middle" font-size="11" fill="#B45309">事件 fan-out</text></g>
+
+    <!-- Aux row -->
+    <g><rect x="80" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="193" y="1329" text-anchor="middle" font-weight="600">Image Pipeline</text>
+       <text x="193" y="1349" text-anchor="middle" font-size="11" fill="#B45309">海报 (2:3) · Backdrop (16:9)</text>
+       <text x="193" y="1367" text-anchor="middle" font-size="11" fill="#B45309">Logo · Thumbnail</text>
+       <text x="193" y="1387" text-anchor="middle" font-size="11" fill="#B45309">多比例 · WebP / AVIF</text>
+       <text x="193" y="1407" text-anchor="middle" font-size="11" fill="#B45309">→ Image CDN</text></g>
+    <g><rect x="322" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="435" y="1329" text-anchor="middle" font-weight="600">Storyboard / Trick Play</text>
+       <text x="435" y="1349" text-anchor="middle" font-size="11" fill="#B45309">拖动预览雪碧图</text>
+       <text x="435" y="1367" text-anchor="middle" font-size="11" fill="#B45309">独立规格</text>
+       <text x="435" y="1387" text-anchor="middle" font-size="11" fill="#B45309">VTT 索引</text></g>
+    <g><rect x="564" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="677" y="1329" text-anchor="middle" font-weight="600">Forensic Watermark</text>
+       <text x="677" y="1349" text-anchor="middle" font-size="11" fill="#B45309">离线 A/B 变体编码</text>
+       <text x="677" y="1367" text-anchor="middle" font-size="11" fill="#B45309">+ 运行时 session 拼接</text>
+       <text x="677" y="1387" text-anchor="middle" font-size="11" fill="#B45309">→ 配合 Manifest 服务</text>
+       <text x="677" y="1407" text-anchor="middle" font-size="11" fill="#B45309">+ 反盗版取证</text></g>
+    <g><rect x="806" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="919" y="1329" text-anchor="middle" font-weight="600">JIT Packager</text>
+       <text x="919" y="1349" text-anchor="middle" font-size="11" fill="#B45309">动态打包</text>
+       <text x="919" y="1367" text-anchor="middle" font-size="11" fill="#B45309">长尾节省存储</text>
+       <text x="919" y="1387" text-anchor="middle" font-size="11" fill="#B45309">配合 Origin</text></g>
+    <g><rect x="1048" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="1161" y="1329" text-anchor="middle" font-weight="600">Origin Cluster (我方)</text>
+       <text x="1161" y="1349" text-anchor="middle" font-size="11" fill="#B45309">nginx-vod / MediaPackage</text>
+       <text x="1161" y="1367" text-anchor="middle" font-size="11" fill="#B45309">回源出口</text>
+       <text x="1161" y="1387" text-anchor="middle" font-size="11" fill="#B45309">→ CDN Origin Shield</text></g>
+    <g><rect x="1290" y="1305" width="226" height="125" rx="10" fill="#FFFFFF" stroke="#FDE68A"/>
+       <text x="1403" y="1329" text-anchor="middle" font-weight="600">Workflow Orchestrator</text>
+       <text x="1403" y="1349" text-anchor="middle" font-size="11" fill="#B45309">Temporal / Argo</text>
+       <text x="1403" y="1367" text-anchor="middle" font-size="11" fill="#B45309">DAG · 重试 · 优先级</text>
+       <text x="1403" y="1387" text-anchor="middle" font-size="11" fill="#B45309">由 CMS 触发</text>
+       <text x="1403" y="1407" text-anchor="middle" font-size="11" fill="#B45309">GPU / CPU / Spot 池</text></g>
+  </g>
+
+  <!-- Pipeline arrows -->
+  <g stroke="#F97316" stroke-width="2.5" fill="none" marker-end="url(#arrowOrange)">
+    <line x1="262" y1="1230" x2="288" y2="1230"/>
+    <line x1="472" y1="1230" x2="498" y2="1192"/>
+    <line x1="472" y1="1230" x2="498" y2="1231"/>
+    <line x1="472" y1="1230" x2="498" y2="1271"/>
+    <line x1="712" y1="1192" x2="738" y2="1230"/>
+    <line x1="712" y1="1231" x2="738" y2="1230"/>
+    <line x1="712" y1="1271" x2="738" y2="1230"/>
+    <line x1="922" y1="1230" x2="948" y2="1230"/>
+    <line x1="1132" y1="1230" x2="1158" y2="1230"/>
+    <line x1="1342" y1="1230" x2="1368" y2="1230"/>
+  </g>
+
+  <!-- Publish fan-out: small annotation arrows pointing right -->
+  <g stroke="#92400E" stroke-width="1.5" fill="none" stroke-dasharray="4 3" marker-end="url(#arrowOrange)">
+    <line x1="1450" y1="1287" x2="1480" y2="1320"/>
+  </g>
+  <text x="1455" y="1300" font-size="9" font-style="italic" fill="#92400E">事件→Kafka</text>
+  <text x="1455" y="1312" font-size="8" font-style="italic" fill="#92400E">媒资/通知/预热</text>
+
+  <!-- ============ Layer 7 (y=1460..1725) 3 rows ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="1460" width="1520" height="265" rx="14" fill="url(#cData)" stroke="#A7F3D0"/>
+  </g>
+  <rect x="40" y="1460" width="8" height="265" rx="4" fill="url(#gData)"/>
+  <text x="70" y="1492" font-size="16" font-weight="700" fill="#065F46">数据与基础设施层 · Data &amp; Infra</text>
+  <text x="70" y="1512" font-size="11" fill="#047857">存储 · 缓存 · 检索 · 消息 · 向量 · OLAP · 流批 · 可观测 · 横切 (KMS★ · DR/Backup)</text>
+
+  <g font-size="13" fill="#064E3B">
+    <!-- Row 1 -->
+    <g><rect x="80" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="177" y="1552" text-anchor="middle" font-weight="600">对象存储</text>
+       <text x="177" y="1572" text-anchor="middle" font-size="11" fill="#047857">S3 / OSS · 热数据</text></g>
+    <g><rect x="287" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="384" y="1552" text-anchor="middle" font-weight="600">冷存储 / Archive</text>
+       <text x="384" y="1572" text-anchor="middle" font-size="11" fill="#047857">Glacier · 母带归档</text></g>
+    <g><rect x="494" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="591" y="1552" text-anchor="middle" font-weight="600">MySQL / TiDB</text>
+       <text x="591" y="1572" text-anchor="middle" font-size="11" fill="#047857">媒资 · 订单 · 用户</text></g>
+    <g><rect x="701" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="798" y="1552" text-anchor="middle" font-weight="600">Redis</text>
+       <text x="798" y="1572" text-anchor="middle" font-size="11" fill="#047857">缓存 · 续播 · 心跳</text></g>
+    <g><rect x="908" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1005" y="1552" text-anchor="middle" font-weight="600">Elasticsearch</text>
+       <text x="1005" y="1572" text-anchor="middle" font-size="11" fill="#047857">检索 · 聚合 · 标签</text></g>
+    <g><rect x="1115" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1212" y="1552" text-anchor="middle" font-weight="600">Kafka</text>
+       <text x="1212" y="1572" text-anchor="middle" font-size="11" fill="#047857">事件总线 · CDC · 埋点</text></g>
+    <g><rect x="1322" y="1530" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1419" y="1552" text-anchor="middle" font-weight="600">Milvus / Faiss</text>
+       <text x="1419" y="1572" text-anchor="middle" font-size="11" fill="#047857">向量召回 · Embedding</text></g>
+
+    <!-- Row 2 -->
+    <g><rect x="80" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="177" y="1614" text-anchor="middle" font-weight="600">Doris / ClickHouse</text>
+       <text x="177" y="1634" text-anchor="middle" font-size="11" fill="#047857">OLAP · 实时报表</text></g>
+    <g><rect x="287" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="384" y="1614" text-anchor="middle" font-weight="600">Flink · 实时流</text>
+       <text x="384" y="1634" text-anchor="middle" font-size="11" fill="#047857">QoS · 实时特征</text></g>
+    <g><rect x="494" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="591" y="1614" text-anchor="middle" font-weight="600">Spark + Hudi/Iceberg</text>
+       <text x="591" y="1634" text-anchor="middle" font-size="11" fill="#047857">ODS · DWD · DWS</text></g>
+    <g><rect x="701" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="798" y="1614" text-anchor="middle" font-weight="600">Feature Store</text>
+       <text x="798" y="1634" text-anchor="middle" font-size="11" fill="#047857">离线 + 在线 双轨</text></g>
+    <g><rect x="908" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1005" y="1614" text-anchor="middle" font-weight="600">CDN 日志分析</text>
+       <text x="1005" y="1634" text-anchor="middle" font-size="11" fill="#047857">带宽计费 · 热度</text></g>
+    <g><rect x="1115" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1212" y="1614" text-anchor="middle" font-weight="600">Tracing · OTel/Jaeger</text>
+       <text x="1212" y="1634" text-anchor="middle" font-size="11" fill="#047857">分布式链路</text></g>
+    <g><rect x="1322" y="1592" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1419" y="1614" text-anchor="middle" font-weight="600">监控 · Prometheus</text>
+       <text x="1419" y="1634" text-anchor="middle" font-size="11" fill="#047857">指标 · 告警 · ELK</text></g>
+
+    <!-- Row 3 cross-cutting infra -->
+    <g><rect x="80" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0" stroke-width="2"/>
+       <text x="177" y="1676" text-anchor="middle" font-weight="600">KMS ★ (横切)</text>
+       <text x="177" y="1696" text-anchor="middle" font-size="11" fill="#047857">Packager ↔ License 共享</text></g>
+    <g><rect x="287" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="384" y="1676" text-anchor="middle" font-weight="600">Secret · Vault · DLP</text>
+       <text x="384" y="1696" text-anchor="middle" font-size="11" fill="#047857">凭证 · 数据脱敏</text></g>
+    <g><rect x="494" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="591" y="1676" text-anchor="middle" font-weight="600">配置中心 · Nacos</text>
+       <text x="591" y="1696" text-anchor="middle" font-size="11" fill="#047857">远程开关 · 灰度</text></g>
+    <g><rect x="701" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="798" y="1676" text-anchor="middle" font-weight="600">Service Mesh · Istio</text>
+       <text x="798" y="1696" text-anchor="middle" font-size="11" fill="#047857">mTLS · 流量治理</text></g>
+    <g><rect x="908" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1005" y="1676" text-anchor="middle" font-weight="600">CI/CD · Argo CD</text>
+       <text x="1005" y="1696" text-anchor="middle" font-size="11" fill="#047857">GitOps · 蓝绿/金丝雀</text></g>
+    <g><rect x="1115" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1212" y="1676" text-anchor="middle" font-weight="600">任务队列 · 审计</text>
+       <text x="1212" y="1696" text-anchor="middle" font-size="11" fill="#047857">Celery / Asynq · Log Center</text></g>
+    <g><rect x="1322" y="1654" width="195" height="54" rx="10" fill="#FFFFFF" stroke="#A7F3D0"/>
+       <text x="1419" y="1676" text-anchor="middle" font-weight="600">DR / Backup / 多 Region</text>
+       <text x="1419" y="1696" text-anchor="middle" font-size="11" fill="#047857">媒资 A-S · 用户 A-A</text></g>
+  </g>
+
+  <!-- ============ Layer 8 (y=1740..1830) ============ -->
+  <g filter="url(#shadow)">
+    <rect x="40" y="1740" width="1520" height="90" rx="14" fill="url(#cExt)" stroke="#CBD5E1" stroke-dasharray="6 4"/>
+  </g>
+  <rect x="40" y="1740" width="8" height="90" rx="4" fill="url(#gExt)"/>
+  <text x="70" y="1763" font-size="15" font-weight="700" fill="#334155">外部系统 · External Systems</text>
+  <text x="70" y="1779" font-size="10" fill="#64748B">第三方依赖；连接关系见卡片副标题</text>
+
+  <g font-size="11" fill="#334155">
+    <!-- 7 cards width 195 gap 12, full width -->
+    <g><rect x="80" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="177" y="1803" text-anchor="middle" font-weight="600">支付平台</text>
+       <text x="177" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ 计费 (Webhook)</text></g>
+    <g><rect x="287" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="384" y="1803" text-anchor="middle" font-weight="600">DSP / SSP</text>
+       <text x="384" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ ADS</text></g>
+    <g><rect x="494" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="591" y="1803" text-anchor="middle" font-weight="600">CP / 内容供应商</text>
+       <text x="591" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ CMS (Feed)</text></g>
+    <g><rect x="701" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="798" y="1803" text-anchor="middle" font-weight="600">IP 库 / Geo 数据</text>
+       <text x="798" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ 地域版权</text></g>
+    <g><rect x="908" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="1005" y="1803" text-anchor="middle" font-weight="600">设备指纹 / 风控库</text>
+       <text x="1005" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ 风控 (Gateway)</text></g>
+    <g><rect x="1115" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="1212" y="1803" text-anchor="middle" font-weight="600">FCM / APNs</text>
+       <text x="1212" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ 通知中心</text></g>
+    <g><rect x="1322" y="1787" width="195" height="36" rx="8" fill="#FFFFFF" stroke="#CBD5E1" stroke-dasharray="3 3"/>
+       <text x="1419" y="1803" text-anchor="middle" font-weight="600">DMCA / 反盗版机构</text>
+       <text x="1419" y="1817" text-anchor="middle" font-size="9" fill="#64748B">→ 反盗版服务</text></g>
+  </g>
+
+  <!-- Inter-layer connecting arrows (center) -->
+  <g stroke="#64748B" stroke-width="1.5" stroke-dasharray="4 3" fill="none" marker-end="url(#arrow)">
+    <line x1="800" y1="240" x2="800" y2="253"/>
+    <line x1="800" y1="395" x2="800" y2="408"/>
+    <line x1="800" y1="550" x2="800" y2="563"/>
+    <line x1="800" y1="870" x2="800" y2="883"/>
+    <line x1="800" y1="1080" x2="800" y2="1093"/>
+    <line x1="800" y1="1445" x2="800" y2="1458"/>
+    <line x1="800" y1="1725" x2="800" y2="1738"/>
+  </g>
+
+  <!-- Cross-layer arrow: KMS ↔ DRM 加密 (bidirectional) -->
+  <g stroke="#92400E" stroke-width="1.5" stroke-dasharray="6 4" fill="none"
+     marker-start="url(#arrowOrangeStart)" marker-end="url(#arrowOrange)">
+    <path d="M177,1654 C250,1490 800,1370 1040,1285" />
+  </g>
+  <text x="450" y="1480" font-size="10" fill="#92400E" font-style="italic">KMS ↔ Packager (写 key)</text>
+
+  <!-- Cross-layer arrow: KMS → License Server -->
+  <g stroke="#92400E" stroke-width="1.5" stroke-dasharray="6 4" fill="none" marker-end="url(#arrowOrange)">
+    <path d="M177,1654 C100,1290 400,890 806,669"/>
+  </g>
+  <text x="120" y="1370" font-size="10" fill="#92400E" font-style="italic">KMS → License (读 key)</text>
+
+  <!-- Cross-layer arrow: AI (CV) → Object Storage -->
+  <g stroke="#0F766E" stroke-width="1.5" stroke-dasharray="6 4" fill="none" marker-end="url(#arrowTeal)">
+    <path d="M193,1006 C193,1190 60,1370 175,1530"/>
+  </g>
+  <text x="22" y="1290" font-size="10" fill="#0F766E" font-style="italic" transform="rotate(0)">CV 读 S3 视频</text>
+
+  <!-- Cross-layer arrow: Client → Kafka (uplink) -->
+  <g stroke="#9D174D" stroke-width="1.5" stroke-dasharray="6 4" fill="none" marker-end="url(#arrowPink)">
+    <path d="M1212,230 C1565,800 1565,1190 1212,1530"/>
+  </g>
+  <text x="1570" y="890" font-size="10" fill="#9D174D" font-style="italic" transform="rotate(90 1570 900)">埋点上行 (QoS + 业务)</text>
+
+  <!-- Cross-layer arrows: Recommendation outgoing (3 lines, no inline labels) -->
+  <g stroke="#0369A1" stroke-width="1.5" stroke-dasharray="5 3" fill="none" marker-end="url(#arrowBlue)">
+    <line x1="1403" y1="855" x2="919" y2="946"/>
+    <path d="M1403,855 C1430,1090 1430,1290 1419,1530"/>
+    <path d="M1380,855 C1100,1290 900,1490 798,1592"/>
+    <line x1="200" y1="779" x2="600" y2="946"/>
+    <path d="M1280,747 C1380,890 1420,1090 1403,1303"/>
+  </g>
+
+  <!-- Training Pipeline → Model Registry → Triton (within AI layer) -->
+  <g stroke="#0F766E" stroke-width="1.5" fill="none" marker-end="url(#arrowTeal)">
+    <line x1="306" y1="1043" x2="320" y2="1043"/>
+    <line x1="548" y1="1043" x2="562" y2="1043"/>
+  </g>
+  <g stroke="#0F766E" stroke-width="1.5" stroke-dasharray="3 3" fill="none" marker-end="url(#arrowTeal)">
+    <path d="M435,1014 C435,975 900,975 919,1006"/>
+  </g>
+
+  <!-- (External Systems connections: textual subtitle on each card, no long curves) -->
+
+  <!-- ============ P0 #2: Manifest 服务 outgoing (3 lines) ============ -->
+  <g stroke="#0284C7" stroke-width="1.5" stroke-dasharray="5 3" fill="none" marker-end="url(#arrowSky)">
+    <!-- Manifest → ADS (SSAI) -->
+    <path d="M1048,680 C800,680 600,720 548,725"/>
+    <!-- Manifest → 媒资中心 (节目元信息) -->
+    <line x1="1048" y1="660" x2="548" y2="660"/>
+    <!-- Manifest → Forensic Watermark (session 拼接) -->
+    <path d="M1100,703 C1100,990 700,1190 677,1305"/>
+  </g>
+  <text x="850" y="652" font-size="10" fill="#0284C7" font-style="italic">Manifest → 媒资 / ADS / Watermark</text>
+
+  <!-- ============ P0 #3: 回源链路 (CDN → Shield → Origin → S3) ============ -->
+  <g stroke="#7C3AED" stroke-width="2.2" fill="none" marker-end="url(#arrowViolet)">
+    <line x1="306" y1="355" x2="564" y2="355"/>
+    <path d="M677,385 C677,800 1161,1090 1161,1305"/>
+    <path d="M1048,1368 C600,1368 200,1440 177,1530"/>
+  </g>
+  <text x="320" y="345" font-size="10" fill="#7C3AED" font-style="italic" font-weight="600">回源链路</text>
+
+  <!-- ============ P0 #4: Search → Milvus (ANN 检索) ============ -->
+  <g stroke="#0F766E" stroke-width="1.5" stroke-dasharray="5 3" fill="none" marker-end="url(#arrowTeal)">
+    <path d="M200,779 C200,1090 1419,1290 1419,1530"/>
+  </g>
+
+  <!-- ============ Connection Legend (top-left, above Layer 1) ============ -->
+  <g transform="translate(40,4)">
+    <rect x="0" y="0" width="500" height="84" rx="6" fill="#FFFFFF" stroke="#E2E8F0" opacity="0.95"/>
+    <text x="12" y="18" font-size="11" font-weight="700" fill="#0F172A">连线图例</text>
+    <g font-size="9" fill="#475569">
+      <!-- Row 1 -->
+      <line x1="14" y1="36" x2="40" y2="36" stroke="#92400E" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="46" y="39">KMS / DRM 密钥</text>
+      <line x1="178" y1="36" x2="204" y2="36" stroke="#0369A1" stroke-width="1.5" stroke-dasharray="5 3"/>
+      <text x="210" y="39">业务/推荐/搜索调用</text>
+      <line x1="342" y1="36" x2="368" y2="36" stroke="#0F766E" stroke-width="1.5" stroke-dasharray="5 3"/>
+      <text x="374" y="39">AI 训练/数据读取</text>
+      <!-- Row 2 -->
+      <line x1="14" y1="58" x2="40" y2="58" stroke="#0284C7" stroke-width="1.5" stroke-dasharray="5 3"/>
+      <text x="46" y="61">Manifest 服务出向</text>
+      <line x1="178" y1="58" x2="204" y2="58" stroke="#7C3AED" stroke-width="2.2"/>
+      <text x="210" y="61">回源链路 (媒体)</text>
+      <line x1="342" y1="58" x2="368" y2="58" stroke="#9D174D" stroke-width="1.5" stroke-dasharray="6 4"/>
+      <text x="374" y="61">客户端埋点上行</text>
+      <!-- Row 3 -->
+      <line x1="14" y1="78" x2="40" y2="78" stroke="#F97316" stroke-width="2"/>
+      <text x="46" y="81">媒体管线 (fan-out)</text>
+      <line x1="178" y1="78" x2="204" y2="78" stroke="#94A3B8" stroke-width="1" stroke-dasharray="3 2"/>
+      <text x="210" y="81">External (见副标题)</text>
+    </g>
+  </g>
+
+  <!-- ============ Bottom Flows ============ -->
+  <g transform="translate(40,1845)">
+    <rect x="0" y="0" width="1520" height="340" rx="14" fill="#FFFFFF" stroke="#E2E8F0" filter="url(#shadow)"/>
+    <text x="28" y="40" font-size="16" font-weight="700" fill="#0F172A">关键流程 · Key Flows</text>
+    <line x1="28" y1="56" x2="1492" y2="56" stroke="#E2E8F0" stroke-width="1"/>
+
+    <g transform="translate(32,86)">
+      <circle cx="9" cy="9" r="8" fill="#F59E0B"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#92400E">摄入 (离线)</text>
+      <text x="150" y="14" font-size="12" fill="#475569">CMS 触发 → Upload → Probe → [Video || Audio || Subtitle 并行] → Package (CMAF) → DRM (KMS) → QC → Publish</text>
+    </g>
+
+    <g transform="translate(32,128)">
+      <circle cx="9" cy="9" r="8" fill="#92400E"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#92400E">发布事件 fan-out</text>
+      <text x="150" y="14" font-size="12" fill="#475569">Publish → Kafka → [媒资中心 状态更新 || 通知中心 追剧提醒 || 推荐冷启动入库 || CDN 预热触发]</text>
+    </g>
+
+    <g transform="translate(32,170)">
+      <circle cx="9" cy="9" r="8" fill="#0EA5E9"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#075985">播放 (运行时)</text>
+      <text x="150" y="14" font-size="12" fill="#475569">Client → Gateway → Play Auth (签 token) → Manifest 服务 (SSAI + 个性化 + session WM) → CDN 分发；License 走旁路直连</text>
+    </g>
+
+    <g transform="translate(32,212)">
+      <circle cx="9" cy="9" r="8" fill="#10B981"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#065F46">推荐 (推理)</text>
+      <text x="150" y="14" font-size="12" fill="#475569">埋点 → Kafka → Flink → 召回 (Milvus + Feature Store) → 粗排 (DSSM) → 精排 (DIN) → 重排 (多目标/多样性)</text>
+    </g>
+
+    <g transform="translate(32,254)">
+      <circle cx="9" cy="9" r="8" fill="#0F766E"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#0F766E">推荐 (训练闭环)</text>
+      <text x="150" y="14" font-size="12" fill="#475569">行为日志 → Spark/Hudi → 训练 Pipeline (Kubeflow) → 离线评估 (AUC/NDCG) → Model Registry → Triton 热加载 → A/B 实验</text>
+    </g>
+
+    <g transform="translate(32,296)">
+      <circle cx="9" cy="9" r="8" fill="#EC4899"/>
+      <text x="30" y="14" font-size="14" font-weight="700" fill="#9D174D">广告</text>
+      <text x="150" y="14" font-size="12" fill="#475569">ADS 决策 → VAST → Manifest 服务 SSAI 拼接 (CMAF 对齐) → CDN → 客户端 beacon (PAL) → 归因</text>
+    </g>
+  </g>
+
+  <!-- Footer -->
+  <text x="800" y="2215" text-anchor="middle" font-size="11" fill="#64748B">★ Play Auth · License Server · Manifest 服务 · KMS · Publish 为跨层关键节点   ·   媒资 Active-Standby; 用户数据 Active-Active region-sharded</text>
+
+</svg>
