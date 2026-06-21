@@ -39,7 +39,7 @@ import {
   CmsWorkflowFigure,
   ConcurrentStreamGuardFigure,
   FastEpgFigure,
-} from './DocFigures'
+} from './figures'
 
 interface Chapter {
   slug: string
@@ -137,6 +137,7 @@ const CHAPTERS: Chapter[] = [
           <li><L slug="color-basics">Color, light & vision</L> — gamut, gamma, HDR transfer functions.</li>
           <li><L slug="time-timestamps">Time, clocks & timestamps</L> — PTS vs DTS, wall-clock anchoring, A/V sync.</li>
           <li><L slug="codecs">Codecs</L> + <L slug="containers">Containers</L> — what gets done with all of the above.</li>
+          <li><L slug="qc-vmaf">QC & VMAF</L> — and how we measure that the bits still look right after all that compression.</li>
         </ol>
 
         <p>
@@ -145,8 +146,8 @@ const CHAPTERS: Chapter[] = [
           lookup, not sequential reading. Open them when a term sends you scrambling.
         </p>
         <p>
-          Each chapter header shows an estimated read time. Total cover-to-cover is just over
-          three hours; the six reading paths above each fit in 40-50 minutes.
+          Each chapter header shows an estimated read time. Total cover-to-cover is around
+          four hours; the six reading paths above each fit in 40-60 minutes.
         </p>
       </>
     ),
