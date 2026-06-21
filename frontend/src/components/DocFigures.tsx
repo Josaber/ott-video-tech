@@ -2969,3 +2969,764 @@ export function DRMLiteFlowFigure() {
     </svg>
   )
 }
+
+// ---------------------------------------------------------------------------
+// VMAF vs bitrate per resolution rung — shows the diminishing returns curve
+// that per-title encoding uses to pick a ladder's "knee" bitrate.
+// ---------------------------------------------------------------------------
+export function VmafLadderFigure() {
+  const W = 720
+  const H = 360
+  const padL = 56
+  const padR = 24
+  const padT = 38
+  const padB = 56
+  const innerW = W - padL - padR
+  const innerH = H - padT - padB
+
+  const minBR = 300
+  const maxBR = 8000
+  const minV = 50
+  const maxV = 100
+
+  const xOf = (br: number) =>
+    padL + (Math.log(br / minBR) / Math.log(maxBR / minBR)) * innerW
+  const yOf = (v: number) => padT + (1 - (v - minV) / (maxV - minV)) * innerH
+
+  const rungs = [
+    { label: '480p', k: 600, ceil: 92, color: '#22d3ee' },
+    { label: '720p', k: 1200, ceil: 95, color: '#10b981' },
+    { label: '1080p', k: 2500, ceil: 97, color: '#f59e0b' },
+    { label: '2160p (4K)', k: 5000, ceil: 99, color: '#f43f5e' },
+  ]
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="VMAF score vs bitrate for four resolution rungs"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+
+      <g stroke="#1e293b" strokeWidth={1}>
+        {[60, 70, 80, 90, 100].map((v) => (
+          <line key={v} x1={padL} y1={yOf(v)} x2={W - padR} y2={yOf(v)} />
+        ))}
+        {[500, 1000, 2000, 4000, 8000].map((br) => (
+          <line key={br} x1={xOf(br)} y1={padT} x2={xOf(br)} y2={H - padB} />
+        ))}
+      </g>
+
+      {[500, 1000, 2000, 4000, 8000].map((br) => (
+        <text
+          key={br}
+          x={xOf(br)}
+          y={H - padB + 16}
+          textAnchor="middle"
+          fontSize={10}
+          fill="#94a3b8"
+        >
+          {br}
+        </text>
+      ))}
+      <text x={(W + padL - padR) / 2} y={H - padB + 36} fontSize={11} fill="#cbd5e1" textAnchor="middle">
+        encoded bitrate (kbps, log scale)
+      </text>
+      {[60, 70, 80, 90, 100].map((v) => (
+        <text key={v} x={padL - 6} y={yOf(v) + 4} fontSize={10} fill="#94a3b8" textAnchor="end">
+          {v}
+        </text>
+      ))}
+      <g transform={`translate(${padL - 38} ${(padT + H - padB) / 2}) rotate(-90)`}>
+        <text fontSize={11} fill="#cbd5e1" textAnchor="middle">
+          VMAF (0-100)
+        </text>
+      </g>
+
+      <line
+        x1={padL}
+        y1={yOf(90)}
+        x2={W - padR}
+        y2={yOf(90)}
+        stroke="#f59e0b"
+        strokeWidth={1}
+        strokeDasharray="6 4"
+      />
+      <text
+        x={W - padR - 4}
+        y={yOf(90) - 6}
+        fontSize={10}
+        fill="#f59e0b"
+        textAnchor="end"
+      >
+        VMAF 90 — "indistinguishable from source" threshold
+      </text>
+
+      {rungs.map((r) => {
+        const pts: string[] = []
+        for (let br = minBR; br <= maxBR; br *= 1.04) {
+          const v = r.ceil - (r.ceil - minV) * Math.exp(-br / r.k)
+          pts.push(`${xOf(br).toFixed(1)},${yOf(v).toFixed(1)}`)
+        }
+        return (
+          <polyline
+            key={r.label}
+            points={pts.join(' ')}
+            fill="none"
+            stroke={r.color}
+            strokeWidth={2}
+          />
+        )
+      })}
+
+      {rungs.map((r, i) => (
+        <g key={r.label} transform={`translate(${padL + 8 + i * 130} ${10})`}>
+          <rect x={0} y={4} width={12} height={12} fill={r.color} rx={2} />
+          <text x={18} y={14} fontSize={11} fill="#cbd5e1">
+            {r.label}
+          </text>
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CMCD (player → CDN, CTA-5004) and CMSD (CDN → player, CTA-5006) — the new
+// telemetry handshake that lets CDN pace and player negotiate intelligently.
+// ---------------------------------------------------------------------------
+export function CmcdFlowFigure() {
+  const W = 720
+  const H = 360
+  const playerX = 90
+  const cdnX = W - 90
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="CMCD request and CMSD response handshake"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <marker id="arrCmcdReq" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={9} markerHeight={9} orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#22d3ee" />
+        </marker>
+        <marker id="arrCmcdRes" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={9} markerHeight={9} orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#f59e0b" />
+        </marker>
+      </defs>
+
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+
+      <rect x={playerX - 70} y={28} width={140} height={56} rx={6} fill="#1e293b" stroke="#22d3ee" />
+      <text x={playerX} y={52} textAnchor="middle" fontSize={13} fontWeight={700} fill="#22d3ee">
+        Player
+      </text>
+      <text x={playerX} y={70} textAnchor="middle" fontSize={10} fill="#94a3b8">
+        hls.js · shaka · native
+      </text>
+
+      <rect x={cdnX - 70} y={28} width={140} height={56} rx={6} fill="#1e293b" stroke="#f59e0b" />
+      <text x={cdnX} y={52} textAnchor="middle" fontSize={13} fontWeight={700} fill="#f59e0b">
+        CDN edge
+      </text>
+      <text x={cdnX} y={70} textAnchor="middle" fontSize={10} fill="#94a3b8">
+        Akamai · Cloudflare
+      </text>
+
+      <line x1={playerX} y1={84} x2={playerX} y2={H - 16} stroke="#334155" strokeDasharray="3 4" />
+      <line x1={cdnX} y1={84} x2={cdnX} y2={H - 16} stroke="#334155" strokeDasharray="3 4" />
+
+      <line
+        x1={playerX + 8}
+        y1={118}
+        x2={cdnX - 8}
+        y2={118}
+        stroke="#22d3ee"
+        strokeWidth={1.5}
+        markerEnd="url(#arrCmcdReq)"
+      />
+      <text x={W / 2} y={112} textAnchor="middle" fontSize={11} fill="#22d3ee" fontWeight={700}>
+        GET /seg-042.m4s?CMCD=… &nbsp; · &nbsp; CTA-5004
+      </text>
+
+      <rect x={140} y={138} width={440} height={96} rx={6} fill="#0b1322" stroke="#22d3ee" />
+      <text x={152} y={156} fontSize={10} fontWeight={700} fill="#22d3ee">
+        CMCD payload (URL query or HTTP header)
+      </text>
+      <text x={152} y={176} fontSize={10.5} fontFamily="ui-monospace, monospace" fill="#cbd5e1">
+        br=2800,bl=12000,d=4000,mtp=12200,
+      </text>
+      <text x={152} y={192} fontSize={10.5} fontFamily="ui-monospace, monospace" fill="#cbd5e1">
+        ot=v,sf=h,st=v,sid="3F2-A1",cid="ASSET-7"
+      </text>
+      <text x={152} y={216} fontSize={9.5} fill="#94a3b8">
+        br=requested bitrate &nbsp; bl=buffer length &nbsp; mtp=measured throughput &nbsp; ot=object type
+      </text>
+      <text x={152} y={228} fontSize={9.5} fill="#94a3b8">
+        sf=streaming format &nbsp; st=stream type &nbsp; sid=session ID &nbsp; cid=content ID
+      </text>
+
+      <line
+        x1={cdnX - 8}
+        y1={266}
+        x2={playerX + 8}
+        y2={266}
+        stroke="#f59e0b"
+        strokeWidth={1.5}
+        markerEnd="url(#arrCmcdRes)"
+      />
+      <text x={W / 2} y={260} textAnchor="middle" fontSize={11} fill="#f59e0b" fontWeight={700}>
+        200 OK + CMSD-Static / CMSD-Dynamic &nbsp; · &nbsp; CTA-5006
+      </text>
+
+      <rect x={140} y={284} width={440} height={62} rx={6} fill="#0b1322" stroke="#f59e0b" />
+      <text x={152} y={302} fontSize={10} fontWeight={700} fill="#f59e0b">
+        CMSD payload (response headers)
+      </text>
+      <text x={152} y={320} fontSize={10.5} fontFamily="ui-monospace, monospace" fill="#cbd5e1">
+        CMSD-Static: ot=v,n="edge-LAX"
+      </text>
+      <text x={152} y={336} fontSize={10.5} fontFamily="ui-monospace, monospace" fill="#cbd5e1">
+        CMSD-Dynamic: etp=2500,rtt=42,dl=18,du=4000
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Recommendation 4-stage cascade — recall → coarse rank → fine rank → rerank.
+// Funnel of progressively narrower rectangles with item counts and latency
+// budgets per stage.
+// ---------------------------------------------------------------------------
+export function RecommendationCascadeFigure() {
+  const W = 720
+  const H = 360
+
+  const stages = [
+    { label: 'Catalog', count: '50,000 items', budget: 'offline', sub: 'every asset that exists', color: '#475569' },
+    { label: 'Recall', count: '10,000 items', budget: '20 ms', sub: 'Milvus ANN + collaborative-filtering + hot list', color: '#22d3ee' },
+    { label: 'Coarse rank', count: '1,000 items', budget: '40 ms', sub: 'DSSM two-tower (Triton)', color: '#10b981' },
+    { label: 'Fine rank', count: '100 items', budget: '60 ms', sub: 'DIN / SIM (Triton)', color: '#f59e0b' },
+    { label: 'Rerank', count: '20 items', budget: '20 ms', sub: 'multi-objective · diversity · explore', color: '#f43f5e' },
+  ]
+
+  const rowH = 56
+  const gapY = 6
+  const maxW = W - 80
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="Recommendation cascade funnel from catalog to final ranked list"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+      <text x={W / 2} y={26} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
+        RECALL → COARSE → FINE → RERANK &nbsp; · &nbsp; ~140 ms end-to-end budget
+      </text>
+
+      {stages.map((s, i) => {
+        const w = maxW * (1 - i * 0.16)
+        const x = (W - w) / 2
+        const y = 44 + i * (rowH + gapY)
+        return (
+          <g key={s.label}>
+            <rect
+              x={x}
+              y={y}
+              width={w}
+              height={rowH}
+              rx={6}
+              fill={s.color}
+              fillOpacity={i === 0 ? 0.16 : 0.3}
+              stroke={s.color}
+            />
+            <text x={x + 14} y={y + 22} fontSize={13} fontWeight={700} fill="#f1f5f9">
+              {s.label}
+            </text>
+            <text x={x + 14} y={y + 40} fontSize={10.5} fill="#cbd5e1">
+              {s.sub}
+            </text>
+            <text x={x + w - 14} y={y + 22} textAnchor="end" fontSize={12} fontWeight={700} fill="#f1f5f9">
+              {s.count}
+            </text>
+            <text x={x + w - 14} y={y + 40} textAnchor="end" fontSize={10.5} fill="#cbd5e1">
+              {s.budget}
+            </text>
+          </g>
+        )
+      })}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Forensic watermarking — A/B variant encoding offline + runtime session
+// stitching produce a per-viewer unique pattern that survives re-encoding.
+// ---------------------------------------------------------------------------
+export function WatermarkingFigure() {
+  const W = 720
+  const H = 320
+  const segCount = 10
+  const segW = 48
+  const segH = 30
+  const gap = 8
+  const startX = (W - (segCount * segW + (segCount - 1) * gap)) / 2
+
+  // Two unique session stitching patterns. 0 = variant A, 1 = variant B.
+  const sessionA = [0, 1, 0, 1, 1, 0, 1, 0, 1, 0]
+  const sessionB = [1, 0, 1, 0, 0, 1, 0, 1, 1, 1]
+
+  const colA = '#22d3ee'
+  const colB = '#f59e0b'
+
+  const rowY = (i: number) => 60 + i * 64
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="A/B variant watermark encoding plus per-session stitching"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+      <text x={W / 2} y={26} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
+        OFFLINE A/B VARIANTS → RUNTIME PER-SESSION STITCH → UNIQUE LEAK FINGERPRINT
+      </text>
+
+      {[
+        { label: 'variant A', color: colA, y: rowY(0) },
+        { label: 'variant B', color: colB, y: rowY(1) },
+      ].map((row) => (
+        <g key={row.label}>
+          <text x={startX - 14} y={row.y + 20} fontSize={11} fill={row.color} textAnchor="end" fontWeight={700}>
+            {row.label}
+          </text>
+          {Array.from({ length: segCount }).map((_, i) => {
+            const x = startX + i * (segW + gap)
+            return (
+              <rect key={i} x={x} y={row.y} width={segW} height={segH} rx={3} fill={row.color} fillOpacity={0.35} stroke={row.color} />
+            )
+          })}
+        </g>
+      ))}
+
+      <text x={W / 2} y={rowY(2) + 4} textAnchor="middle" fontSize={10} fill="#94a3b8">
+        Manifest service emits a per-viewer playlist that picks A or B per segment.
+      </text>
+
+      {[
+        { label: 'viewer 3F2-A1', pattern: sessionA, y: rowY(2) + 22 },
+        { label: 'viewer 9K7-B4', pattern: sessionB, y: rowY(3) + 22 },
+      ].map((row) => (
+        <g key={row.label}>
+          <text x={startX - 14} y={row.y + 20} fontSize={11} fill="#cbd5e1" textAnchor="end">
+            {row.label}
+          </text>
+          {row.pattern.map((v, i) => {
+            const x = startX + i * (segW + gap)
+            const c = v === 0 ? colA : colB
+            return (
+              <g key={i}>
+                <rect x={x} y={row.y} width={segW} height={segH} rx={3} fill={c} fillOpacity={0.55} stroke={c} />
+                <text x={x + segW / 2} y={row.y + 20} textAnchor="middle" fontSize={11} fontWeight={700} fill="#0f172a">
+                  {v === 0 ? 'A' : 'B'}
+                </text>
+              </g>
+            )
+          })}
+        </g>
+      ))}
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Ad operations — waterfall (sequential) vs unified auction (parallel) for ad
+// inventory. Same demand sources, different decision topology.
+// ---------------------------------------------------------------------------
+export function AdAuctionFigure() {
+  const W = 720
+  const H = 360
+  const colL = 'waterfall'
+  const colR = 'unified'
+
+  const bidders = [
+    { name: 'DSP A', cpm: '$4.20', color: '#22d3ee' },
+    { name: 'DSP B', cpm: '$3.10', color: '#10b981' },
+    { name: 'DSP C', cpm: '$5.50', color: '#f59e0b' },
+    { name: 'House',  cpm: '$1.80', color: '#8b5cf6' },
+  ]
+
+  const padX = 40
+  const colW = (W - padX * 3) / 2
+  const leftX = padX
+  const rightX = padX + colW + padX
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="Waterfall versus unified auction comparison"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+
+      {[
+        { x: leftX, label: 'WATERFALL', sub: 'sequential, ~400 ms total, latency stacks', color: '#94a3b8', key: colL },
+        { x: rightX, label: 'UNIFIED AUCTION', sub: 'parallel, ~150 ms, highest bid wins', color: '#22d3ee', key: colR },
+      ].map((col) => (
+        <g key={col.key}>
+          <rect x={col.x} y={20} width={colW} height={H - 40} rx={8} fill="#0b1322" stroke="#1e293b" />
+          <text x={col.x + colW / 2} y={44} textAnchor="middle" fontSize={13} fontWeight={700} fill={col.color} letterSpacing="0.08em">
+            {col.label}
+          </text>
+          <text x={col.x + colW / 2} y={60} textAnchor="middle" fontSize={10} fill="#94a3b8">
+            {col.sub}
+          </text>
+        </g>
+      ))}
+
+      <g>
+        {bidders.map((b, i) => {
+          const y = 88 + i * 52
+          return (
+            <g key={`l-${b.name}`}>
+              <rect x={leftX + 24} y={y} width={colW - 48} height={36} rx={5} fill={b.color} fillOpacity={0.25} stroke={b.color} />
+              <text x={leftX + 36} y={y + 22} fontSize={12} fontWeight={700} fill="#f1f5f9">
+                {i + 1}. {b.name}
+              </text>
+              <text x={leftX + colW - 36} y={y + 22} textAnchor="end" fontSize={11} fill="#cbd5e1">
+                {b.cpm}
+              </text>
+            </g>
+          )
+        })}
+        <text x={leftX + colW / 2} y={H - 36} textAnchor="middle" fontSize={10} fill="#f43f5e">
+          first bidder to clear price floor wins → DSP A wins at $4.20
+        </text>
+        <text x={leftX + colW / 2} y={H - 22} textAnchor="middle" fontSize={10} fill="#94a3b8">
+          ($5.50 from DSP C never queried)
+        </text>
+      </g>
+
+      <g>
+        {bidders.map((b, i) => {
+          const y = 88 + i * 52
+          return (
+            <g key={`r-${b.name}`}>
+              <rect x={rightX + 24} y={y} width={colW - 48} height={36} rx={5} fill={b.color} fillOpacity={0.25} stroke={b.color} />
+              <text x={rightX + 36} y={y + 22} fontSize={12} fontWeight={700} fill="#f1f5f9">
+                {b.name}
+              </text>
+              <text x={rightX + colW - 36} y={y + 22} textAnchor="end" fontSize={11} fill="#cbd5e1">
+                {b.cpm}
+              </text>
+            </g>
+          )
+        })}
+        <text x={rightX + colW / 2} y={H - 36} textAnchor="middle" fontSize={10} fill="#10b981">
+          all bids collected simultaneously → DSP C wins at $5.50
+        </text>
+        <text x={rightX + colW / 2} y={H - 22} textAnchor="middle" fontSize={10} fill="#94a3b8">
+          (publisher revenue uplift ~25-30% in practice)
+        </text>
+      </g>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// CMS editorial workflow — six-state lifecycle from draft to archived, with
+// retreat arrows for rejections and unscheduling.
+// ---------------------------------------------------------------------------
+export function CmsWorkflowFigure() {
+  const W = 720
+  const H = 280
+  const states = [
+    { id: 'Draft', desc: 'editor working', color: '#94a3b8' },
+    { id: 'Review', desc: 'legal + QC', color: '#8b5cf6' },
+    { id: 'Scheduled', desc: 'rights window pending', color: '#22d3ee' },
+    { id: 'Live', desc: 'visible in catalog', color: '#10b981' },
+    { id: 'Hidden', desc: 'soft-removed', color: '#f59e0b' },
+    { id: 'Archived', desc: 'rights expired', color: '#475569' },
+  ]
+  const boxW = 96
+  const boxH = 60
+  const gap = (W - 60 - states.length * boxW) / (states.length - 1)
+  const xOf = (i: number) => 30 + i * (boxW + gap)
+  const yTop = 80
+  const cy = yTop + boxH / 2
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="CMS editorial state machine"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <marker id="arrCmsFwd" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={9} markerHeight={9} orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1" />
+        </marker>
+        <marker id="arrCmsBack" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={9} markerHeight={9} orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#f43f5e" />
+        </marker>
+      </defs>
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+      <text x={W / 2} y={28} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
+        EDITORIAL LIFECYCLE · DRAFT → REVIEW → SCHEDULED → LIVE → HIDDEN → ARCHIVED
+      </text>
+
+      {states.map((s, i) => (
+        <g key={s.id}>
+          <rect x={xOf(i)} y={yTop} width={boxW} height={boxH} rx={6} fill={s.color} fillOpacity={0.25} stroke={s.color} />
+          <text x={xOf(i) + boxW / 2} y={yTop + 26} textAnchor="middle" fontSize={13} fontWeight={700} fill="#f1f5f9">
+            {s.id}
+          </text>
+          <text x={xOf(i) + boxW / 2} y={yTop + 44} textAnchor="middle" fontSize={9.5} fill="#cbd5e1">
+            {s.desc}
+          </text>
+        </g>
+      ))}
+
+      {states.slice(0, -1).map((_, i) => (
+        <line
+          key={`fwd-${i}`}
+          x1={xOf(i) + boxW + 2}
+          y1={cy - 6}
+          x2={xOf(i + 1) - 4}
+          y2={cy - 6}
+          stroke="#cbd5e1"
+          strokeWidth={1.4}
+          markerEnd="url(#arrCmsFwd)"
+        />
+      ))}
+
+      {/* Backward: Review → Draft (rejection), Live → Hidden → Archived path collapses. Hidden can re-enter Live. */}
+      <path
+        d={`M ${xOf(1)} ${cy + 8} C ${xOf(1) - 20} ${cy + 36}, ${xOf(0) + boxW + 20} ${cy + 36}, ${xOf(0) + boxW + 2} ${cy + 8}`}
+        stroke="#f43f5e"
+        strokeWidth={1.3}
+        fill="none"
+        markerEnd="url(#arrCmsBack)"
+      />
+      <text x={(xOf(0) + xOf(1) + boxW) / 2} y={cy + 52} textAnchor="middle" fontSize={9.5} fill="#f43f5e">
+        rejected
+      </text>
+
+      <path
+        d={`M ${xOf(4)} ${cy + 8} C ${xOf(4) - 20} ${cy + 36}, ${xOf(3) + boxW + 20} ${cy + 36}, ${xOf(3) + boxW + 2} ${cy + 8}`}
+        stroke="#22d3ee"
+        strokeWidth={1.3}
+        fill="none"
+        markerEnd="url(#arrCmsFwd)"
+      />
+      <text x={(xOf(3) + xOf(4) + boxW) / 2} y={cy + 52} textAnchor="middle" fontSize={9.5} fill="#22d3ee">
+        un-hide
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// Concurrent-stream guard — decision flow from incoming play request to
+// allow/deny through three checks: device known, concurrent count, geo.
+// ---------------------------------------------------------------------------
+export function ConcurrentStreamGuardFigure() {
+  const W = 720
+  const H = 320
+
+  const cy = 80
+  const cyDecide = (i: number) => 130 + i * 56
+  const allowY = H - 50
+  const denyX = W - 80
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="Concurrent-stream policy guard decision flow"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <defs>
+        <marker id="arrGuard" viewBox="0 0 10 10" refX={9} refY={5} markerWidth={8} markerHeight={8} orient="auto">
+          <path d="M0,0 L10,5 L0,10 z" fill="#cbd5e1" />
+        </marker>
+      </defs>
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+      <text x={W / 2} y={24} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
+        PLAY REQUEST → DEVICE CHECK → CONCURRENT COUNT → GEO DRIFT → ALLOW
+      </text>
+
+      {/* Entry */}
+      <rect x={W / 2 - 80} y={cy - 24} width={160} height={36} rx={6} fill="#1e293b" stroke="#22d3ee" />
+      <text x={W / 2} y={cy} textAnchor="middle" fontSize={12} fontWeight={700} fill="#22d3ee">
+        play request
+      </text>
+
+      {/* Three decisions */}
+      {[
+        { label: 'device fingerprint known?', y: cyDecide(0), fail: 'unknown device → deny', color: '#10b981' },
+        { label: 'live streams < household cap (e.g. 4)?', y: cyDecide(1), fail: 'cap exceeded → deny', color: '#f59e0b' },
+        { label: 'geo within household region?', y: cyDecide(2), fail: 'drift → step-up auth', color: '#f43f5e' },
+      ].map((d, i) => (
+        <g key={i}>
+          <rect x={W / 2 - 170} y={d.y - 18} width={340} height={36} rx={6} fill="#0b1322" stroke={d.color} />
+          <text x={W / 2} y={d.y + 4} textAnchor="middle" fontSize={11.5} fill="#cbd5e1">
+            {d.label}
+          </text>
+          <text x={denyX + 30} y={d.y + 4} textAnchor="end" fontSize={10} fill="#f43f5e">
+            {d.fail}
+          </text>
+          <line
+            x1={W / 2 + 170}
+            y1={d.y}
+            x2={denyX + 32}
+            y2={d.y}
+            stroke="#f43f5e"
+            strokeWidth={1}
+            strokeDasharray="4 3"
+          />
+        </g>
+      ))}
+
+      {/* Connect entry → first decision and decisions vertically */}
+      <line x1={W / 2} y1={cy + 12} x2={W / 2} y2={cyDecide(0) - 18} stroke="#cbd5e1" strokeWidth={1.2} markerEnd="url(#arrGuard)" />
+      {[0, 1].map((i) => (
+        <line
+          key={`v-${i}`}
+          x1={W / 2}
+          y1={cyDecide(i) + 18}
+          x2={W / 2}
+          y2={cyDecide(i + 1) - 18}
+          stroke="#cbd5e1"
+          strokeWidth={1.2}
+          markerEnd="url(#arrGuard)"
+        />
+      ))}
+
+      {/* Allow */}
+      <line x1={W / 2} y1={cyDecide(2) + 18} x2={W / 2} y2={allowY - 16} stroke="#10b981" strokeWidth={1.4} markerEnd="url(#arrGuard)" />
+      <rect x={W / 2 - 60} y={allowY - 16} width={120} height={32} rx={6} fill="#10b981" fillOpacity={0.25} stroke="#10b981" />
+      <text x={W / 2} y={allowY + 5} textAnchor="middle" fontSize={12} fontWeight={700} fill="#10b981">
+        allow + mint token
+      </text>
+    </svg>
+  )
+}
+
+// ---------------------------------------------------------------------------
+// FAST channel EPG slice — a linear schedule strip with SCTE-35 ad markers
+// drawn as vertical bands inside each program block.
+// ---------------------------------------------------------------------------
+export function FastEpgFigure() {
+  const W = 720
+  const H = 280
+  const padL = 56
+  const padR = 24
+  const trackTop = 80
+  const trackH = 60
+  const innerW = W - padL - padR
+
+  // 6 PM to 11 PM (5 hours)
+  const startMin = 18 * 60
+  const endMin = 23 * 60
+  const totalMin = endMin - startMin
+  const xOf = (min: number) => padL + ((min - startMin) / totalMin) * innerW
+
+  const programs = [
+    { title: 'Sitcom: "Apartment 5B"', start: 18 * 60, end: 18 * 60 + 30, color: '#22d3ee' },
+    { title: 'Crime drama: "Cold Case"', start: 18 * 60 + 30, end: 19 * 60 + 30, color: '#8b5cf6' },
+    { title: 'News bulletin', start: 19 * 60 + 30, end: 20 * 60, color: '#94a3b8' },
+    { title: 'Feature film: "Northwind"', start: 20 * 60, end: 22 * 60, color: '#f59e0b' },
+    { title: 'Late night: "After Hours"', start: 22 * 60, end: 23 * 60, color: '#f43f5e' },
+  ]
+  // SCTE-35 ad breaks — vertical markers
+  const adBreaks = [
+    18 * 60 + 15,
+    18 * 60 + 55,
+    19 * 60 + 15,
+    20 * 60 + 30,
+    21 * 60,
+    21 * 60 + 30,
+    22 * 60 + 20,
+  ]
+
+  return (
+    <svg
+      viewBox={`0 0 ${W} ${H}`}
+      width="100%"
+      role="img"
+      aria-label="FAST channel evening schedule with SCTE-35 ad markers"
+      style={{ display: 'block', maxWidth: '100%' }}
+    >
+      <rect x={0} y={0} width={W} height={H} fill="#0f172a" />
+      <text x={W / 2} y={24} textAnchor="middle" fontSize={11} fill="#94a3b8" letterSpacing="0.08em">
+        FAST CHANNEL EPG · 18:00 → 23:00 · SCTE-35 MARKERS = AD BREAK CUE-OUT POINTS
+      </text>
+      <text x={padL} y={48} fontSize={11} fill="#cbd5e1">
+        Channel: Drama 24
+      </text>
+
+      {/* Time ruler */}
+      {[18, 19, 20, 21, 22, 23].map((h) => (
+        <g key={h}>
+          <line x1={xOf(h * 60)} y1={trackTop - 12} x2={xOf(h * 60)} y2={trackTop + trackH + 8} stroke="#1e293b" strokeWidth={1} />
+          <text x={xOf(h * 60)} y={trackTop - 18} textAnchor="middle" fontSize={10} fill="#94a3b8">
+            {String(h).padStart(2, '0')}:00
+          </text>
+        </g>
+      ))}
+
+      {programs.map((p, i) => {
+        const x = xOf(p.start)
+        const w = xOf(p.end) - x
+        return (
+          <g key={i}>
+            <rect x={x} y={trackTop} width={w} height={trackH} rx={4} fill={p.color} fillOpacity={0.32} stroke={p.color} />
+            <text x={x + 8} y={trackTop + 22} fontSize={10.5} fontWeight={700} fill="#f1f5f9">
+              {p.title}
+            </text>
+            <text x={x + 8} y={trackTop + 38} fontSize={9.5} fill="#cbd5e1">
+              {Math.floor(p.start / 60)}:{String(p.start % 60).padStart(2, '0')} - {Math.floor(p.end / 60)}:{String(p.end % 60).padStart(2, '0')}
+            </text>
+          </g>
+        )
+      })}
+
+      {/* SCTE-35 markers */}
+      {adBreaks.map((m, i) => (
+        <g key={`ad-${i}`}>
+          <line x1={xOf(m)} y1={trackTop - 4} x2={xOf(m)} y2={trackTop + trackH + 4} stroke="#f43f5e" strokeWidth={1.5} />
+          <circle cx={xOf(m)} cy={trackTop + trackH + 12} r={4} fill="#f43f5e" />
+        </g>
+      ))}
+
+      <g transform={`translate(${padL} ${trackTop + trackH + 36})`}>
+        <line x1={0} y1={0} x2={18} y2={0} stroke="#f43f5e" strokeWidth={1.5} />
+        <text x={26} y={4} fontSize={10} fill="#cbd5e1">
+          SCTE-35 CUE-OUT (ad break opportunity)
+        </text>
+        <rect x={240} y={-6} width={14} height={12} fill="#22d3ee" fillOpacity={0.35} stroke="#22d3ee" />
+        <text x={260} y={4} fontSize={10} fill="#cbd5e1">
+          program block (linear, no seeking)
+        </text>
+      </g>
+      <text x={padL} y={H - 16} fontSize={10} fill="#94a3b8">
+        Player tunes in, manifest is sliding-window live (DVR optional); SSAI swaps fills at each marker.
+      </text>
+    </svg>
+  )
+}

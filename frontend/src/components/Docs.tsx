@@ -31,6 +31,14 @@ import {
   PtsDtsFigure,
   HmacFlowFigure,
   HttpVersionsFigure,
+  VmafLadderFigure,
+  CmcdFlowFigure,
+  RecommendationCascadeFigure,
+  WatermarkingFigure,
+  AdAuctionFigure,
+  CmsWorkflowFigure,
+  ConcurrentStreamGuardFigure,
+  FastEpgFigure,
 } from './DocFigures'
 
 interface Chapter {
@@ -74,7 +82,9 @@ const CHAPTERS: Chapter[] = [
           <li><L slug="overview">Overview</L> — what you're building.</li>
           <li><L slug="time-timestamps">Time, clocks & timestamps</L> + <L slug="crypto-basics">Cryptography primitives</L> — load-bearing primitives the rest of the codebase assumes.</li>
           <li><L slug="hls">HLS essentials</L> + <L slug="manifest">Manifest deep-dive</L> — the protocol the team writes against.</li>
-          <li><L slug="ssai">Server-Side Ad Insertion</L> — the most code-heavy thing the platform does.</li>
+          <li><L slug="qc-vmaf">QC & VMAF</L> — how quality is graded before bytes ship.</li>
+          <li><L slug="ssai">Server-Side Ad Insertion</L> + <L slug="ad-operations">Ad operations</L> — the most code-heavy thing the platform does, and why it pays.</li>
+          <li><L slug="cms-editorial">CMS workflow</L> + <L slug="recommendation">Recommendation cascade</L> — the editorial + discovery layer wrapping the playback.</li>
           <li><L slug="multi-drm">Multi-DRM in production</L> — how the entitlement layer plugs into vendor licence servers.</li>
           <li><L slug="gaps">Production gaps</L> — what's intentionally missing from the demo.</li>
         </ol>
@@ -84,6 +94,7 @@ const CHAPTERS: Chapter[] = [
           <li><L slug="audio-basics">Audio fundamentals</L> + <L slug="video-basics">Video fundamentals</L> + <L slug="color-basics">Color, light & vision</L> — what your player is decoding.</li>
           <li><L slug="hls">HLS essentials</L> · <L slug="containers">Containers</L> · <L slug="codecs">Codecs</L> — the protocol and bitstreams.</li>
           <li><L slug="player">Player & client architecture</L> — your daily tools (hls.js / shaka / native).</li>
+          <li><L slug="cmcd">CMCD / CMSD</L> — the player↔CDN telemetry handshake that modern ABR depends on.</li>
           <li><L slug="trick-play">Trick-play & thumbnails</L> — the seek-bar UX users complain about.</li>
           <li><L slug="multi-drm">Multi-DRM in production</L> — what your EME code is actually doing.</li>
           <li><L slug="observability">Observability & QoE</L> — what your telemetry instrumentation drives.</li>
@@ -92,10 +103,10 @@ const CHAPTERS: Chapter[] = [
         <h3>Mobile / CTV client engineer</h3>
         <ol>
           <li><L slug="devices">Device platforms & SDKs</L> — your platform's quirks.</li>
-          <li><L slug="networking-basics">Networking primitives</L> — TCP / TLS / HTTP/2 / HTTP/3 hit hardest on mobile.</li>
+          <li><L slug="networking-basics">Networking primitives</L> + <L slug="cmcd">CMCD / CMSD</L> — TCP / TLS / HTTP/3 hit hardest on mobile; CMCD is how your player co-operates with the CDN.</li>
           <li><L slug="player">Player & client architecture</L> — the JS reference; substitute your native equivalent.</li>
           <li><L slug="multi-drm">Multi-DRM in production</L> — Widevine vs FairPlay vs PlayReady depending on your platform.</li>
-          <li><L slug="identity">Identity, profiles & devices</L> — registration + concurrent-stream rules.</li>
+          <li><L slug="identity">Identity, profiles & devices</L> + <L slug="concurrent-streams">Concurrent streams</L> — registration + the household-cap rules your client enforces.</li>
           <li><L slug="trick-play">Trick-play & thumbnails</L> — most-shipped feature you'll touch.</li>
         </ol>
 
@@ -104,16 +115,17 @@ const CHAPTERS: Chapter[] = [
           <li><L slug="crypto-basics">Cryptography primitives</L> — AES modes, HMAC, nonces, signed URLs.</li>
           <li><L slug="auth">Auth & session</L> — the access-token foundation.</li>
           <li><L slug="drm">DRM-lite vs production DRM</L> + <L slug="multi-drm">Multi-DRM in production</L> — the key-fetch stack.</li>
-          <li><L slug="anti-piracy">Anti-piracy beyond DRM</L> — HDCP, watermarking, geofence, account sharing.</li>
-          <li><L slug="identity">Identity, profiles & devices</L> — device + concurrent-stream policy.</li>
+          <li><L slug="watermarking">Forensic watermarking</L> + <L slug="anti-piracy">Anti-piracy beyond DRM</L> — what catches leaks DRM can't stop.</li>
+          <li><L slug="identity">Identity, profiles & devices</L> + <L slug="concurrent-streams">Concurrent streams</L> — device + household-cap policy.</li>
           <li><L slug="privacy">Privacy & consent</L> — IFA, TCF, COPPA.</li>
         </ol>
 
         <h3>PM / business person wanting the lay of the land</h3>
         <ol>
-          <li><L slug="overview">Overview</L> + <L slug="metadata">Video metadata</L> — catalog model.</li>
-          <li><L slug="catalog">Catalog & recommendations</L> + <L slug="search">Search & discovery</L> — discovery UX.</li>
-          <li><L slug="cost">Cost model</L> + <L slug="payments">Payments & billing</L> — how revenue and unit economics work.</li>
+          <li><L slug="overview">Overview</L> + <L slug="metadata">Video metadata</L> + <L slug="cms-editorial">CMS workflow</L> — catalog model and the editorial pipeline that fills it.</li>
+          <li><L slug="catalog">Catalog & recommendations</L> + <L slug="search">Search & discovery</L> + <L slug="recommendation">Recommendation cascade</L> — discovery UX and the four-stage funnel behind it.</li>
+          <li><L slug="cost">Cost model</L> + <L slug="payments">Payments & billing</L> + <L slug="ad-operations">Ad operations</L> — how revenue and unit economics work, including ad monetization.</li>
+          <li><L slug="epg-fast">FAST channels & EPG</L> — the linear / ad-supported model gaining share alongside SVOD.</li>
           <li><L slug="compliance">Compliance & accessibility</L> + <L slug="privacy">Privacy & consent</L> — what the legal team will ask about.</li>
           <li><L slug="gaps">Production gaps</L> — the engineering risk list.</li>
         </ol>
@@ -3039,6 +3051,1121 @@ segment_001.ts`}</code></pre>
       </>
     ),
   },
+  {
+    slug: 'qc-vmaf',
+    title: 'QC & VMAF — measuring perceptual quality',
+    blurb: 'Why every ABR rung is graded against the source with VMAF before it ships.',
+    render: () => (
+      <>
+        <p>
+          When the pipeline emits a 1080p rendition at 3.2 Mbps, how do you know it's
+          <em> actually</em> good? The packager's exit code says the bytes are valid HLS, but
+          says nothing about whether the picture looks right. That's what <strong>QC (quality
+          control)</strong> is — and at the heart of modern OTT QC sits <strong>VMAF</strong>,
+          a perceptual quality metric originally developed at Netflix and now an industry
+          standard.
+        </p>
+
+        <h3>Why VMAF, not PSNR or SSIM</h3>
+        <p>
+          <strong>PSNR</strong> measures per-pixel error against the source. It correlates
+          poorly with how humans perceive quality — heavy compression can drop PSNR a lot
+          while still looking fine, or boost PSNR while the image looks worse. <strong>SSIM
+          </strong> compares structural similarity; better than PSNR but still purely
+          mathematical.
+        </p>
+        <p>
+          <strong>VMAF (Video Multi-method Assessment Fusion)</strong> is a machine-learning
+          model trained on thousands of human ratings. It blends multiple per-frame features
+          (VIF, ADM, motion) through a regressor to produce a score from <strong>0 to 100</strong>
+          that maps to subjective opinion. The number is calibrated: <strong>95+ ≈ visually
+          indistinguishable from source</strong>, <strong>90 ≈ great</strong>, <strong>80 ≈
+          acceptable</strong>, <strong>below 70 ≈ users complain</strong>.
+        </p>
+
+        <h3>Bitrate vs quality, per resolution</h3>
+        <div className="docs-figure">
+          <VmafLadderFigure />
+        </div>
+        <p>
+          Each resolution rung has a saturation curve. Push too few bits at 1080p and VMAF
+          collapses; push too many at 480p and you're spending bandwidth past the point a
+          human can tell. The <strong>knee</strong> of each curve is the sweet spot — the
+          bitrate where one more megabit doesn't buy a perceptible improvement.
+        </p>
+
+        <h3>Per-title encoding</h3>
+        <p>
+          Traditional ABR ladders use a fixed bitrate per rung for every asset — 1080p at
+          5 Mbps, 720p at 2.5 Mbps, etc. <strong>Per-title encoding</strong> recomputes the
+          ladder per asset by sweeping bitrates and measuring VMAF per rung. A simple cartoon
+          hits VMAF 95 at 1080p with 1.5 Mbps; a complex sports broadcast may need 7 Mbps.
+          Netflix reports 20-30% bandwidth savings on the simple end of the catalog with no
+          quality drop.
+        </p>
+
+        <h3>Where VMAF runs in the pipeline</h3>
+        <ol>
+          <li>
+            Transcode produces N candidate renditions (one per ABR rung, possibly multiple
+            bitrate trials per rung for per-title tuning).
+          </li>
+          <li>
+            QC service downsamples each candidate to a common reference resolution, then runs
+            FFmpeg's <code>libvmaf</code> filter against the mezzanine source to produce a
+            VMAF score per frame.
+          </li>
+          <li>
+            Aggregate scores (mean, p10, p1) decide whether the rung passes:
+            <ul>
+              <li>mean VMAF ≥ ladder target (e.g. 92 for 1080p)</li>
+              <li>p10 VMAF ≥ floor (e.g. 80) — catches scenes that look bad even if the average is fine</li>
+              <li>per-frame banding / blocking detectors (separate from VMAF) flag visible artifacts</li>
+            </ul>
+          </li>
+          <li>Failing rungs trigger a re-encode at higher bitrate or a manual review queue.</li>
+        </ol>
+
+        <h3>VMAF flavors and pitfalls</h3>
+        <ul>
+          <li>
+            <strong>VMAF NEG</strong> — a tuned model that resists enhancement gaming (sharpening
+            an encode to boost VMAF without genuinely improving quality).
+          </li>
+          <li>
+            <strong>4K VMAF</strong> — the default model is trained at 1080p; for 4K source comparison
+            use the <code>vmaf_4k</code> model.
+          </li>
+          <li>
+            <strong>Resolution mismatch</strong> — comparing a 720p encode to a 4K source naively
+            penalizes the encode for not being 4K. Always upsample the encode to source
+            resolution before scoring.
+          </li>
+          <li>
+            <strong>HDR comparison</strong> — VMAF was trained on SDR. For HDR (PQ / HLG)
+            the recommended approach is to score in the linear-light domain or use
+            HDR-aware variants under active development.
+          </li>
+        </ul>
+
+        <h3>What this demo doesn't do</h3>
+        <p>
+          The demo's pipeline transcodes once and ships. There's no VMAF scoring step,
+          per-title sweep, or QC failure queue. The architecture doc in <code>/docs/vod-architecture.md</code>
+          shows where it should live (the Package → DRM → QC → Publish chain), but the actual
+          QC node is one of the <L slug="gaps">production gaps</L> deferred for scope.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'cmcd',
+    title: 'CMCD / CMSD — player ↔ CDN telemetry',
+    blurb: 'CTA-5004 and CTA-5006: how the player tells the CDN what it needs, and vice versa.',
+    render: () => (
+      <>
+        <p>
+          Until 2020 the CDN serving your video had almost no idea who was on the other end —
+          it saw HTTP requests for segments and that was it. The player meanwhile saw HTTP
+          responses with bytes and that was it. Both sides reconstructed the missing context
+          from indirect signals: throughput from response timing, congestion from re-request
+          patterns. Both got it wrong often. <strong>CMCD</strong> (Common Media Client Data,
+          CTA-5004) and <strong>CMSD</strong> (Common Media Server Data, CTA-5006) are the
+          standards that fix this by letting each side announce its state directly to the
+          other.
+        </p>
+
+        <h3>The handshake</h3>
+        <div className="docs-figure">
+          <CmcdFlowFigure />
+        </div>
+
+        <h3>CMCD — what the player tells the CDN</h3>
+        <p>
+          Every segment request can carry a CMCD payload either as a URL query parameter
+          (<code>?CMCD=br%3D2800%2Cbl%3D12000%2C…</code>) or as an HTTP header
+          (<code>CMCD-Request: br=2800,bl=12000,…</code>). Query mode survives all CDN cache
+          keys naively; header mode is preferable but needs CDN co-operation to vary on the
+          header.
+        </p>
+        <table className="docs-gaps">
+          <thead><tr><th>Key</th><th>Meaning</th><th>Why CDN cares</th></tr></thead>
+          <tbody>
+            <tr><td><code>br</code></td><td>requested bitrate (kbps)</td><td>predict bandwidth need</td></tr>
+            <tr><td><code>bl</code></td><td>buffer length on player (ms)</td><td>which clients are starving</td></tr>
+            <tr><td><code>d</code></td><td>segment duration (ms)</td><td>cache TTL hinting</td></tr>
+            <tr><td><code>mtp</code></td><td>measured throughput (kbps)</td><td>CDN routing optimization</td></tr>
+            <tr><td><code>ot</code></td><td>object type (v=video, a=audio, m=manifest, k=key)</td><td>per-type caching</td></tr>
+            <tr><td><code>sf</code> · <code>st</code></td><td>streaming format (h=HLS, d=DASH) · stream type (v=VOD, l=live)</td><td>format-specific edge logic</td></tr>
+            <tr><td><code>sid</code></td><td>session ID (per-playback UUID)</td><td>correlate one viewer's segments</td></tr>
+            <tr><td><code>cid</code></td><td>content ID (asset slug)</td><td>per-asset analytics</td></tr>
+            <tr><td><code>su</code></td><td>startup (boolean) — this is a startup request</td><td>prioritize first-bytes path</td></tr>
+            <tr><td><code>bs</code></td><td>buffer starvation flag</td><td>treat as urgent</td></tr>
+          </tbody>
+        </table>
+
+        <h3>CMSD — what the CDN tells the player</h3>
+        <p>
+          CMSD lands in response headers, split into static (rarely changing per session) and
+          dynamic (per response). Examples:
+        </p>
+        <ul>
+          <li>
+            <code>CMSD-Static: ot=v,n="edge-LAX"</code> — object type, CDN node identifier
+          </li>
+          <li>
+            <code>CMSD-Dynamic: etp=2500,rtt=42,dl=18,du=4000</code> — estimated throughput
+            (kbps), round-trip time (ms), download time (ms), segment duration (ms)
+          </li>
+          <li>
+            <code>su=1</code> — server is under stress; client should consider switching down
+          </li>
+          <li>
+            <code>nor="seg-043.m4s"</code> — next-object request hint; player can prefetch
+          </li>
+        </ul>
+
+        <h3>What gets unlocked</h3>
+        <ul>
+          <li>
+            <strong>Smarter ABR.</strong> Player no longer has to <em>infer</em> throughput
+            from receive timing — the CDN tells it. ABR up-shift / down-shift decisions
+            converge faster and oscillate less.
+          </li>
+          <li>
+            <strong>Per-session QoE telemetry.</strong> The <code>sid</code> field lets the
+            CDN attribute every segment to a session, then export a CDN-side QoE log that
+            mirrors the player-side log. Triangulating both pinpoints rebuffers far better
+            than either alone.
+          </li>
+          <li>
+            <strong>Prioritized startup.</strong> <code>su=1</code> requests get edge priority,
+            cutting time-to-first-frame.
+          </li>
+          <li>
+            <strong>Cache hit improvements.</strong> CDN hints (<code>nor</code>) let the
+            player prefetch even before the playhead needs the next segment.
+          </li>
+        </ul>
+
+        <h3>Adoption status (2025)</h3>
+        <ul>
+          <li>
+            <strong>Players.</strong> hls.js, Shaka, dash.js, ExoPlayer, AVPlayer (via app-level
+            wrapping) all emit CMCD natively. Most ship a sensible default subset.
+          </li>
+          <li>
+            <strong>CDNs.</strong> Akamai, Fastly, Cloudflare, AWS CloudFront all parse CMCD
+            for routing / logging. CMSD response emission is newer — Akamai and Fastly lead,
+            others rolling.
+          </li>
+          <li>
+            <strong>DRM-protected segments.</strong> CMCD fields go in URL or header — both
+            survive encryption since they're metadata, not media payload.
+          </li>
+        </ul>
+
+        <h3>Gotchas</h3>
+        <ul>
+          <li>
+            <strong>Privacy.</strong> <code>sid</code> is per-session UUID, not user-identifying.
+            Don't shove a user ID into <code>cid</code> — content ID is asset-level.
+          </li>
+          <li>
+            <strong>Query mode + cache keys.</strong> If the CDN doesn't strip CMCD query
+            params before computing cache key, every request becomes a unique URL and
+            cache-hit rate craters. Header mode avoids this entirely.
+          </li>
+          <li>
+            <strong>Length limits.</strong> URL query mode is bounded by total URL length;
+            don't emit every field every request. Send <code>br</code>, <code>bl</code>,
+            <code>mtp</code> always; send <code>sid</code>, <code>cid</code> once per session
+            if header mode is unavailable.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'recommendation',
+    title: 'Recommendation cascade',
+    blurb: 'Recall → coarse rank → fine rank → rerank — the four-stage funnel every OTT shows you.',
+    render: () => (
+      <>
+        <p>
+          The home grid you see on Netflix, Disney+, or iQIYI is the output of an industrial
+          recommendation pipeline. Every OTT of meaningful scale uses some variant of the same
+          four-stage cascade: <strong>recall</strong> (pull a candidate set from millions),
+          <strong>coarse rank</strong> (filter to a thousand), <strong>fine rank</strong>
+          (rank the top hundred), <strong>rerank</strong> (the final twenty for the user). The
+          shape is dictated by latency — you cannot fine-rank a million items in 100 ms.
+        </p>
+
+        <h3>The funnel</h3>
+        <div className="docs-figure">
+          <RecommendationCascadeFigure />
+        </div>
+
+        <h3>Stage 1 — Recall</h3>
+        <p>
+          Goal: from the full catalog (50 K-500 K items at OTT scale), surface a candidate set
+          of ~10 K that is <em>likely</em> to contain the items the user will engage with.
+          Speed-over-precision: most candidates will be wrong, but recall must be high.
+        </p>
+        <ul>
+          <li>
+            <strong>Vector recall.</strong> Embed user and items into the same vector space
+            (DSSM / two-tower model trained offline), then nearest-neighbor search via
+            <strong> Milvus</strong> / Faiss for the user vector. K=2000-5000 candidates.
+          </li>
+          <li>
+            <strong>Collaborative filtering.</strong> "Users who watched X also watched Y" —
+            still useful for popular long-tail recall.
+          </li>
+          <li>
+            <strong>Hot / editorial.</strong> Curated promo positions, today's hot list, new
+            releases. Always include some so editorial control survives the model.
+          </li>
+          <li>
+            <strong>Recent-watch + sequel.</strong> If you watched S01E03 of "Show X", S01E04
+            jumps directly into the candidate set.
+          </li>
+        </ul>
+
+        <h3>Stage 2 — Coarse rank</h3>
+        <p>
+          Goal: score the ~10 K candidates with a cheap model and keep the top 1000. The
+          cheap model is usually a <strong>DSSM</strong> (Deep Structured Semantic Model) two-tower
+          — user features go through one tower, item features through another, the dot product
+          is the score. Both towers are pre-computed; only the dot product runs at request time.
+          Runs on Triton / TF Serving with hundreds of QPS per box.
+        </p>
+
+        <h3>Stage 3 — Fine rank</h3>
+        <p>
+          Goal: precisely score the top 1000 with an expensive model, keep the top 100.
+          Expensive means features are computed at request time per (user, item) pair — attention
+          over watch history, sequence models, cross features. Architectures: <strong>DIN</strong>
+          (Deep Interest Network), <strong>SIM</strong> (Search-based Interest Model), DCN,
+          MMoE. Latency budget: 30-60 ms for the batch.
+        </p>
+
+        <h3>Stage 4 — Rerank</h3>
+        <p>
+          Goal: produce the final list (10-30 items) optimizing more than CTR. Concerns the
+          first three stages can't model directly:
+        </p>
+        <ul>
+          <li>
+            <strong>Diversity.</strong> Don't show ten action movies in a row.
+          </li>
+          <li>
+            <strong>Multi-objective.</strong> Balance click probability, watch-time, retention,
+            subscription likelihood.
+          </li>
+          <li>
+            <strong>Exploration.</strong> Insert a few items from undertrained categories so the
+            model keeps learning what the user likes.
+          </li>
+          <li>
+            <strong>Business rules.</strong> "Promote this Original this week", "demote content
+            in regional cooldown", "respect parental controls", "remove items the user just
+            finished".
+          </li>
+        </ul>
+
+        <h3>Feature store</h3>
+        <p>
+          Every stage above consumes <strong>features</strong>: counts of past actions, time
+          since last watch, embedding vectors, demographic tags. These come from a
+          <strong> feature store</strong> with two halves that must agree:
+        </p>
+        <ul>
+          <li>
+            <strong>Offline half</strong> — Spark / Flink computes features over days of logs;
+            written to a parquet warehouse. Used by training to produce model weights.
+          </li>
+          <li>
+            <strong>Online half</strong> — Redis / Cassandra / a feature-store like Feast that
+            serves features at request time. Updated continuously from Flink / Kafka.
+          </li>
+        </ul>
+        <p>
+          The cardinal sin is <strong>training-serving skew</strong> — features computed
+          differently online vs offline. Models trained on one feature distribution and served
+          on another silently degrade. A feature store is the contract that prevents skew.
+        </p>
+
+        <h3>Cold start</h3>
+        <ul>
+          <li>
+            <strong>New user.</strong> No history → fall back to editorial hot list, popularity
+            within the user's region, plus an onboarding question ("pick three you've watched").
+            User vector is randomly initialized and updated by first sessions.
+          </li>
+          <li>
+            <strong>New item.</strong> No interaction data → use content features (cast, genre,
+            embeddings derived from the trailer / poster / synopsis). The CV chapter is upstream
+            here: scene embeddings let new content immediately enter recall pools.
+          </li>
+        </ul>
+
+        <h3>Training cadence</h3>
+        <ul>
+          <li>
+            <strong>Embedding models</strong> — retrained nightly or every few days on a
+            week of logs. Vector index rebuilt + hot-swapped in Milvus.
+          </li>
+          <li>
+            <strong>Ranking models</strong> — retrained weekly; champion / challenger A/B
+            decides promotion. <strong>Online learning</strong> can update the last layer hourly
+            for fast adaptation (regional events, new releases).
+          </li>
+          <li>
+            <strong>Bandits</strong> — exploration weights tuned continuously based on
+            reward signals.
+          </li>
+        </ul>
+
+        <h3>What this demo doesn't have</h3>
+        <p>
+          The demo has no recommendation pipeline at all — the assets list is the catalog and
+          uses insertion order. The architecture in <code>/docs/vod-architecture.md</code> §三
+          shows the production shape; everything above is what would sit between the catalog
+          DB and the home grid.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'watermarking',
+    title: 'Forensic watermarking',
+    blurb: 'Two flavors of watermark, where each fits, and how A/B variant stitching traces leaks.',
+    render: () => (
+      <>
+        <p>
+          DRM stops a casual download. A leaker records the screen, screen-grabs at runtime,
+          or uses a stripped-down rooted player to dump decrypted segments. The video escapes
+          and now sits on a piracy site. <strong>Watermarking</strong> is the technique that
+          lets you trace who leaked it.
+        </p>
+
+        <h3>Two distinct things</h3>
+        <table className="docs-gaps">
+          <thead><tr><th></th><th>Visible watermark</th><th>Forensic watermark</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Goal</strong></td>
+              <td>deter leak; signal authenticity</td>
+              <td>identify leaker after leak</td>
+            </tr>
+            <tr>
+              <td><strong>Visibility</strong></td>
+              <td>visible logo / ID burned in</td>
+              <td>imperceptible to viewer</td>
+            </tr>
+            <tr>
+              <td><strong>Survives</strong></td>
+              <td>re-encoding obviously; can be cropped</td>
+              <td>re-encoding, screen capture, format conversion</td>
+            </tr>
+            <tr>
+              <td><strong>Cost</strong></td>
+              <td>nearly free (overlay)</td>
+              <td>~5-15% extra encoding cost; vendor royalties</td>
+            </tr>
+            <tr>
+              <td><strong>Typical use</strong></td>
+              <td>screeners, pre-release reviews, B2B</td>
+              <td>4K premieres, sports, enterprise</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>A/B variant stitching — how forensic watermarking actually works</h3>
+        <div className="docs-figure">
+          <WatermarkingFigure />
+        </div>
+        <ol>
+          <li>
+            <strong>Offline.</strong> Encode <em>two</em> watermarked variants of every
+            segment — variant A and variant B. The watermark is a tiny imperceptible pattern
+            (in the DCT coefficients or luminance) that survives heavy compression. A and B
+            are bit-identical to the eye but mathematically distinct under a detection model.
+          </li>
+          <li>
+            <strong>Runtime.</strong> Per playback session, the Manifest service emits a
+            stitched playlist that picks A or B per segment according to a bit pattern unique
+            to the session ID. For a 90-minute film at 6-second segments, that's 900 segments
+            = 900 bits = enough entropy to address 2<sup>900</sup> sessions (way more than
+            humans on Earth).
+          </li>
+          <li>
+            <strong>Detection.</strong> When a leaked file shows up, run the detector against
+            each segment to read off its A/B bit. Concatenate the bits → look up the
+            session ID → identify the leaker.
+          </li>
+        </ol>
+
+        <h3>Where it plugs into the demo's pipeline</h3>
+        <p>
+          The architecture doc shows watermarking in the media pipeline (offline A/B variant
+          encoding) plus the Manifest service (runtime stitching). Demo-side equivalents:
+        </p>
+        <ul>
+          <li>
+            <strong>Mezzanine + transcode</strong> would emit two variants per rung instead of
+            one. Storage roughly doubles per rendition; some platforms run A/B at the top rung
+            only (4K) since that's the high-value leak target.
+          </li>
+          <li>
+            <strong>Origin layout</strong> — variants share segment numbering but differ in
+            URL: <code>seg-0042-A.m4s</code> / <code>seg-0042-B.m4s</code>. Origin holds both.
+          </li>
+          <li>
+            <strong>Manifest service</strong> consults a bit pattern derived from the session ID
+            (HMAC over the user / device / session for unforgeability) and emits one playlist
+            referencing the chosen variant per segment.
+          </li>
+          <li>
+            <strong>Detection service</strong> is run after a leak is found. Vendors like
+            Verimatrix, NexGuard, INKA Friend offer the detection API.
+          </li>
+        </ul>
+
+        <h3>Alternative: client-side stitching</h3>
+        <p>
+          Some implementations push the A/B selection into the player — the player has a list
+          of segment URLs and a bit pattern, and picks A or B locally. Pros: no per-session
+          manifest cost. Cons: the bit pattern leaks if the player is reverse-engineered;
+          colluding viewers can compare their files and reconstruct the watermark.
+          Server-side stitching is the default for high-value content.
+        </p>
+
+        <h3>Forensic vendors (DRMaaS overlap)</h3>
+        <ul>
+          <li>
+            <strong>Verimatrix VideoMark / NexGuard</strong> — used by major studios; A/B variant
+            encoding + detection.
+          </li>
+          <li>
+            <strong>BuyDRM Keyflower</strong> — multi-DRM stack with forensic add-on.
+          </li>
+          <li>
+            <strong>PallyCon Forensic Watermark</strong> — popular in APAC, cost-efficient.
+          </li>
+          <li>
+            <strong>Friend MTS ASiD</strong> — strong sports / live focus.
+          </li>
+        </ul>
+
+        <h3>Limits</h3>
+        <ul>
+          <li>
+            Collusion attacks: multiple viewers comparing their copies can reconstruct A vs B
+            on a per-segment basis. Mitigation: <strong>collusion-resistant codes</strong>
+            (Tardos codes) at the cost of higher detection threshold.
+          </li>
+          <li>
+            Cropping / resize: a 10% crop usually preserves the watermark; a 50% crop may not.
+          </li>
+          <li>
+            Audio-only leaks: watermark is usually video-only. Audio watermarking exists
+            (Aurora, Civolution) but is a separate stack.
+          </li>
+          <li>
+            Live: low-latency live raises the bar — stitching must happen at the manifest
+            cadence (every few segments) with sub-second budget.
+          </li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    slug: 'ad-operations',
+    title: 'Ad operations & monetization',
+    blurb: 'Past the technical SSAI plumbing — CPM, fill rate, deal types, auction topology.',
+    render: () => (
+      <>
+        <p>
+          The <L slug="ssai">SSAI chapter</L> covers <em>how</em> ads get into the stream.
+          This chapter covers <em>why</em> a particular ad ends up in a particular slot —
+          the business plumbing that decides which ad wins, what it pays, and how the
+          publisher gets credit.
+        </p>
+
+        <h3>Pricing models</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Model</th><th>What advertiser pays for</th><th>Typical OTT CPM</th></tr></thead>
+          <tbody>
+            <tr><td><strong>CPM</strong> (cost per mille)</td><td>1000 impressions delivered</td><td>$15-$40 US OTT premium</td></tr>
+            <tr><td><strong>CPCV</strong> (cost per completed view)</td><td>impression watched to ≥95%</td><td>$25-$60 (premium video)</td></tr>
+            <tr><td><strong>CPC</strong> (cost per click)</td><td>click on companion / overlay</td><td>$0.50-$5 (rare in video)</td></tr>
+            <tr><td><strong>CPA</strong> (cost per action)</td><td>signup / purchase</td><td>$5-$50 (direct-response)</td></tr>
+            <tr><td><strong>Flat rate</strong></td><td>guaranteed campaign delivery</td><td>negotiated</td></tr>
+          </tbody>
+        </table>
+        <p>
+          OTT is dominated by CPM and CPCV. CPCV is preferred by brand advertisers because it
+          aligns spend with engagement (the user actually watched). For the publisher, eCPM
+          (effective CPM = total revenue / impressions × 1000) is the single number to track.
+        </p>
+
+        <h3>Fill rate</h3>
+        <p>
+          The percentage of ad opportunities that get filled with a paying ad.
+        </p>
+        <ul>
+          <li>
+            <strong>Premium fill rate</strong>: % filled at the publisher's floor price.
+            Healthy is 70-90%.
+          </li>
+          <li>
+            <strong>Total fill rate (including house ads / remnant)</strong>: should be 100%
+            — every slot must show <em>something</em>. House fills with promos, charity PSAs,
+            or low-CPM remnant networks.
+          </li>
+          <li>
+            <strong>Unfilled = ad-service "no-fill" response.</strong> The SSAI stitcher must
+            handle this by either skipping the break (HLS gap, easier said than done) or
+            inserting a house creative.
+          </li>
+        </ul>
+
+        <h3>Deal types</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Type</th><th>How it works</th><th>Where it fits</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>Direct / IO</strong></td>
+              <td>publisher and advertiser sign an Insertion Order; guaranteed delivery</td>
+              <td>premium upfront commitments</td>
+            </tr>
+            <tr>
+              <td><strong>PG</strong> (Programmatic Guaranteed)</td>
+              <td>guaranteed CPM and volume, delivered programmatically via DSP/SSP</td>
+              <td>large advertisers wanting automation</td>
+            </tr>
+            <tr>
+              <td><strong>PMP</strong> (Private Marketplace)</td>
+              <td>invite-only auction with curated buyers; floor price per deal ID</td>
+              <td>premium publishers who want auction efficiency without open exchange</td>
+            </tr>
+            <tr>
+              <td><strong>Open exchange (OMP)</strong></td>
+              <td>real-time bidding among any DSPs that subscribe</td>
+              <td>backfill / remnant; lowest CPMs but highest fill</td>
+            </tr>
+          </tbody>
+        </table>
+        <p>
+          A real publisher runs all four in priority order: direct/PG fills first, then PMP,
+          then open exchange, then house ads.
+        </p>
+
+        <h3>Auction topology — waterfall vs unified</h3>
+        <div className="docs-figure">
+          <AdAuctionFigure />
+        </div>
+        <p>
+          <strong>Waterfall</strong>: query DSPs sequentially in a fixed priority. First DSP
+          that bids above the floor wins. Easy to implement; loses revenue because higher
+          bidders further down the chain are never queried.
+        </p>
+        <p>
+          <strong>Unified auction</strong> (a.k.a. header bidding for video, prebid wrapper,
+          server-side header bidding): query all DSPs in parallel and pick the highest bid.
+          Modern standard. Typical revenue uplift versus waterfall: 20-30%. The catch is
+          latency — every bidder must respond inside the same window (~150-200 ms for video),
+          so timeouts are aggressive.
+        </p>
+
+        <h3>Brand safety / suitability</h3>
+        <p>
+          A car ad next to a graphic news clip is bad for both sides. Brand suitability is the
+          set of rules that prevents this:
+        </p>
+        <ul>
+          <li>
+            <strong>IAB Content Taxonomy</strong> classifies the program (genre, themes, tone).
+          </li>
+          <li>
+            <strong>Page-level signals</strong> from the metadata layer flag a program's
+            rating, themes, advisories.
+          </li>
+          <li>
+            <strong>Advertiser filters</strong> say "no news, no horror, no shows with adult
+            language". The ad-server enforces this before allowing a bid.
+          </li>
+          <li>
+            <strong>Brand-safety scanners</strong> (DoubleVerify, Integral Ad Science) score
+            inventory in real time and provide post-buy reports.
+          </li>
+        </ul>
+
+        <h3>Frequency caps</h3>
+        <ul>
+          <li>
+            <strong>Per-user</strong>: a single creative may show at most N times per day /
+            week / campaign. Bedrock for not annoying viewers.
+          </li>
+          <li>
+            <strong>Per-pod</strong>: don't show two ads from the same advertiser in the same
+            break.
+          </li>
+          <li>
+            <strong>Competitive separation</strong>: don't show Pepsi right after Coke.
+          </li>
+          <li>
+            <strong>State (across devices)</strong>: frequency is per user-identity, not
+            per-device. Requires user identity to carry across phone / TV / web (cookies are
+            useless on TV). Hence the rise of identity solutions (ID5, RampID, UID 2.0).
+          </li>
+        </ul>
+
+        <h3>Attribution</h3>
+        <p>
+          Did the ad work? Three approaches:
+        </p>
+        <ul>
+          <li>
+            <strong>Last-touch click attribution</strong> — only useful for direct-response.
+          </li>
+          <li>
+            <strong>View-through attribution</strong> — if user signed up within N days of
+            seeing the ad, credit the ad. Standard for brand video.
+          </li>
+          <li>
+            <strong>Incrementality testing</strong> — randomized holdouts measure lift over
+            no-ad control. Methodologically the only attribution that survives scrutiny;
+            adoption growing fast.
+          </li>
+        </ul>
+
+        <h3>What this demo doesn't model</h3>
+        <p>
+          The demo's ad-service serves a single hard-coded pre-roll, no auction. Real
+          monetization stacks layer SSP / DSP / DMP / identity providers in front of the SSAI
+          stitcher. The technical splice is the easy bit — the auction and attribution layer
+          is where the revenue happens.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'cms-editorial',
+    title: 'CMS & editorial workflow',
+    blurb: 'Metadata is a schema; the CMS is the workflow that fills it in and keeps it true.',
+    render: () => (
+      <>
+        <p>
+          The <L slug="metadata">Video metadata</L> chapter described <em>what</em> editorial
+          fields exist. This chapter describes <em>how</em> they get filled in, edited,
+          scheduled, and eventually removed — the operational layer behind every catalog.
+          A real OTT runs a full editorial CMS that no end-user ever sees, but which any
+          production engineer touches weekly.
+        </p>
+
+        <h3>Three ways content enters the catalog</h3>
+        <ol>
+          <li>
+            <strong>CP feeds.</strong> Content providers (studios, distributors, syndicators)
+            push XML or JSON manifests over SFTP / API on a schedule. Each feed describes
+            episodes, rights windows, asset URLs, technical specs. Ingestion is mostly
+            automated but always needs validation and human review for the first feed of a
+            new partner.
+          </li>
+          <li>
+            <strong>Direct upload.</strong> Internal editorial teams (originals, marketing,
+            promos) upload through the CMS UI, fill in fields manually, attach assets.
+          </li>
+          <li>
+            <strong>Programmatic creation.</strong> User-generated content, podcasts, news
+            clips arriving via auto-ingest pipelines that create catalog entries with minimal
+            metadata.
+          </li>
+        </ol>
+
+        <h3>The lifecycle</h3>
+        <div className="docs-figure">
+          <CmsWorkflowFigure />
+        </div>
+        <ol>
+          <li>
+            <strong>Draft.</strong> Editor creates an entry, attaches mezzanine reference,
+            fills in title / synopsis / cast / images. Auto-saved every keystroke. Visible
+            only to the editorial team.
+          </li>
+          <li>
+            <strong>Review.</strong> Submitted for QC + legal + localization checks. Failed
+            reviews go back to Draft with comments. Approved entries unlock scheduling.
+          </li>
+          <li>
+            <strong>Scheduled.</strong> Rights window assigned (e.g. <code>active_from
+            2026-09-01T00:00Z</code>, <code>active_until 2027-08-31T23:59Z</code>). The
+            catalog enforces the window — even though the row exists, it's invisible to users
+            outside it.
+          </li>
+          <li>
+            <strong>Live.</strong> Inside the rights window; visible in the catalog. CMS
+            tracks views, ratings, edits to keep the entry up-to-date.
+          </li>
+          <li>
+            <strong>Hidden.</strong> Soft-removed for incident response (DMCA complaint,
+            controversy, technical break) or A/B test exclusion. Can return to Live.
+          </li>
+          <li>
+            <strong>Archived.</strong> Rights expired or content retired. Row preserved for
+            history (subscriptions, watch history) but the streamable assets may be deleted
+            from origin to save cost.
+          </li>
+        </ol>
+
+        <h3>Rights windows — the source of catalog churn</h3>
+        <p>
+          A single episode might have separate rights windows per country, per language, per
+          platform, per device tier. Modeling this naively as a list per asset works; modeling
+          it as <strong>rights × asset</strong> with a query layer that selects the applicable
+          window at request time scales.
+        </p>
+        <ul>
+          <li>
+            <strong>Activation</strong> at the start of a window is event-driven: a cron sweeps
+            assets crossing <code>active_from</code>, emits Kafka events, downstream caches
+            invalidate, CDN warms. Same for deactivation at <code>active_until</code>.
+          </li>
+          <li>
+            <strong>Geo restrictions</strong> are part of the window: a movie can be licensed
+            in the US but not Canada in the same calendar window. The catalog API needs to
+            return per-region availability.
+          </li>
+          <li>
+            <strong>Renewals and gaps</strong>: a window may be renewed mid-stream, or have a
+            gap (US: Jan-Jun, then nothing, then Sep-Dec). Watch history must survive gaps
+            without orphaning the user's resume position.
+          </li>
+        </ul>
+
+        <h3>Takedown — the most stress-tested CMS flow</h3>
+        <p>
+          When a piece of content has to come down <em>now</em> — DMCA, legal injunction, content
+          breach — the CMS must:
+        </p>
+        <ul>
+          <li>flip the asset to Hidden across <em>every</em> region within minutes;</li>
+          <li>purge CDN caches so already-fetched manifests stop loading new segments;</li>
+          <li>kill in-flight playback sessions (License Server stops issuing fresh keys);</li>
+          <li>preserve audit trail of who pulled it, when, why.</li>
+        </ul>
+        <p>
+          This is the path that is almost never exercised in normal operation and yet must
+          work end-to-end on the worst possible day. Real platforms drill it quarterly.
+        </p>
+
+        <h3>Audit trail</h3>
+        <p>
+          Every CMS edit is logged: who, when, before/after, reason. This is non-negotiable in
+          regulated markets (rights audits, regulatory inquiries) and routinely lifesaving in
+          unregulated ones ("who scheduled that to go live at 3 AM?"). The audit log usually
+          lives next to the catalog rows but in an append-only store (Postgres logical
+          replication into a separate audit DB, or a Kafka topic into a warehouse).
+        </p>
+
+        <h3>What this demo skips entirely</h3>
+        <p>
+          The demo's editorial layer is just <code>title</code> and <code>description</code>
+          on <code>VideoAssetEntity</code>, with no workflow, no rights window, no audit, no
+          state machine. A real CMS is one of the larger backend surfaces of an OTT and is
+          listed in the <L slug="gaps">production gaps</L>.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'concurrent-streams',
+    title: 'Concurrent streams & account-sharing limits',
+    blurb: 'Token + device fingerprint + heartbeat = the household contract every OTT enforces.',
+    render: () => (
+      <>
+        <p>
+          Every OTT subscription has a household limit — Netflix Standard caps at 2
+          simultaneous streams, Premium at 4; Disney+ at 4; HBO Max at 3; etc. Enforcing this
+          is a deceptively hard distributed-systems problem: the streams are on different
+          devices in different cities issuing different requests, and yet the platform must
+          decide in milliseconds whether one more request crosses the line.
+        </p>
+
+        <h3>The decision flow</h3>
+        <div className="docs-figure">
+          <ConcurrentStreamGuardFigure />
+        </div>
+
+        <h3>Three signals, one decision</h3>
+        <ol>
+          <li>
+            <strong>Token validity</strong> — JWT (or opaque session) issued at login, bound
+            to a device. Expired or revoked → deny.
+          </li>
+          <li>
+            <strong>Device fingerprint</strong> — composite of model, OS version, app build,
+            hardware identifier, network. Stable enough to recognize the same device, fuzzy
+            enough to survive an OS update. The platform stores the user's registered devices
+            and limits how many can stream concurrently.
+          </li>
+          <li>
+            <strong>Concurrent count</strong> — a counter keyed by the account ID. Decremented
+            on session end (explicit signout, heartbeat timeout, license expiry).
+          </li>
+        </ol>
+
+        <h3>The concurrent-count problem</h3>
+        <p>
+          Naively: keep a Redis counter per account. Increment on play, decrement on stop.
+          The catch is that clients lie about stopping — they close the laptop lid, lose
+          connectivity, get killed by the OS, all without sending the "stop" event.
+        </p>
+        <p>
+          Production solution is <strong>heartbeats</strong>: the player POSTs every 30-60s
+          while a session is active. The server treats absence-of-heartbeat as session end
+          and decrements the counter after a grace period (~90 s). Heartbeats also carry CMCD-style
+          QoS data so this endpoint is genuinely multi-purpose.
+        </p>
+
+        <h3>Household definition</h3>
+        <p>
+          "Household" is the policy lever for account sharing. Different platforms set it
+          differently:
+        </p>
+        <ul>
+          <li>
+            <strong>Strict household</strong> (Netflix 2023+): primary home anchored by IP /
+            GPS / device. Outside-home streams require step-up auth or a paid "extra member"
+            slot.
+          </li>
+          <li>
+            <strong>Soft household</strong> (most others): any device that has logged in
+            counts toward the cap; ignored where they sit geographically.
+          </li>
+          <li>
+            <strong>Profile-based</strong>: profiles within an account are not separate
+            households; they all share the cap.
+          </li>
+        </ul>
+
+        <h3>Step-up auth</h3>
+        <p>
+          When a stream looks suspicious — new device, new geography, exceeded cap — the
+          right answer is not always "deny". The right answer is often <strong>step-up</strong>:
+          ask the user to confirm via email / SMS / password re-entry. Real households move,
+          travel, lend a TV to a relative. Step-up authenticates intent without burning the
+          user's trust.
+        </p>
+
+        <h3>License Server's role</h3>
+        <p>
+          The cap is enforced not just at play-auth time but at every license issuance. The
+          License Server checks "is this device's session still counted, and are we within the
+          cap?" before minting a fresh license. If a fourth stream sneaks past play-auth via a
+          race, the License Server is the second gate.
+        </p>
+
+        <h3>Geo drift detection</h3>
+        <p>
+          Two streams from the same account, one in Seattle and one in Mumbai, at the same
+          time, with no plausible travel between them: that's not concurrent viewing, that's
+          credential sharing. Detection signals:
+        </p>
+        <ul>
+          <li>
+            <strong>Geo distance / time</strong> — implausible travel rate between sessions.
+          </li>
+          <li>
+            <strong>Network ASN</strong> — same account on two unrelated ASNs over the past
+            month with no overlap.
+          </li>
+          <li>
+            <strong>Device diversity</strong> — six different makes/models in a year on what
+            should be a four-person household.
+          </li>
+        </ul>
+        <p>
+          These do <em>not</em> automatically deny — they feed a risk score that triggers
+          step-up at the next session boundary, or a quiet email warning.
+        </p>
+
+        <h3>Paid extra slots</h3>
+        <p>
+          Once enforcement is real, the natural product question is: how does a user who
+          legitimately has a college student abroad keep them streaming? Answer: a paid
+          add-on slot tied to that device. Most major OTTs introduced this between 2022 and 2024
+          after years of soft enforcement.
+        </p>
+
+        <h3>What this demo doesn't enforce</h3>
+        <p>
+          The demo issues one access token per login with no concurrent-stream tracking. A
+          single user could open the player in N tabs and stream all N simultaneously.
+          Production parity would add a Redis-backed concurrent counter, a heartbeat endpoint,
+          and a License Server gate.
+        </p>
+      </>
+    ),
+  },
+  {
+    slug: 'epg-fast',
+    title: 'FAST channels & EPG',
+    blurb: 'Linear streaming returns: how on-demand platforms run free ad-supported channels.',
+    render: () => (
+      <>
+        <p>
+          Linear TV came back. <strong>FAST</strong> (Free Ad-supported Streaming TV) channels
+          — Pluto, Tubi, Samsung TV Plus, the linear lanes inside Roku and Peacock — re-introduce
+          the broadcast model on top of OTT plumbing. The viewer tunes in, watches what's
+          playing now, and ads pay the bill. Users don't always realize they're using an
+          on-demand platform's CDN; engineers absolutely do.
+        </p>
+
+        <h3>Channel as schedule, not as bytes</h3>
+        <p>
+          A FAST channel is fundamentally a <strong>schedule</strong>: a list of program assets
+          + ad slots laid out on a wall clock. The player gets a live manifest that points at
+          the program currently scheduled, then transitions at break boundaries. The
+          underlying segments are usually CDN-cached VOD bytes — what changes is which playlist
+          ref points where.
+        </p>
+
+        <h3>Evening schedule slice</h3>
+        <div className="docs-figure">
+          <FastEpgFigure />
+        </div>
+
+        <h3>EPG — Electronic Programming Guide</h3>
+        <p>
+          The schedule lives in an EPG: a structured representation of every channel × every
+          time slot. Typical shape per entry:
+        </p>
+        <ul>
+          <li>channel ID, program ID, asset ID</li>
+          <li>start time / end time (UTC, wall clock)</li>
+          <li>episode metadata (season, episode, synopsis, rating)</li>
+          <li>ad break markers (where SSAI will splice)</li>
+          <li>localization (regional schedule variants)</li>
+        </ul>
+        <p>
+          EPG data is usually published as <strong>XMLTV</strong> or its successors — a flat
+          file or feed updated daily, ingested by the client and the manifest service in
+          tandem.
+        </p>
+
+        <h3>SCTE-35 markers</h3>
+        <p>
+          Inside the stream, SCTE-35 binary messages signal where breaks open and close. The
+          live encoder injects them at the right PTS; the SSAI stitcher reads them and either
+          splices in an ad pod or passes the program through. Each marker carries:
+        </p>
+        <ul>
+          <li>
+            <strong>splice_event_id</strong> — unique handle for this break
+          </li>
+          <li>
+            <strong>splice_command_type</strong> — typically <code>splice_insert</code> (start
+            or end) or <code>time_signal</code>
+          </li>
+          <li>
+            <strong>break_duration</strong> — how long the break is allowed to be
+          </li>
+          <li>
+            <strong>upid (Universal Program ID)</strong> — what program is starting / ending
+          </li>
+        </ul>
+        <p>
+          SSAI for linear is significantly harder than for VOD: the splice has to be exact to
+          the frame, the ad pod has to fit in the allotted duration (no overrun), and the
+          decisioning + encoding must happen in the seconds before the marker hits the player.
+        </p>
+
+        <h3>Player UX — what a FAST player does differently</h3>
+        <ul>
+          <li>
+            <strong>No seek bar</strong> (or a heavily limited DVR window — usually 30 min
+            back). Pure linear means seeking forward is impossible.
+          </li>
+          <li>
+            <strong>Channel zapping</strong> — left/right or up/down switches channels in
+            under a second. The manifest service must be ready to serve a new channel's
+            manifest immediately; usually achieved by warm caches per channel.
+          </li>
+          <li>
+            <strong>"Now / Next"</strong> overlay shows what's playing and what's after,
+            populated from EPG.
+          </li>
+          <li>
+            <strong>Replay-from-live</strong> — some FAST platforms let viewers restart the
+            current program from its beginning. Implemented via a separate VOD asset linked
+            from the EPG entry.
+          </li>
+        </ul>
+
+        <h3>FAST vs vMVPD vs OTT-on-demand</h3>
+        <table className="docs-gaps">
+          <thead><tr><th>Model</th><th>Cost</th><th>Catalog</th><th>Examples</th></tr></thead>
+          <tbody>
+            <tr>
+              <td><strong>FAST</strong></td>
+              <td>free, ad-supported</td>
+              <td>aggregated channels, often deep back catalog</td>
+              <td>Pluto, Tubi, Samsung TV+, Roku Channel</td>
+            </tr>
+            <tr>
+              <td><strong>vMVPD</strong></td>
+              <td>paid subscription</td>
+              <td>live cable bundle over IP</td>
+              <td>YouTube TV, Hulu Live, Sling, DirecTV Stream</td>
+            </tr>
+            <tr>
+              <td><strong>SVOD</strong></td>
+              <td>paid subscription</td>
+              <td>on-demand library</td>
+              <td>Netflix, Disney+, HBO Max</td>
+            </tr>
+            <tr>
+              <td><strong>AVOD / FAST-on-VOD</strong></td>
+              <td>free, ad-supported</td>
+              <td>on-demand library</td>
+              <td>Tubi, Crackle, Freevee</td>
+            </tr>
+          </tbody>
+        </table>
+
+        <h3>Why FAST grew</h3>
+        <ul>
+          <li>
+            <strong>Lower decision burden</strong> — many viewers prefer "what's on" to
+            scrolling a catalog grid.
+          </li>
+          <li>
+            <strong>Smart TV defaults</strong> — most CTV manufacturers ship FAST tiles on the
+            home screen. Discovery is free.
+          </li>
+          <li>
+            <strong>Cheap content reuse</strong> — back catalogs of broadcasters and studios
+            slot into FAST channels with low incremental cost.
+          </li>
+          <li>
+            <strong>Ad inventory growth</strong> — 100% ad-supported viewing time means more
+            slots than SVOD's "ad tier".
+          </li>
+        </ul>
+
+        <h3>What this demo doesn't have</h3>
+        <p>
+          The demo is strictly VOD: one asset, one manifest, no schedule, no SCTE-35, no FAST
+          mode. Production parity for FAST would add an EPG service, a live-manifest origin
+          per channel, a SCTE-35-aware SSAI stitcher, and a channel-switching player UX.
+        </p>
+      </>
+    ),
+  },
 ]
 
 // Part / chapter grouping. Reading order is computed from this — the CHAPTERS
@@ -3052,19 +4179,19 @@ const PARTS: { name: string; slugs: string[] }[] = [
   },
   {
     name: 'The publishing pipeline',
-    slugs: ['mezzanine', 'transcode-package', 'captions', 'ssai'],
+    slugs: ['mezzanine', 'transcode-package', 'qc-vmaf', 'captions', 'ssai'],
   },
   {
     name: 'Delivery & playback',
-    slugs: ['cdn', 'player', 'trick-play', 'live', 'observability', 'devices'],
+    slugs: ['cdn', 'cmcd', 'player', 'trick-play', 'live', 'epg-fast', 'observability', 'devices'],
   },
   {
     name: 'Content & business',
-    slugs: ['metadata', 'catalog', 'search', 'cost', 'payments', 'compliance', 'privacy'],
+    slugs: ['metadata', 'cms-editorial', 'catalog', 'search', 'recommendation', 'ad-operations', 'cost', 'payments', 'compliance', 'privacy'],
   },
   {
     name: 'Identity & security',
-    slugs: ['auth', 'identity', 'drm', 'multi-drm', 'anti-piracy'],
+    slugs: ['auth', 'identity', 'concurrent-streams', 'drm', 'multi-drm', 'watermarking', 'anti-piracy'],
   },
   {
     name: 'Reference',
@@ -3091,25 +4218,33 @@ const READING_MINUTES: Record<string, number> = {
   manifest: 8,
   mezzanine: 6,
   'transcode-package': 7,
+  'qc-vmaf': 7,
   captions: 7,
   ssai: 8,
   cdn: 7,
+  cmcd: 7,
   player: 7,
   'trick-play': 5,
   live: 7,
+  'epg-fast': 7,
   observability: 5,
   devices: 7,
   metadata: 7,
+  'cms-editorial': 7,
   catalog: 6,
   search: 6,
+  recommendation: 9,
+  'ad-operations': 8,
   cost: 5,
   payments: 7,
   compliance: 7,
   privacy: 7,
   auth: 7,
   identity: 7,
+  'concurrent-streams': 7,
   drm: 8,
   'multi-drm': 7,
+  watermarking: 7,
   'anti-piracy': 7,
   standards: 4,
   gaps: 5,
@@ -3132,27 +4267,35 @@ const SEE_ALSO: Record<string, string[]> = {
   codecs: ['audio-basics', 'video-basics', 'transcode-package'],
   manifest: ['hls', 'ssai'],
   mezzanine: ['transcode-package', 'codecs'],
-  'transcode-package': ['codecs', 'cdn'],
+  'transcode-package': ['qc-vmaf', 'codecs', 'cdn'],
+  'qc-vmaf': ['transcode-package', 'codecs', 'gaps'],
   captions: ['compliance', 'manifest'],
-  ssai: ['manifest', 'live'],
-  cdn: ['player', 'cost'],
+  ssai: ['manifest', 'ad-operations', 'live'],
+  cdn: ['cmcd', 'player', 'cost'],
+  cmcd: ['cdn', 'player', 'observability'],
   player: ['drm', 'trick-play', 'devices'],
   'trick-play': ['manifest', 'player'],
-  live: ['ssai', 'observability'],
-  observability: ['player', 'cdn'],
+  live: ['ssai', 'epg-fast', 'observability'],
+  'epg-fast': ['live', 'ssai', 'ad-operations'],
+  observability: ['player', 'cmcd', 'cdn'],
   devices: ['player', 'multi-drm'],
-  metadata: ['catalog', 'compliance'],
-  catalog: ['search', 'metadata'],
-  search: ['catalog', 'metadata'],
+  metadata: ['cms-editorial', 'catalog', 'compliance'],
+  'cms-editorial': ['metadata', 'compliance'],
+  catalog: ['search', 'recommendation', 'metadata'],
+  search: ['catalog', 'recommendation', 'metadata'],
+  recommendation: ['catalog', 'search'],
+  'ad-operations': ['ssai', 'epg-fast', 'privacy'],
   cost: ['cdn', 'transcode-package'],
   payments: ['identity', 'compliance'],
   compliance: ['privacy', 'captions'],
-  privacy: ['compliance', 'identity'],
-  auth: ['identity', 'drm'],
-  identity: ['auth', 'payments'],
-  drm: ['multi-drm', 'anti-piracy'],
-  'multi-drm': ['drm', 'anti-piracy'],
-  'anti-piracy': ['multi-drm', 'identity'],
+  privacy: ['compliance', 'identity', 'ad-operations'],
+  auth: ['identity', 'concurrent-streams', 'drm'],
+  identity: ['auth', 'concurrent-streams', 'payments'],
+  'concurrent-streams': ['identity', 'auth', 'multi-drm'],
+  drm: ['multi-drm', 'watermarking', 'anti-piracy'],
+  'multi-drm': ['drm', 'watermarking', 'anti-piracy'],
+  watermarking: ['anti-piracy', 'multi-drm'],
+  'anti-piracy': ['watermarking', 'multi-drm', 'identity'],
 }
 
 const CHAPTERS_BY_SLUG: Record<string, Chapter> = Object.fromEntries(

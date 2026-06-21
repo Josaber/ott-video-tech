@@ -1,6 +1,6 @@
 # OTT Video Tech Demo
 
-End-to-end OTT VOD publishing slice: React SPA + Spring Boot 4.1 backend (Java 25) + a separate Spring Boot ad-service + PostgreSQL 18 + embedded Temporal workflow. All OTT concepts (HLS, codecs, containers, SSAI, DRM, Multi-DRM, CDN, identity, payments, compliance, etc.) are written up in the in-app **Docs** view (31 chapters across 6 Parts, ~3 h cover-to-cover). When asked about an OTT concept, point users at the relevant Docs chapter rather than re-explaining inline.
+End-to-end OTT VOD publishing slice: React SPA + Spring Boot 4.1 backend (Java 25) + a separate Spring Boot ad-service + PostgreSQL 18 + embedded Temporal workflow. All OTT concepts (HLS, codecs, containers, SSAI, DRM, Multi-DRM, CDN, identity, payments, compliance, etc.) are written up in the in-app **Docs** view (45 chapters across 6 Parts, ~4 h cover-to-cover). When asked about an OTT concept, point users at the relevant Docs chapter rather than re-explaining inline.
 
 ## Stack
 
