@@ -9,7 +9,7 @@
                             │ (下行 API / 上行埋点)
 ┌─────────────────────────────────────────────────────────────┐
 │ 2. 边缘层      视频 CDN · Image CDN · Edge · Origin Shield   │
-│              媒体流量 ↔ CDN; API/License ↔ 旁路 → Gateway    │
+│              媒体 → CDN; API → Gateway; License → 直连       │
 └─────────────────────────────────────────────────────────────┘
                             │
 ┌─────────────────────────────────────────────────────────────┐
@@ -190,7 +190,7 @@ Manifest 请求 → Manifest 服务 → ADS 决策 → VAST 响应
 
 | 维度 | 设计要点 |
 |------|---------|
-| 可用性 | **多 Region Active-Active**、多 AZ、CDN 多供应商、Manifest 兜底 |
+| 可用性 | **媒资 Active-Standby + 用户数据 Active-Active region-sharded**、多 AZ、CDN 多供应商、Manifest 兜底 |
 | 一致性 | 媒资强一致；推荐/搜索最终一致；License token 短期 |
 | 成本 | per-title、CMAF 共享、JIT 长尾、Spot 转码、智能 CDN 调度、**冷存储分层**、**CDN 日志驱动选型** |
 | 安全 | CENC + 多 DRM + HDCP + Token + 防盗链 + Watermark + 风控 + **PAL 防广告作弊** + **License 撤销** |
@@ -208,7 +208,7 @@ Manifest 请求 → Manifest 服务 → ADS 决策 → VAST 响应
 3. **KMS 是横切**：Packager 写、License Server 读，不能让 KMS 嵌在媒体管线内部。
 4. **Manifest 服务做的事远不止 SSAI**：码率上限、字幕默认、HDCP、PAL 都在这里收口。
 5. **Play Auth 和 License Server 是两次调用**：很多设计漏了 proxy token 这一中间步骤，导致 license 鉴权失控。
-6. **CDN 旁路 API**：视频流量走 CDN；API/License 走 Gateway（即便共享 CDN 域名也是 dynamic passthrough）。
+6. **三路分流，License 不经 Gateway**：视频流量走 CDN；API 走 Gateway；License 走专用直连——client EME 调用直接打到 License Server，避免被 Gateway 透传 token / CDM 请求时丢失上下文或被错误缓存。
 7. **客户端埋点是上行流量**：架构图常误画为单向下行；实际是双向。
 8. **CV/内容理解读对象存储**：是 AI 层"反向"读取媒体管线产物，跨多层依赖，不能忽略。
 9. **Origin Shield (CDN 端) ≠ Origin Cluster (我方)**：前者是 CDN 厂商提供的回源收敛，后者是我方部署的回源出口；二者协作。
