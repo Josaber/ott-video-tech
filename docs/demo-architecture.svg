@@ -37,7 +37,7 @@
 
   <rect class="canvas" width="1400" height="900"/>
   <text class="title" x="60" y="58">OTT Video Tech Demo Architecture</text>
-  <text class="subtitle" x="60" y="86">Metadata, raw upload, FFmpeg processing, SSAI pre-roll stitching, program-only DRM and generated m3u8 playback.</text>
+  <text class="subtitle" x="60" y="86">Metadata, raw upload, ABR-ladder transcode with thumbnails + alt audio + subtitles + VMAF, SSAI pre-roll stitching, program-only DRM with multi-master playlist, generated m3u8 playback and a separate live-loop channel.</text>
 
   <rect class="group" x="55" y="125" width="300" height="650"/>
   <text class="section-title" x="80" y="160">Frontend</text>
@@ -81,7 +81,7 @@
 
   <rect class="box" x="435" y="710" width="350" height="48" fill="#fff7ed"/>
   <text class="label" x="460" y="736">FfmpegMediaProcessor</text>
-  <text class="small" x="635" y="736">transcode / HLS / ad / DRM</text>
+  <text class="small" x="635" y="736">ladder / thumbs / vmaf / encrypt</text>
 
   <rect class="group" x="885" y="125" width="455" height="650"/>
   <text class="section-title" x="910" y="160">Workflow and Processing</text>
@@ -96,19 +96,23 @@
 
   <rect class="flow" x="915" y="440" width="160" height="58"/>
   <text class="label" x="942" y="463">Transcode</text>
-  <text class="tiny" x="945" y="486">FFmpeg MP4</text>
+  <text class="tiny" x="922" y="486">ladder + thumbs + subs + vmaf</text>
   <rect class="flow" x="1130" y="440" width="160" height="58"/>
   <text class="label" x="1174" y="463">Package</text>
-  <text class="tiny" x="1162" y="486">HLS segments</text>
+  <text class="tiny" x="1156" y="486">multi-tier HLS</text>
   <rect class="flow" x="915" y="530" width="160" height="58"/>
   <text class="label" x="975" y="553">SSAI</text>
   <text class="tiny" x="935" y="576">generated pre-roll</text>
   <rect class="flow" x="1130" y="530" width="160" height="58"/>
   <text class="label" x="1194" y="553">DRM</text>
-  <text class="tiny" x="1154" y="576">ad clear, program AES</text>
+  <text class="tiny" x="1146" y="576">AES + multi-master</text>
   <rect class="flow" x="1022" y="620" width="160" height="58"/>
   <text class="label" x="1078" y="643">Publish</text>
   <text class="tiny" x="1052" y="666">m3u8 playback URL</text>
+
+  <rect class="flow" x="915" y="703" width="375" height="48" stroke="#be123c" fill="#fff1f2"/>
+  <text class="label" x="940" y="729" fill="#be123c">Live channel</text>
+  <text class="tiny" x="1040" y="729">separate ffmpeg loop -re -stream_loop -1</text>
 
   <rect class="group" x="405" y="785" width="935" height="92"/>
   <text class="section-title" x="430" y="820">Persistence and Media Outputs</text>

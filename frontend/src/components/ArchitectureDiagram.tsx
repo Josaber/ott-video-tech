@@ -10,10 +10,10 @@
 export function ArchitectureDiagram() {
   const stages = [
     { key: 'UPLOAD',    desc: 'raw mp4 stored' },
-    { key: 'TRANSCODE', desc: 'FFmpeg → ts' },
-    { key: 'PACKAGE',   desc: 'HLS m3u8' },
+    { key: 'TRANSCODE', desc: 'ladder · thumbs · subs · vmaf' },
+    { key: 'PACKAGE',   desc: 'multi-tier HLS' },
     { key: 'SSAI',      desc: 'stitch ad' },
-    { key: 'DRM',       desc: 'AES-128' },
+    { key: 'DRM',       desc: 'AES-128 · master' },
     { key: 'PUBLISH',   desc: 'signed URLs' },
   ]
   const boxW = 124
@@ -52,6 +52,17 @@ export function ArchitectureDiagram() {
           orient="auto-start-reverse"
         >
           <path d="M 0 0 L 10 5 L 0 10 z" fill="#f59e0b" />
+        </marker>
+        <marker
+          id="arrow-rose"
+          viewBox="0 0 10 10"
+          refX="9"
+          refY="5"
+          markerWidth="6"
+          markerHeight="6"
+          orient="auto-start-reverse"
+        >
+          <path d="M 0 0 L 10 5 L 0 10 z" fill="#f43f5e" />
         </marker>
       </defs>
 
@@ -182,6 +193,58 @@ export function ArchitectureDiagram() {
               strokeDasharray="4 3"
               markerEnd="url(#arrow-amber)"
               markerStart="url(#arrow-amber)"
+            />
+          </g>
+        )
+      })()}
+
+      {/* Live channel callout: separate ffmpeg process consuming a published
+          asset's mezzanine and emitting a rolling-window HLS feed at /live/. */}
+      {(() => {
+        const pubX = startX + 5 * (boxW + gap)
+        const pubCenter = pubX + boxW / 2
+        const liveY = 180
+        return (
+          <g>
+            <rect
+              x={pubX}
+              y={liveY}
+              width={boxW}
+              height={boxH}
+              rx={6}
+              fill="#1e293b"
+              stroke="#f43f5e"
+              strokeDasharray="4 3"
+            />
+            <text
+              x={pubX + boxW / 2}
+              y={liveY + 23}
+              textAnchor="middle"
+              fontSize={12}
+              fontWeight={700}
+              fill="#f43f5e"
+              letterSpacing="0.06em"
+            >
+              LIVE LOOP
+            </text>
+            <text
+              x={pubX + boxW / 2}
+              y={liveY + 42}
+              textAnchor="middle"
+              fontSize={10.5}
+              fill="#94a3b8"
+            >
+              ffmpeg -re -stream_loop -1
+            </text>
+            <line
+              x1={pubCenter}
+              y1={stagesY + boxH + 2}
+              x2={pubCenter}
+              y2={liveY - 2}
+              stroke="#f43f5e"
+              strokeWidth={1.5}
+              strokeDasharray="4 3"
+              markerEnd="url(#arrow-rose)"
             />
           </g>
         )
