@@ -658,6 +658,19 @@ video { width: 100%; display: block; }
   color: white; padding: 4px 12px; border-radius: 4px;
   font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
 }
+.resume-overlay {
+  position: absolute; top: 12px; right: 12px;
+  background: rgba(15, 118, 110, 0.9);
+  color: white; padding: 4px 12px; border-radius: 4px;
+  font-size: 12px; font-weight: 700; letter-spacing: 0.08em;
+  font-family: ui-monospace, monospace;
+  animation: resume-fade 5s ease-out forwards;
+}
+@keyframes resume-fade {
+  0% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
 
 .trickplay-strip {
   position: relative;

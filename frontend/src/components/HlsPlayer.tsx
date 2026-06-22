@@ -1,11 +1,19 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
 import { getToken } from '../api/auth'
+import { api } from '../api/client'
 
 interface Props {
   src: string
+  assetId?: string
   thumbnailsUrl?: string | null
 }
+
+// Resume threshold: ignore stale progress in the first few seconds (avoids
+// jumping ~3 s when the user just started). Also treat "within last N seconds"
+// as finished — saves a "resume from 99%" UX failure.
+const RESUME_MIN_SEC = 5
+const FINISHED_TAIL_SEC = 5
 
 interface ThumbCue {
   start: number
@@ -34,7 +42,7 @@ const CUE_PATTERN =
  *   - on hover: looks up the thumbnail cue at that timestamp and renders the sprite tile
  *   - on click: seeks the video (subject to the ad guard above)
  */
-export function HlsPlayer({ src, thumbnailsUrl }: Props) {
+export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const stripRef = useRef<HTMLDivElement>(null)
   const [adEnd, setAdEnd] = useState<number>(0)
@@ -45,6 +53,9 @@ export function HlsPlayer({ src, thumbnailsUrl }: Props) {
   const [duration, setDuration] = useState<number>(0)
   const [currentTime, setCurrentTime] = useState<number>(0)
   const [hover, setHover] = useState<{ x: number; time: number } | null>(null)
+  const [resumedFrom, setResumedFrom] = useState<number | null>(null)
+  const resumeApplied = useRef<boolean>(false)
+  const lastSavedMs = useRef<number>(-1)
 
   useEffect(() => {
     const video = videoRef.current
@@ -172,6 +183,90 @@ export function HlsPlayer({ src, thumbnailsUrl }: Props) {
     }
   }, [])
 
+  // Resume from saved position. Wait for loadedmetadata so currentTime
+  // assignment actually sticks (Safari ignores seeks on a freshly attached
+  // source). Skip resume if no assetId — caller hasn't opted in.
+  useEffect(() => {
+    if (!assetId) return
+    const video = videoRef.current
+    if (!video) return
+    resumeApplied.current = false
+    setResumedFrom(null)
+    lastSavedMs.current = -1
+    let cancelled = false
+    let savedMs: number | null = null
+    api.getProgress(assetId).then((p) => {
+      if (cancelled || !p) return
+      savedMs = p.positionMs
+      tryResume()
+    }).catch(() => {})
+
+    const tryResume = () => {
+      if (resumeApplied.current || savedMs == null || cancelled) return
+      const v = videoRef.current
+      if (!v) return
+      // Need loadedmetadata before seeking; otherwise currentTime is dropped.
+      if (!v.duration || !Number.isFinite(v.duration)) return
+      const totalSec = v.duration
+      const savedSec = savedMs / 1000
+      if (savedSec < RESUME_MIN_SEC) {
+        resumeApplied.current = true
+        return
+      }
+      if (totalSec > 0 && savedSec > totalSec - FINISHED_TAIL_SEC) {
+        // Treated as finished; play from start.
+        resumeApplied.current = true
+        return
+      }
+      v.currentTime = savedSec
+      maxWatched.current = savedSec  // tell the ad guard we're past the ad
+      setResumedFrom(savedSec)
+      resumeApplied.current = true
+    }
+    const onMeta = () => tryResume()
+    video.addEventListener('loadedmetadata', onMeta)
+    // If metadata is already loaded by the time the effect runs (e.g., Safari).
+    if (video.readyState >= 1) tryResume()
+    return () => {
+      cancelled = true
+      video.removeEventListener('loadedmetadata', onMeta)
+    }
+  }, [assetId, src])
+
+  // Autosave: every 10 s of playback, PUT the current position. Also save on
+  // pause and on unmount. Dedup repeated saves of the same second.
+  useEffect(() => {
+    if (!assetId) return
+    const video = videoRef.current
+    if (!video) return
+    const save = (force = false) => {
+      const t = video.currentTime
+      if (!Number.isFinite(t) || t < 0) return
+      const ms = Math.round(t * 1000)
+      if (!force && Math.abs(ms - lastSavedMs.current) < 1000) return
+      lastSavedMs.current = ms
+      const dMs = Number.isFinite(video.duration) ? Math.round(video.duration * 1000) : null
+      api.putProgress(assetId, { positionMs: ms, durationMs: dMs }).catch(() => {})
+    }
+    const interval = window.setInterval(() => {
+      if (!video.paused && !video.ended) save()
+    }, 10000)
+    const onPause = () => save(true)
+    const onEnded = () => {
+      // Treat as finished — save 0 so next visit doesn't resume at the tail.
+      lastSavedMs.current = 0
+      api.putProgress(assetId, { positionMs: 0, durationMs: null }).catch(() => {})
+    }
+    video.addEventListener('pause', onPause)
+    video.addEventListener('ended', onEnded)
+    return () => {
+      window.clearInterval(interval)
+      video.removeEventListener('pause', onPause)
+      video.removeEventListener('ended', onEnded)
+      save(true)
+    }
+  }, [assetId])
+
   useEffect(() => {
     if (!thumbnailsUrl) {
       setCues([])
@@ -250,6 +345,9 @@ export function HlsPlayer({ src, thumbnailsUrl }: Props) {
     <>
       <div className="video-wrap">
         {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
+        {resumedFrom != null && (
+          <div className="resume-overlay">resumed at {fmt(resumedFrom)}</div>
+        )}
         <video ref={videoRef} controls playsInline />
       </div>
       {cues.length > 0 && spriteUrl && (

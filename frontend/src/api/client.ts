@@ -168,4 +168,22 @@ export const api = {
     authedFetch(`/api/videos/${id}/process`, { method: 'POST' }).then(jsonOrThrow<void>),
   delete: (id: string) =>
     authedFetch(`/api/videos/${id}`, { method: 'DELETE' }).then(jsonOrThrow<void>),
+  getProgress: async (assetId: string): Promise<WatchProgress | null> => {
+    const r = await authedFetch(`/api/me/progress/${assetId}`)
+    if (r.status === 204 || r.status === 404) return null
+    return jsonOrThrow<WatchProgress>(r)
+  },
+  putProgress: (assetId: string, body: { positionMs: number; durationMs?: number | null }) =>
+    authedFetch(`/api/me/progress/${assetId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then(jsonOrThrow<WatchProgress>),
+}
+
+export interface WatchProgress {
+  assetId: string
+  positionMs: number
+  durationMs: number | null
+  updatedAt: string
 }
