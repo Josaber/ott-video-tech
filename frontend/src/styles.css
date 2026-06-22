@@ -742,6 +742,14 @@ video { width: 100%; display: block; }
   align-items: center;
   gap: 6px;
 }
+.track-playing {
+  color: #22d3ee;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  text-transform: none;
+  letter-spacing: normal;
+  margin-left: 4px;
+}
 .track-picker select {
   background: #1e293b;
   color: #f1f5f9;

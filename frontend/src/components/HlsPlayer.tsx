@@ -64,6 +64,13 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [activeAudio, setActiveAudio] = useState<number>(-1)
   const [subtitleTracks, setSubtitleTracks] = useState<{ id: number; name: string; lang?: string }[]>([])
   const [activeSubtitle, setActiveSubtitle] = useState<number>(-1)
+  const [levels, setLevels] = useState<{ id: number; label: string }[]>([])
+  // User's pin: -1 = Auto (let hls.js's bandwidth-driven picker decide).
+  // This drives the dropdown's selected option.
+  const [pinnedLevel, setPinnedLevel] = useState<number>(-1)
+  // hls.js's actual level currently playing — shown next to the dropdown so
+  // the user can see what Auto picked. Stays in sync via LEVEL_SWITCHED.
+  const [playingLevel, setPlayingLevel] = useState<number>(-1)
 
   useEffect(() => {
     const video = videoRef.current
@@ -85,6 +92,9 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     setActiveAudio(-1)
     setSubtitleTracks([])
     setActiveSubtitle(-1)
+    setLevels([])
+    setPinnedLevel(-1)
+    setPlayingLevel(-1)
 
     let hls: Hls | undefined
     if (Hls.isSupported()) {
@@ -125,12 +135,25 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
           lang: t.lang,
         })))
         setActiveSubtitle(h.subtitleTrack)
+        setLevels(h.levels.map((lv, i) => ({
+          id: i,
+          label: `${lv.height || '?'}p · ${Math.round((lv.bitrate || 0) / 1000)} kbps`,
+        })))
+        // h.autoLevelEnabled is true when currentLevel===-1; preserve the
+        // user's pin instead of clobbering it with the just-switched level.
+        setPinnedLevel(h.autoLevelEnabled ? -1 : h.currentLevel)
+        setPlayingLevel(h.currentLevel)
       }
       hls.on(Hls.Events.MANIFEST_PARSED, refreshTracks)
       hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, refreshTracks)
       hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, refreshTracks)
       hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_e, d) => setActiveAudio(d.id))
       hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_e, d) => setActiveSubtitle(d.id))
+      // LEVEL_SWITCHED reflects which variant is now playing. In Auto mode
+      // this fires every time hls.js's ABR algorithm picks a new tier — we
+      // only update playingLevel, NEVER pinnedLevel, so the dropdown
+      // doesn't appear to "stick" the user to Auto's last choice.
+      hls.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => setPlayingLevel(d.level))
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
         const d = extractAdDuration(data)
         if (d > 0) {
@@ -438,6 +461,11 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (hlsRef.current) hlsRef.current.subtitleTrack = id
     setActiveSubtitle(id)
   }
+  const handleLevelChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value, 10)
+    if (hlsRef.current) hlsRef.current.currentLevel = id
+    setPinnedLevel(id)
+  }
 
   if (sessionError) {
     return (
@@ -453,8 +481,24 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
 
   return (
     <>
-      {(audioTracks.length > 1 || subtitleTracks.length > 0) && (
+      {(audioTracks.length > 1 || subtitleTracks.length > 0 || levels.length > 1) && (
         <div className="track-picker">
+          {levels.length > 1 && (
+            <label>
+              Quality
+              <select value={pinnedLevel} onChange={handleLevelChange}>
+                <option value={-1}>Auto</option>
+                {levels.map((l) => (
+                  <option key={l.id} value={l.id}>{l.label}</option>
+                ))}
+              </select>
+              {pinnedLevel === -1 && playingLevel >= 0 && levels[playingLevel] && (
+                <span className="track-playing">
+                  playing: {levels[playingLevel].label}
+                </span>
+              )}
+            </label>
+          )}
           {audioTracks.length > 1 && (
             <label>
               Audio
