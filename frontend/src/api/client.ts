@@ -9,6 +9,7 @@ export interface Asset {
   status: AssetStatus
   rawUploaded: boolean
   playbackUrl: string | null
+  thumbnailsUrl: string | null
   drmKeyIdPreview: string | null
   adId: string | null
   adDurationMs: number | null

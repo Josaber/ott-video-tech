@@ -1,10 +1,24 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
 import { getToken } from '../api/auth'
 
 interface Props {
   src: string
+  thumbnailsUrl?: string | null
 }
+
+interface ThumbCue {
+  start: number
+  end: number
+  x: number
+  y: number
+  w: number
+  h: number
+  sprite: string
+}
+
+const CUE_PATTERN =
+  /(\d+):(\d+):(\d+(?:\.\d+)?)\s+-->\s+(\d+):(\d+):(\d+(?:\.\d+)?)[\s\S]*?\n([^\s]+)#xywh=(\d+),(\d+),(\d+),(\d+)/
 
 /**
  * Player with ad-not-skippable enforcement:
@@ -14,12 +28,23 @@ interface Props {
  *       * blocks playbackRate > 1
  *       * intercepts key events that would seek forward
  *   - records maxWatched so a backward seek that re-enters the ad still ends up at adEndTime once you cross out
+ *
+ * Trick-play scrub bar:
+ *   - rendered below the native controls
+ *   - on hover: looks up the thumbnail cue at that timestamp and renders the sprite tile
+ *   - on click: seeks the video (subject to the ad guard above)
  */
-export function HlsPlayer({ src }: Props) {
+export function HlsPlayer({ src, thumbnailsUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
+  const stripRef = useRef<HTMLDivElement>(null)
   const [adEnd, setAdEnd] = useState<number>(0)
   const [adActive, setAdActive] = useState<boolean>(false)
   const maxWatched = useRef<number>(0)
+  const [cues, setCues] = useState<ThumbCue[]>([])
+  const [spriteUrl, setSpriteUrl] = useState<string>('')
+  const [duration, setDuration] = useState<number>(0)
+  const [currentTime, setCurrentTime] = useState<number>(0)
+  const [hover, setHover] = useState<{ x: number; time: number } | null>(null)
 
   useEffect(() => {
     const video = videoRef.current
@@ -27,6 +52,8 @@ export function HlsPlayer({ src }: Props) {
     maxWatched.current = 0
     setAdEnd(0)
     setAdActive(false)
+    setDuration(0)
+    setCurrentTime(0)
 
     let hls: Hls | undefined
     if (Hls.isSupported()) {
@@ -52,9 +79,9 @@ export function HlsPlayer({ src }: Props) {
       hls.loadSource(src)
       hls.attachMedia(video)
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
-        const duration = extractAdDuration(data)
-        if (duration > 0) {
-          setAdEnd(duration)
+        const d = extractAdDuration(data)
+        if (d > 0) {
+          setAdEnd(d)
           setAdActive(true)
         }
       })
@@ -130,11 +157,136 @@ export function HlsPlayer({ src }: Props) {
     }
   }, [adEnd, adActive])
 
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onMeta = () => setDuration(video.duration || 0)
+    const onTime = () => setCurrentTime(video.currentTime)
+    video.addEventListener('loadedmetadata', onMeta)
+    video.addEventListener('durationchange', onMeta)
+    video.addEventListener('timeupdate', onTime)
+    return () => {
+      video.removeEventListener('loadedmetadata', onMeta)
+      video.removeEventListener('durationchange', onMeta)
+      video.removeEventListener('timeupdate', onTime)
+    }
+  }, [])
+
+  useEffect(() => {
+    if (!thumbnailsUrl) {
+      setCues([])
+      setSpriteUrl('')
+      return
+    }
+    let cancelled = false
+    fetch(thumbnailsUrl)
+      .then((r) => (r.ok ? r.text() : Promise.reject(new Error('vtt fetch failed'))))
+      .then((text) => {
+        if (cancelled) return
+        const blocks = text.split(/\n\n+/)
+        const parsed: ThumbCue[] = []
+        let firstSprite = ''
+        for (const block of blocks) {
+          const m = CUE_PATTERN.exec(block)
+          if (!m) continue
+          const start = hmsToSec(m[1], m[2], m[3])
+          const end = hmsToSec(m[4], m[5], m[6])
+          const sprite = m[7]
+          if (!firstSprite) firstSprite = sprite
+          parsed.push({
+            start,
+            end,
+            sprite,
+            x: parseInt(m[8], 10),
+            y: parseInt(m[9], 10),
+            w: parseInt(m[10], 10),
+            h: parseInt(m[11], 10),
+          })
+        }
+        setCues(parsed)
+        if (firstSprite) {
+          const base = new URL(thumbnailsUrl, window.location.href)
+          setSpriteUrl(new URL(firstSprite, base).toString())
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setCues([])
+          setSpriteUrl('')
+        }
+      })
+    return () => {
+      cancelled = true
+    }
+  }, [thumbnailsUrl])
+
+  const progressPct = duration > 0 ? Math.min(100, (currentTime / duration) * 100) : 0
+  const hoverCue = useMemo(() => {
+    if (!hover) return null
+    return cues.find((c) => hover.time >= c.start && hover.time < c.end) ?? null
+  }, [hover, cues])
+
+  function onStripMove(e: React.MouseEvent<HTMLDivElement>) {
+    if (duration <= 0) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
+    const t = (x / rect.width) * duration
+    setHover({ x, time: t })
+  }
+
+  function onStripLeave() {
+    setHover(null)
+  }
+
+  function onStripClick(e: React.MouseEvent<HTMLDivElement>) {
+    const video = videoRef.current
+    if (!video || duration <= 0) return
+    const rect = e.currentTarget.getBoundingClientRect()
+    const x = Math.max(0, Math.min(rect.width, e.clientX - rect.left))
+    video.currentTime = (x / rect.width) * duration
+  }
+
   return (
-    <div className="video-wrap">
-      {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
-      <video ref={videoRef} controls playsInline />
-    </div>
+    <>
+      <div className="video-wrap">
+        {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
+        <video ref={videoRef} controls playsInline />
+      </div>
+      {cues.length > 0 && spriteUrl && (
+        <div
+          ref={stripRef}
+          className="trickplay-strip"
+          onMouseMove={onStripMove}
+          onMouseLeave={onStripLeave}
+          onClick={onStripClick}
+        >
+          <div className="trickplay-track">
+            <div className="trickplay-progress" style={{ width: `${progressPct}%` }} />
+          </div>
+          <div className="trickplay-label">
+            <span>trick-play</span>
+            <span>{fmt(currentTime)} / {fmt(duration)}</span>
+          </div>
+          {hover && hoverCue && (
+            <div
+              className="trickplay-preview"
+              style={{ left: clampPreview(hover.x, stripRef.current?.clientWidth ?? 0, hoverCue.w) }}
+            >
+              <div
+                className="trickplay-thumb"
+                style={{
+                  width: hoverCue.w,
+                  height: hoverCue.h,
+                  backgroundImage: `url(${spriteUrl})`,
+                  backgroundPosition: `-${hoverCue.x}px -${hoverCue.y}px`,
+                }}
+              />
+              <div className="trickplay-time">{fmt(hover.time)}</div>
+            </div>
+          )}
+        </div>
+      )}
+    </>
   )
 }
 
@@ -146,4 +298,24 @@ function extractAdDuration(data: unknown): number {
     if (dr?.duration && dr.duration > 0) return dr.duration
   }
   return 0
+}
+
+function hmsToSec(h: string, m: string, s: string): number {
+  return parseInt(h, 10) * 3600 + parseInt(m, 10) * 60 + parseFloat(s)
+}
+
+function fmt(sec: number): string {
+  if (!Number.isFinite(sec) || sec < 0) return '0:00'
+  const total = Math.floor(sec)
+  const h = Math.floor(total / 3600)
+  const m = Math.floor((total % 3600) / 60)
+  const s = total % 60
+  return h > 0
+    ? `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+    : `${m}:${s.toString().padStart(2, '0')}`
+}
+
+function clampPreview(x: number, stripW: number, thumbW: number): number {
+  const half = thumbW / 2
+  return Math.max(half, Math.min(stripW - half, x)) - half
 }

@@ -145,7 +145,7 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
       {asset.playbackUrl && asset.status === 'PUBLISHED' && (
         <div className="panel">
           <h1>Playback</h1>
-          <HlsPlayer src={asset.playbackUrl} />
+          <HlsPlayer src={asset.playbackUrl} thumbnailsUrl={asset.thumbnailsUrl} />
           <div className="meta-row" style={{ marginTop: 8 }}>
             <span>{asset.playbackUrl}</span>
           </div>

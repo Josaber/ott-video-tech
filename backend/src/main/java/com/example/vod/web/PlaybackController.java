@@ -142,6 +142,30 @@ public class PlaybackController {
                 .body(new FileSystemResource(key));
     }
 
+    @GetMapping(value = "/{assetId}/thumbnails.vtt", produces = "text/vtt")
+    public ResponseEntity<Resource> thumbnails(@PathVariable UUID assetId) {
+        Path vtt = ffmpeg.assetDir(assetId).resolve("thumbs").resolve("thumbnails.vtt");
+        if (!Files.exists(vtt)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/vtt"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(vtt));
+    }
+
+    @GetMapping(value = "/{assetId}/sprite.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<Resource> sprite(@PathVariable UUID assetId) {
+        Path sprite = ffmpeg.assetDir(assetId).resolve("thumbs").resolve("sprite.jpg");
+        if (!Files.exists(sprite)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(sprite));
+    }
+
     @GetMapping("/{assetId}/{filename:.+}")
     public ResponseEntity<Resource> segment(@PathVariable UUID assetId,
                                             @PathVariable String filename) {
