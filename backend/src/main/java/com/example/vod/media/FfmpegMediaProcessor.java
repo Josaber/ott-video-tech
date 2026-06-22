@@ -344,21 +344,28 @@ public class FfmpegMediaProcessor {
         Path vtt = outDir.resolve("thumbnails.vtt");
 
         Duration duration = probeDuration(mp4);
-        int intervalSec = 10;
         int thumbW = 160;
         int thumbH = 90;
         int cols = 10;
 
         int durationSec = Math.max(1, (int) duration.getSeconds());
-        // ceil so a 25 s clip still gets a frame at 20 s.
+        // Adaptive interval: very short clips (a 4 s smoke video) would
+        // generate ZERO frames under a fixed 10 s interval — fps=1/10 emits
+        // a frame only at every 10 s boundary, and ffmpeg then fails the
+        // mjpeg encoder init with "No filtered frames for output stream".
+        // Cap interval at duration/4 so any clip ≥ 4 s gets at least 4 frames.
+        int intervalSec = Math.max(1, Math.min(10, durationSec / 4));
         int nThumbs = Math.max(1, (durationSec + intervalSec - 1) / intervalSec);
         int rows = Math.max(1, (nThumbs + cols - 1) / cols);
 
         List<String> args = List.of(
             properties.getFfmpegPath(), "-y",
             "-i", mp4.toString(),
+            // format=yuvj420p converts to full-range YUV — mjpeg in ffmpeg 8.x
+            // refuses the limited-range yuv420p the libx264 mezzanines carry
+            // ("Non full-range YUV is non-standard") and the encoder init fails.
             "-vf", "fps=1/" + intervalSec + ",scale=" + thumbW + ":" + thumbH
-                    + ",tile=" + cols + "x" + rows,
+                    + ",tile=" + cols + "x" + rows + ",format=yuvj420p",
             "-frames:v", "1",
             "-an",
             "-q:v", "5",
