@@ -666,6 +666,24 @@ video { width: 100%; display: block; }
   font-family: ui-monospace, monospace;
   animation: resume-fade 5s ease-out forwards;
 }
+.stream-limit {
+  background: rgba(244, 63, 94, 0.12);
+  border: 1px solid rgba(244, 63, 94, 0.4);
+  color: #fda4af;
+  padding: 16px 18px;
+  border-radius: 8px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.stream-limit strong {
+  display: block;
+  margin-bottom: 4px;
+  color: #f43f5e;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 12px;
+}
+
 .track-picker {
   display: flex;
   gap: 16px;

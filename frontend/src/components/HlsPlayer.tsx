@@ -54,6 +54,9 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [currentTime, setCurrentTime] = useState<number>(0)
   const [hover, setHover] = useState<{ x: number; time: number } | null>(null)
   const [resumedFrom, setResumedFrom] = useState<number | null>(null)
+  const [sessionId, setSessionId] = useState<string | null>(null)
+  const [sessionError, setSessionError] = useState<{ limit: number } | null>(null)
+  const sessionPending = useRef<boolean>(false)
   const resumeApplied = useRef<boolean>(false)
   const lastSavedMs = useRef<number>(-1)
   const hlsRef = useRef<Hls | undefined>(undefined)
@@ -65,6 +68,13 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
+    // Wait for the playback session to settle before loading. If the
+    // caller passed an assetId but we haven't got a session yet (and
+    // haven't hit the limit), defer setup — the effect re-runs once
+    // sessionId or sessionError flips.
+    if (assetId && !sessionId && !sessionError) return
+    if (sessionError) return
+
     maxWatched.current = 0
     setAdEnd(0)
     setAdActive(false)
@@ -151,7 +161,7 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     return () => {
       hls?.destroy()
     }
-  }, [src])
+  }, [src, sessionId, sessionError, assetId])
 
   useEffect(() => {
     const video = videoRef.current
@@ -214,6 +224,51 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       video.removeEventListener('timeupdate', onTime)
     }
   }, [])
+
+  // Acquire a playback session before the player loads. If the user is
+  // at the concurrent-stream limit, this resolves with sessionError set
+  // and we skip rendering the video entirely.
+  useEffect(() => {
+    if (!assetId) return
+    sessionPending.current = true
+    setSessionId(null)
+    setSessionError(null)
+    let cancelled = false
+    let acquiredId: string | null = null
+    api.openSession(assetId).then((result) => {
+      if (cancelled) {
+        if ('sessionId' in result) {
+          // race: we got a session but the component already moved on; release it.
+          api.closeSession(result.sessionId).catch(() => {})
+        }
+        return
+      }
+      if ('error' in result) {
+        setSessionError({ limit: result.limit })
+      } else {
+        acquiredId = result.sessionId
+        setSessionId(result.sessionId)
+      }
+    }).catch(() => {
+      if (!cancelled) setSessionError({ limit: 2 })
+    }).finally(() => {
+      sessionPending.current = false
+    })
+    return () => {
+      cancelled = true
+      if (acquiredId) api.closeSession(acquiredId).catch(() => {})
+    }
+  }, [assetId])
+
+  // Heartbeat every 30 s while the session is open. Backend reaps anything
+  // > 90 s stale on the next session-open attempt.
+  useEffect(() => {
+    if (!sessionId) return
+    const id = window.setInterval(() => {
+      api.heartbeatSession(sessionId).catch(() => {})
+    }, 30000)
+    return () => window.clearInterval(id)
+  }, [sessionId])
 
   // Resume from saved position. Wait for loadedmetadata so currentTime
   // assignment actually sticks (Safari ignores seeks on a freshly attached
@@ -382,6 +437,18 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     const id = parseInt(e.target.value, 10)
     if (hlsRef.current) hlsRef.current.subtitleTrack = id
     setActiveSubtitle(id)
+  }
+
+  if (sessionError) {
+    return (
+      <div className="stream-limit">
+        <strong>Max streams reached.</strong>
+        <div>
+          This account is already watching on {sessionError.limit} other device{sessionError.limit === 1 ? '' : 's'}.
+          Stop one of them to start another stream.
+        </div>
+      </div>
+    )
   }
 
   return (

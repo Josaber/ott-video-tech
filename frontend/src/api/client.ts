@@ -153,6 +153,18 @@ export const api = {
   jobs: (id: string) => authedFetch(`/api/videos/${id}/jobs`).then(jsonOrThrow<Job[]>),
   renditions: (id: string) =>
     authedFetch(`/api/videos/${id}/renditions`).then(jsonOrThrow<Rendition[]>),
+  openSession: async (assetId: string): Promise<PlaybackSession | { limit: number; error: 'too_many' }> => {
+    const r = await authedFetch(`/api/me/playback-session/${assetId}`, { method: 'POST' })
+    if (r.status === 429) {
+      const limit = parseInt(r.headers.get('X-Concurrent-Limit') ?? '2', 10)
+      return { error: 'too_many', limit }
+    }
+    return jsonOrThrow<PlaybackSession>(r)
+  },
+  heartbeatSession: (sessionId: string) =>
+    authedFetch(`/api/me/playback-session/${sessionId}/heartbeat`, { method: 'PUT' }),
+  closeSession: (sessionId: string) =>
+    authedFetch(`/api/me/playback-session/${sessionId}`, { method: 'DELETE' }),
   create: (body: { title: string; description?: string }) =>
     authedFetch('/api/videos', {
       method: 'POST',
@@ -197,4 +209,11 @@ export interface Rendition {
   videoBitrateKbps: number
   audioBitrateKbps: number
   vmafScore: number | null
+}
+
+export interface PlaybackSession {
+  sessionId: string
+  assetId: string
+  activeCount: number
+  limit: number
 }
