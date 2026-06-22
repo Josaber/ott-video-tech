@@ -147,6 +147,9 @@ public class SecurityConfig {
                 // license.key endpoint then validates that signed URL on
                 // its own — no Bearer required. ts segments stay open.
                 .requestMatchers("/playback/*/master.m3u8").authenticated()
+                // program.m3u8 carries the per-viewer signed license URL
+                // rewritten at request time, so it must be authenticated too.
+                .requestMatchers("/playback/*/program.m3u8").authenticated()
                 .requestMatchers("/playback/*/license.key").permitAll()
                 .requestMatchers("/playback/**").permitAll()
                 .requestMatchers("/api/**").authenticated()

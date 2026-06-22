@@ -33,11 +33,24 @@ public class TranscodeWorker {
         } catch (IOException e) {
             // Trick-play is a UX enhancement, not a publishing blocker.
             // Logged at WARN; player just falls back to the native seek bar.
-            org.slf4j.LoggerFactory.getLogger(TranscodeWorker.class)
-                .warn("thumbnail generation failed for asset {}: {}", assetId, e.getMessage());
+            log().warn("thumbnail generation failed for asset {}: {}", assetId, e.getMessage());
+        }
+        // Alt audio (Spanish pitch-shifted) + EN/ES subtitle tracks. Same
+        // failure policy as thumbnails: best-effort, the master playlist
+        // step downstream falls back to single-track playback if missing.
+        try {
+            java.time.Duration duration = ffmpeg.probeDuration(out);
+            ffmpeg.generateAltAudio(assetId, out, duration);
+            ffmpeg.generateSubtitles(assetId, duration);
+        } catch (IOException e) {
+            log().warn("multi-track generation failed for asset {}: {}", assetId, e.getMessage());
         }
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
         fresh.setTranscodedPath(out.toString());
         assets.save(fresh);
+    }
+
+    private static org.slf4j.Logger log() {
+        return org.slf4j.LoggerFactory.getLogger(TranscodeWorker.class);
     }
 }

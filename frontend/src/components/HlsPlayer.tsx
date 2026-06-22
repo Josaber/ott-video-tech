@@ -56,6 +56,11 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [resumedFrom, setResumedFrom] = useState<number | null>(null)
   const resumeApplied = useRef<boolean>(false)
   const lastSavedMs = useRef<number>(-1)
+  const hlsRef = useRef<Hls | undefined>(undefined)
+  const [audioTracks, setAudioTracks] = useState<{ id: number; name: string; lang?: string }[]>([])
+  const [activeAudio, setActiveAudio] = useState<number>(-1)
+  const [subtitleTracks, setSubtitleTracks] = useState<{ id: number; name: string; lang?: string }[]>([])
+  const [activeSubtitle, setActiveSubtitle] = useState<number>(-1)
 
   useEffect(() => {
     const video = videoRef.current
@@ -65,6 +70,11 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     setAdActive(false)
     setDuration(0)
     setCurrentTime(0)
+
+    setAudioTracks([])
+    setActiveAudio(-1)
+    setSubtitleTracks([])
+    setActiveSubtitle(-1)
 
     let hls: Hls | undefined
     if (Hls.isSupported()) {
@@ -87,8 +97,30 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
           }
         },
       })
+      hlsRef.current = hls
       hls.loadSource(src)
       hls.attachMedia(video)
+      const refreshTracks = () => {
+        const h = hlsRef.current
+        if (!h) return
+        setAudioTracks(h.audioTracks.map((t, i) => ({
+          id: i,
+          name: t.name ?? `Audio ${i + 1}`,
+          lang: t.lang,
+        })))
+        setActiveAudio(h.audioTrack)
+        setSubtitleTracks(h.subtitleTracks.map((t, i) => ({
+          id: i,
+          name: t.name ?? `Subtitles ${i + 1}`,
+          lang: t.lang,
+        })))
+        setActiveSubtitle(h.subtitleTrack)
+      }
+      hls.on(Hls.Events.MANIFEST_PARSED, refreshTracks)
+      hls.on(Hls.Events.AUDIO_TRACKS_UPDATED, refreshTracks)
+      hls.on(Hls.Events.SUBTITLE_TRACKS_UPDATED, refreshTracks)
+      hls.on(Hls.Events.AUDIO_TRACK_SWITCHED, (_e, d) => setActiveAudio(d.id))
+      hls.on(Hls.Events.SUBTITLE_TRACK_SWITCH, (_e, d) => setActiveSubtitle(d.id))
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
         const d = extractAdDuration(data)
         if (d > 0) {
@@ -341,8 +373,48 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     video.currentTime = (x / rect.width) * duration
   }
 
+  const handleAudioChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value, 10)
+    if (hlsRef.current) hlsRef.current.audioTrack = id
+    setActiveAudio(id)
+  }
+  const handleSubtitleChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const id = parseInt(e.target.value, 10)
+    if (hlsRef.current) hlsRef.current.subtitleTrack = id
+    setActiveSubtitle(id)
+  }
+
   return (
     <>
+      {(audioTracks.length > 1 || subtitleTracks.length > 0) && (
+        <div className="track-picker">
+          {audioTracks.length > 1 && (
+            <label>
+              Audio
+              <select value={activeAudio} onChange={handleAudioChange}>
+                {audioTracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.lang ? ` (${t.lang})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          {subtitleTracks.length > 0 && (
+            <label>
+              Subtitles
+              <select value={activeSubtitle} onChange={handleSubtitleChange}>
+                <option value={-1}>Off</option>
+                {subtitleTracks.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name}{t.lang ? ` (${t.lang})` : ''}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+        </div>
+      )}
       <div className="video-wrap">
         {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
         {resumedFrom != null && (

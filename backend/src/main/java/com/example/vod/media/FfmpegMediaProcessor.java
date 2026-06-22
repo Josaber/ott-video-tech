@@ -161,6 +161,100 @@ public class FfmpegMediaProcessor {
 
     public record ThumbnailResult(Path sprite, Path vtt, int count) {}
 
+    // ---- Multi-audio + multi-subtitle ----
+
+    // Alt audio: pitch-shifted via rubberband, served as a single-segment
+    // AAC playlist. Pitch shift preserves duration so the alt track plays
+    // alongside the program with no drift. Demo only — real Spanish dub
+    // would replace this with a properly localized vendor track.
+    public Path generateAltAudio(UUID assetId, Path mp4, Duration duration) throws IOException {
+        Path outDir = assetDir(assetId).resolve("audio_es");
+        Files.createDirectories(outDir);
+        Path aac = outDir.resolve("alt.aac");
+
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-i", mp4.toString(),
+            "-vn",
+            "-af", "rubberband=pitch=1.15",
+            "-c:a", "aac", "-b:a", "96k",
+            aac.toString()
+        );
+        runFfmpeg(args);
+
+        // Hand-rolled single-segment HLS audio playlist. hls.js parses ADTS
+        // AAC fine; no need to wrap in mpegts.
+        double durSec = Math.max(1.0, duration.toMillis() / 1000.0);
+        String playlist = "#EXTM3U\n"
+            + "#EXT-X-VERSION:3\n"
+            + "#EXT-X-TARGETDURATION:" + ((int) Math.ceil(durSec)) + "\n"
+            + "#EXT-X-PLAYLIST-TYPE:VOD\n"
+            + "#EXTINF:" + String.format(java.util.Locale.ROOT, "%.3f", durSec) + ",\n"
+            + "alt.aac\n"
+            + "#EXT-X-ENDLIST\n";
+        Path playlistPath = outDir.resolve("playlist.m3u8");
+        Files.writeString(playlistPath, playlist);
+        return playlistPath;
+    }
+
+    // Subtitles: two VTT files (en, es) with stub cues every 5 s. Each
+    // language gets a `[EN]` / `[ES]` prefix so they're distinguishable.
+    public void generateSubtitles(UUID assetId, Duration duration) throws IOException {
+        int totalSec = Math.max(5, (int) duration.getSeconds());
+        writeSubtitleTrack(assetId, "en", "EN", totalSec);
+        writeSubtitleTrack(assetId, "es", "ES", totalSec);
+    }
+
+    private void writeSubtitleTrack(UUID assetId, String lang, String label, int totalSec) throws IOException {
+        Path outDir = assetDir(assetId).resolve("subs").resolve(lang);
+        Files.createDirectories(outDir);
+
+        int interval = 5;
+        StringBuilder vtt = new StringBuilder(256 + (totalSec / interval) * 64);
+        vtt.append("WEBVTT\n\n");
+        for (int t = 0; t < totalSec; t += interval) {
+            int end = Math.min(totalSec, t + interval);
+            int cueIdx = t / interval + 1;
+            vtt.append(formatVttTimestamp(t)).append(" --> ").append(formatVttTimestamp(end)).append('\n')
+               .append('[').append(label).append("] caption ").append(cueIdx).append('\n').append('\n');
+        }
+        Files.writeString(outDir.resolve("cues.vtt"), vtt.toString());
+
+        // Subtitle media playlist — single WebVTT segment for the whole asset.
+        String playlist = "#EXTM3U\n"
+            + "#EXT-X-VERSION:3\n"
+            + "#EXT-X-TARGETDURATION:" + totalSec + "\n"
+            + "#EXT-X-PLAYLIST-TYPE:VOD\n"
+            + "#EXTINF:" + totalSec + ".000,\n"
+            + "cues.vtt\n"
+            + "#EXT-X-ENDLIST\n";
+        Files.writeString(outDir.resolve("playlist.m3u8"), playlist);
+    }
+
+    // True master playlist that wires together the program variant + alt
+    // audio + subtitles groups. The "English" audio entry has no URI — it's
+    // muxed into the program variant and surfaces under that group ID.
+    public void generateTrueMasterPlaylist(UUID assetId) throws IOException {
+        Path outDir = assetDir(assetId).resolve("drm");
+        Files.createDirectories(outDir);
+        String master = """
+            #EXTM3U
+            #EXT-X-VERSION:6
+            #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud0",NAME="English",LANGUAGE="en",DEFAULT=YES,AUTOSELECT=YES,CHANNELS="2"
+            #EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID="aud0",NAME="Espanol",LANGUAGE="es",AUTOSELECT=YES,CHANNELS="2",URI="audio_es/playlist.m3u8"
+            #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="English",LANGUAGE="en",DEFAULT=YES,AUTOSELECT=YES,URI="subs/en/playlist.m3u8"
+            #EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID="subs",NAME="Espanol",LANGUAGE="es",AUTOSELECT=YES,URI="subs/es/playlist.m3u8"
+            #EXT-X-STREAM-INF:BANDWIDTH=1500000,CODECS="avc1.42c01e,mp4a.40.2",RESOLUTION=640x360,AUDIO="aud0",SUBTITLES="subs"
+            program.m3u8
+            """;
+        Files.writeString(outDir.resolve("multi-master.m3u8"), master);
+    }
+
+    // Audio playlist references audio_es/{filename} as relative to its
+    // playlist URL. Master playlist references audio_es/playlist.m3u8 and
+    // subs/{lang}/playlist.m3u8 as relative to master.m3u8. All paths land
+    // under {assetId}/, served by PlaybackController.
+
     // ffmpeg writes "Duration: HH:MM:SS.ff" to stderr when invoked with no
     // output target. Cheaper than depending on ffprobe (which the evermeet
     // ffmpeg build doesn't ship).

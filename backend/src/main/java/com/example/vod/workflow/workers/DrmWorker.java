@@ -27,6 +27,11 @@ public class DrmWorker {
         }
         Path plain = Path.of(asset.getPackageDir()).resolve("master.m3u8");
         DrmResult result = ffmpeg.encryptHls(assetId, plain);
+        // True multi-track master playlist wraps the encrypted program +
+        // alt audio + subtitle groups. The PlaybackController's
+        // /master.m3u8 endpoint serves this; /program.m3u8 keeps the
+        // existing SSAI-stitch + license-rewrite behaviour for the variant.
+        ffmpeg.generateTrueMasterPlaylist(assetId);
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
         fresh.setDrmKeyId(result.keyId());
         assets.save(fresh);

@@ -78,7 +78,29 @@ public class PlaybackController {
     }
 
     @GetMapping(value = "/{assetId}/master.m3u8", produces = "application/vnd.apple.mpegurl")
-    public ResponseEntity<String> manifest(@PathVariable UUID assetId,
+    public ResponseEntity<String> master(@PathVariable UUID assetId,
+                                          @AuthenticationPrincipal Jwt jwt) throws IOException {
+        // True master playlist with AUDIO + SUBTITLES groups and one
+        // STREAM-INF pointing at program.m3u8 (the SSAI-stitched + license-
+        // rewritten variant). Pre-existing assets that were published before
+        // multi-track support won't have the file — fall back to the program
+        // playlist directly so old PUBLISHED rows keep playing.
+        Path multi = ffmpeg.assetDir(assetId).resolve("drm").resolve("multi-master.m3u8");
+        if (!Files.exists(multi)) {
+            Path legacy = ffmpeg.assetDir(assetId).resolve("drm").resolve("master.m3u8");
+            if (!Files.exists(legacy)) {
+                throw new ResponseStatusException(HttpStatus.CONFLICT, "asset not published yet");
+            }
+            return program(assetId, jwt);
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(Files.readString(multi));
+    }
+
+    @GetMapping(value = "/{assetId}/program.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<String> program(@PathVariable UUID assetId,
                                            @AuthenticationPrincipal Jwt jwt) throws IOException {
         VideoAssetEntity asset = assets.findById(assetId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
@@ -104,6 +126,7 @@ public class PlaybackController {
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")
                 .body(body);
     }
+
 
     private String rewriteLicenseUri(String body, UUID assetId, String username) {
         SignedLicense signed = signer.sign(assetId, username, Instant.now().plus(signer.ttl()));
@@ -164,6 +187,48 @@ public class PlaybackController {
                 .contentType(MediaType.IMAGE_JPEG)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
                 .body(new FileSystemResource(sprite));
+    }
+
+    @GetMapping(value = "/{assetId}/audio_es/playlist.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<Resource> altAudioPlaylist(@PathVariable UUID assetId) {
+        Path p = ffmpeg.assetDir(assetId).resolve("audio_es").resolve("playlist.m3u8");
+        if (!Files.exists(p)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(p));
+    }
+
+    @GetMapping(value = "/{assetId}/audio_es/alt.aac")
+    public ResponseEntity<Resource> altAudioSegment(@PathVariable UUID assetId) {
+        Path p = ffmpeg.assetDir(assetId).resolve("audio_es").resolve("alt.aac");
+        if (!Files.exists(p)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("audio/aac"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(p));
+    }
+
+    @GetMapping(value = "/{assetId}/subs/{lang}/playlist.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<Resource> subsPlaylist(@PathVariable UUID assetId, @PathVariable String lang) {
+        if (!lang.matches("en|es")) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        Path p = ffmpeg.assetDir(assetId).resolve("subs").resolve(lang).resolve("playlist.m3u8");
+        if (!Files.exists(p)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(p));
+    }
+
+    @GetMapping(value = "/{assetId}/subs/{lang}/cues.vtt", produces = "text/vtt")
+    public ResponseEntity<Resource> subsCues(@PathVariable UUID assetId, @PathVariable String lang) {
+        if (!lang.matches("en|es")) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        Path p = ffmpeg.assetDir(assetId).resolve("subs").resolve(lang).resolve("cues.vtt");
+        if (!Files.exists(p)) throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("text/vtt"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(p));
     }
 
     @GetMapping("/{assetId}/{filename:.+}")
