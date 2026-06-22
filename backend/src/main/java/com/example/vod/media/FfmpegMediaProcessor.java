@@ -236,6 +236,45 @@ public class FfmpegMediaProcessor {
         public java.time.Duration duration() { return java.time.Duration.ofMillis(durationMs); }
     }
 
+    // VMAF perceptual quality score for a single rendition against the
+    // source. The distorted stream is upscaled to source resolution before
+    // comparison; libvmaf's harmonic-mean pool penalizes the worst frames
+    // more heavily, which is what subscribers actually notice.
+    public java.math.BigDecimal computeVmaf(Path distorted, Path reference, int refW, int refH) throws IOException {
+        List<String> args = List.of(
+            properties.getFfmpegPath(),
+            "-i", distorted.toString(),
+            "-i", reference.toString(),
+            "-lavfi",
+            "[0:v]scale=" + refW + ":" + refH + ":flags=bicubic[d];"
+                + "[d][1:v]libvmaf=pool=harmonic_mean:n_threads=4",
+            "-f", "null", "-"
+        );
+        ProcessBuilder pb = new ProcessBuilder(args).redirectErrorStream(true);
+        Process p = pb.start();
+        byte[] output;
+        try {
+            output = p.getInputStream().readAllBytes();
+            boolean done = p.waitFor(5, TimeUnit.MINUTES);
+            if (!done) {
+                p.destroyForcibly();
+                throw new IOException("vmaf timed out");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("vmaf interrupted", e);
+        }
+        String stderr = new String(output);
+        // Filter prints the final score as "VMAF score: 78.65". libvmaf
+        // versions vary slightly in capitalisation, so the regex is liberal.
+        Matcher m = Pattern.compile("VMAF\\s+score:\\s+([0-9.]+)", Pattern.CASE_INSENSITIVE).matcher(stderr);
+        if (!m.find()) {
+            String tail = stderr.length() > 800 ? stderr.substring(stderr.length() - 800) : stderr;
+            throw new IOException("could not parse VMAF score; tail=" + tail);
+        }
+        return new java.math.BigDecimal(m.group(1)).setScale(2, java.math.RoundingMode.HALF_UP);
+    }
+
     public Path packageHls(UUID assetId, Path mp4) throws IOException {
         Path outDir = assetDir(assetId).resolve("program");
         Files.createDirectories(outDir);

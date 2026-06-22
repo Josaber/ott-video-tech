@@ -82,6 +82,22 @@ public class TranscodeWorker {
             log().warn("multi-track generation failed for asset {}: {}", assetId, e.getMessage());
         }
 
+        // VMAF per rendition. Scoring is multi-minute on long sources; we
+        // intentionally do it here (next to where the mezzanines exist on
+        // disk) but tolerate failures so the publish pipeline doesn't
+        // hinge on libvmaf model availability.
+        for (RenditionEntity row : renditions.findByAssetIdOrderByVideoBitrateKbpsAsc(assetId)) {
+            Path mezz = ffmpeg.assetDir(assetId).resolve("transcoded")
+                    .resolve("video_" + row.getTierLabel() + ".mp4");
+            try {
+                row.setVmafScore(ffmpeg.computeVmaf(mezz, rawPath, srcW, srcH));
+                renditions.save(row);
+            } catch (IOException e) {
+                log().warn("VMAF failed for asset {} tier {}: {}",
+                        assetId, row.getTierLabel(), e.getMessage());
+            }
+        }
+
         // Keep the legacy single-string columns pointing at the lowest tier
         // so any code still reading them resolves to something coherent.
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
