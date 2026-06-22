@@ -8,10 +8,14 @@ import { Header, View } from './components/Header'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { ArchitectureDiagram } from './components/ArchitectureDiagram'
 import { Docs } from './components/Docs'
+import { LiveView } from './components/LiveView'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 function readView(): View {
-  return window.location.hash.startsWith('#/docs') ? 'docs' : 'console'
+  const h = window.location.hash
+  if (h.startsWith('#/docs')) return 'docs'
+  if (h.startsWith('#/live')) return 'live'
+  return 'console'
 }
 
 export default function App() {
@@ -30,7 +34,10 @@ export default function App() {
 
   const navigate = useCallback((next: View) => {
     setView(next)
-    const target = next === 'docs' ? '#/docs/overview' : '#/console'
+    const target =
+      next === 'docs' ? '#/docs/overview'
+      : next === 'live' ? '#/live'
+      : '#/console'
     if (window.location.hash !== target) {
       window.history.pushState(null, '', target)
     }
@@ -118,6 +125,8 @@ export default function App() {
       />
       {view === 'docs' ? (
         <Docs />
+      ) : view === 'live' ? (
+        <LiveView canControl={isAdmin} />
       ) : (
         <div className="app">
           <div>

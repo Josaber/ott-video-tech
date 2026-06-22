@@ -666,6 +666,49 @@ video { width: 100%; display: block; }
   font-family: ui-monospace, monospace;
   animation: resume-fade 5s ease-out forwards;
 }
+.live-card {
+  padding: 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+  cursor: pointer;
+  transition: border-color 120ms, background 120ms;
+}
+.live-card:hover { border-color: #475569; }
+.live-card.active { border-color: #22d3ee; background: #11253a; }
+.live-card-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.live-card-name {
+  flex: 1;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+.live-status {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 3px;
+  font-family: ui-monospace, monospace;
+}
+.live-status.on  { background: rgba(244, 63, 94, 0.2);  color: #f87171; }
+.live-status.off { background: rgba(100, 116, 139, 0.2); color: #94a3b8; }
+.live-card-desc {
+  font-size: 12px;
+  color: #cbd5e1;
+  line-height: 1.4;
+}
+.live-card-source {
+  font-size: 11px;
+  color: #64748b;
+  font-family: ui-monospace, monospace;
+  margin-top: 6px;
+}
+
 .stream-limit {
   background: rgba(244, 63, 94, 0.12);
   border: 1px solid rgba(244, 63, 94, 0.4);

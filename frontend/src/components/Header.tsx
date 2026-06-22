@@ -2,7 +2,7 @@ import { Tv } from 'lucide-react'
 import { AuthSession } from '../api/auth'
 import { UserMenu } from './UserMenu'
 
-export type View = 'console' | 'docs'
+export type View = 'console' | 'live' | 'docs'
 
 interface Props {
   session: AuthSession
@@ -25,6 +25,12 @@ export function Header({ session, view, onNavigate, onChangePassword }: Props) {
             onClick={() => onNavigate('console')}
           >
             Console
+          </button>
+          <button
+            className={'app-nav-link' + (view === 'live' ? ' active' : '')}
+            onClick={() => onNavigate('live')}
+          >
+            Live
           </button>
           <button
             className={'app-nav-link' + (view === 'docs' ? ' active' : '')}

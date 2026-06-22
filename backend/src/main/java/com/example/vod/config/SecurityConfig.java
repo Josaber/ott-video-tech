@@ -154,6 +154,12 @@ public class SecurityConfig {
                 .requestMatchers("/playback/*/*/program.m3u8").authenticated()
                 .requestMatchers("/playback/*/license.key").permitAll()
                 .requestMatchers("/playback/**").permitAll()
+                // Live channel manifest + segments are open — no auth, no
+                // license. The /api/live/* control plane (start/stop) stays
+                // under /api/** which requires a token, and /start/stop are
+                // additionally @PreAuthorize ADMIN-only.
+                .requestMatchers("/api/live/channels").permitAll()
+                .requestMatchers("/live/**").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )

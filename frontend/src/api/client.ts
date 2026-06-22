@@ -193,6 +193,22 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<WatchProgress>),
+  liveChannels: () =>
+    fetch('/api/live/channels').then((r) => r.json() as Promise<LiveChannel[]>),
+  liveStart: () =>
+    authedFetch('/api/live/start', { method: 'POST' }).then(jsonOrThrow<{ running: boolean }>),
+  liveStop: () =>
+    authedFetch('/api/live/stop', { method: 'POST' }).then(jsonOrThrow<{ running: boolean }>),
+}
+
+export interface LiveChannel {
+  slug: string
+  name: string
+  description: string
+  running: boolean
+  startedAt: string
+  source: string
+  manifestUrl: string
 }
 
 export interface WatchProgress {
