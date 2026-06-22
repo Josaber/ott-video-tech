@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { Upload, Play, RefreshCw, Trash2 } from 'lucide-react'
-import { api, Asset, Job } from '../api/client'
+import { api, Asset, Job, Rendition } from '../api/client'
 import { HlsPlayer } from './HlsPlayer'
 import { ConfirmDialog } from './ConfirmDialog'
 
@@ -13,14 +13,20 @@ interface Props {
 export function AssetDetail({ assetId, onChange, canWrite }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
+  const [renditions, setRenditions] = useState<Rendition[]>([])
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   async function refresh() {
-    const [a, j] = await Promise.all([api.get(assetId), api.jobs(assetId)])
+    const [a, j, r] = await Promise.all([
+      api.get(assetId),
+      api.jobs(assetId),
+      api.renditions(assetId).catch(() => [] as Rendition[]),
+    ])
     setAsset(a)
     setJobs(j)
+    setRenditions(r)
   }
 
   useEffect(() => {
@@ -127,6 +133,30 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
           )}
         </div>
       </div>
+
+      {renditions.length > 0 && (
+        <div className="panel">
+          <h1>ABR ladder</h1>
+          <div className="ladder-table">
+            <div className="ladder-row ladder-head">
+              <span>tier</span>
+              <span>resolution</span>
+              <span>video bitrate</span>
+              <span>audio bitrate</span>
+              <span>VMAF</span>
+            </div>
+            {renditions.map((r) => (
+              <div className="ladder-row" key={r.tier}>
+                <span className="tier">{r.tier}</span>
+                <span>{r.width}×{r.height}</span>
+                <span>{r.videoBitrateKbps} kbps</span>
+                <span>{r.audioBitrateKbps} kbps</span>
+                <span>{r.vmafScore != null ? r.vmafScore.toFixed(2) : '—'}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       <div className="panel">
         <h1>Workflow</h1>

@@ -23,8 +23,11 @@ public class PublishWorker {
     @Transactional
     public void run(UUID assetId) {
         VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
-        Path drmManifest = ffmpeg.assetDir(assetId).resolve("drm").resolve("master.m3u8");
-        asset.setPlaybackPath(drmManifest.toString());
+        // Multi-tier master is the published artifact; falls back to the
+        // legacy single-tier file when upgrading old assets.
+        Path multi = ffmpeg.assetDir(assetId).resolve("drm").resolve("multi-master.m3u8");
+        Path legacy = ffmpeg.assetDir(assetId).resolve("drm").resolve("master.m3u8");
+        asset.setPlaybackPath((java.nio.file.Files.exists(multi) ? multi : legacy).toString());
         asset.setStatus(AssetStatus.PUBLISHED);
         assets.save(asset);
     }

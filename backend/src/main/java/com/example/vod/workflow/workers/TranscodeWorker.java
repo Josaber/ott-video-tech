@@ -1,52 +1,91 @@
 package com.example.vod.workflow.workers;
 
+import com.example.vod.domain.RenditionEntity;
 import com.example.vod.domain.VideoAssetEntity;
 import com.example.vod.media.FfmpegMediaProcessor;
+import com.example.vod.media.FfmpegMediaProcessor.LadderTier;
+import com.example.vod.media.FfmpegMediaProcessor.ProbeResult;
+import com.example.vod.repository.RenditionRepository;
 import com.example.vod.repository.VideoAssetRepository;
 import java.io.IOException;
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 @Component
 public class TranscodeWorker {
 
     private final VideoAssetRepository assets;
+    private final RenditionRepository renditions;
     private final FfmpegMediaProcessor ffmpeg;
 
-    public TranscodeWorker(VideoAssetRepository assets, FfmpegMediaProcessor ffmpeg) {
+    public TranscodeWorker(VideoAssetRepository assets,
+                           RenditionRepository renditions,
+                           FfmpegMediaProcessor ffmpeg) {
         this.assets = assets;
+        this.renditions = renditions;
         this.ffmpeg = ffmpeg;
     }
 
+    @Transactional
     public void run(UUID assetId) throws IOException {
         VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
         if (asset.getRawPath() == null) {
             throw new IllegalStateException("no raw upload for asset " + assetId);
         }
-        Path out = ffmpeg.transcode(assetId, Path.of(asset.getRawPath()));
-        // Sprite + WebVTT for scrub-bar thumbnails. Runs in the transcode
-        // stage on purpose: it shares the decoded video stream with the
-        // mezzanine encode, and a failure here shouldn't take down packaging.
+        Path rawPath = Path.of(asset.getRawPath());
+
+        // Probe once — gives us duration + source dimensions for ladder picking.
+        ProbeResult probe = ffmpeg.probe(rawPath);
+        Duration duration = probe.duration();
+        int srcW = probe.width() > 0 ? probe.width() : 640;
+        int srcH = probe.height() > 0 ? probe.height() : 360;
+        List<LadderTier> tiers = ffmpeg.selectLadder(srcW, srcH);
+        log().info("transcoding asset {} ({}x{}, {}s) into {} tiers: {}",
+                assetId, srcW, srcH, duration.getSeconds(), tiers.size(),
+                tiers.stream().map(LadderTier::label).toList());
+
+        // Drop previously-recorded renditions before encoding — a re-publish
+        // shouldn't accumulate stale rows.
+        renditions.deleteByAssetId(assetId);
+        renditions.flush();
+
+        Path lowestTierMezz = null;
+        for (LadderTier t : tiers) {
+            Path mezz = ffmpeg.transcodeTier(assetId, rawPath, t);
+            if (lowestTierMezz == null) lowestTierMezz = mezz;
+            RenditionEntity row = new RenditionEntity();
+            row.setAssetId(assetId);
+            row.setTierLabel(t.label());
+            row.setWidth(t.width());
+            row.setHeight(t.height());
+            row.setVideoBitrateKbps(t.vBitrateKbps());
+            row.setAudioBitrateKbps(t.aBitrateKbps());
+            renditions.save(row);
+        }
+
+        // Sidecars use the lowest-tier mezzanine — they're rendition-
+        // agnostic (audio + subs are aligned to the source timeline) and
+        // the lowest tier is cheapest to decode for sprite extraction.
         try {
-            ffmpeg.generateThumbnails(assetId, out);
+            ffmpeg.generateThumbnails(assetId, lowestTierMezz);
         } catch (IOException e) {
-            // Trick-play is a UX enhancement, not a publishing blocker.
-            // Logged at WARN; player just falls back to the native seek bar.
             log().warn("thumbnail generation failed for asset {}: {}", assetId, e.getMessage());
         }
-        // Alt audio (Spanish pitch-shifted) + EN/ES subtitle tracks. Same
-        // failure policy as thumbnails: best-effort, the master playlist
-        // step downstream falls back to single-track playback if missing.
         try {
-            java.time.Duration duration = ffmpeg.probeDuration(out);
-            ffmpeg.generateAltAudio(assetId, out, duration);
+            ffmpeg.generateAltAudio(assetId, lowestTierMezz, duration);
             ffmpeg.generateSubtitles(assetId, duration);
         } catch (IOException e) {
             log().warn("multi-track generation failed for asset {}: {}", assetId, e.getMessage());
         }
+
+        // Keep the legacy single-string columns pointing at the lowest tier
+        // so any code still reading them resolves to something coherent.
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
-        fresh.setTranscodedPath(out.toString());
+        fresh.setTranscodedPath(lowestTierMezz.toString());
         assets.save(fresh);
     }
 

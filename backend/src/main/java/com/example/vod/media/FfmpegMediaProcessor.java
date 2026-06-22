@@ -50,6 +50,192 @@ public class FfmpegMediaProcessor {
         return output;
     }
 
+    // ---- ABR ladder ----
+
+    public record LadderTier(String label, int width, int height, int vBitrateKbps, int aBitrateKbps) {}
+
+    // Fixed ladder. Real per-title encoding picks tiers from content
+    // complexity (the convex-hull approach Netflix describes); for this
+    // demo we just pick all tiers whose height ≤ source height — no
+    // upscale. 240p included for very small sources so we always have
+    // at least one tier.
+    private static final List<LadderTier> LADDER = List.of(
+        new LadderTier("240p",  426,  240,  300,  96),
+        new LadderTier("360p",  640,  360,  600,  96),
+        new LadderTier("480p",  854,  480, 1200,  96),
+        new LadderTier("720p", 1280,  720, 2500,  128),
+        new LadderTier("1080p",1920, 1080, 5000,  128)
+    );
+
+    public List<LadderTier> selectLadder(int sourceWidth, int sourceHeight) {
+        List<LadderTier> picked = new ArrayList<>();
+        for (LadderTier t : LADDER) {
+            if (t.height() <= sourceHeight) picked.add(t);
+        }
+        if (picked.isEmpty()) {
+            // Source smaller than the smallest ladder tier — fall back to a
+            // single tier matching the source so we still produce output.
+            picked.add(new LadderTier("src",
+                roundDown2(sourceWidth), roundDown2(sourceHeight), 600, 96));
+        }
+        return picked;
+    }
+
+    private static int roundDown2(int v) { return v - (v % 2); }
+
+    // Transcode one tier from the original raw upload. Each tier is its
+    // own scale + bitrate pass — separate ffmpeg invocations make
+    // parallelism trivial (the caller fans these out with CompletableFuture).
+    public Path transcodeTier(UUID assetId, Path rawInput, LadderTier tier) throws IOException {
+        Path outDir = assetDir(assetId).resolve("transcoded");
+        Files.createDirectories(outDir);
+        Path output = outDir.resolve("video_" + tier.label() + ".mp4");
+
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-i", rawInput.toString(),
+            "-vf", "scale=" + tier.width() + ":" + tier.height(),
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-b:v", tier.vBitrateKbps() + "k",
+            "-maxrate", (int) (tier.vBitrateKbps() * 1.07) + "k",
+            "-bufsize", (tier.vBitrateKbps() * 2) + "k",
+            "-c:a", "aac", "-b:a", tier.aBitrateKbps() + "k",
+            "-movflags", "+faststart",
+            output.toString()
+        );
+        runFfmpeg(args);
+        return output;
+    }
+
+    // Package one tier's mezzanine MP4 into a HLS playlist + segments.
+    // Each tier gets its own subdirectory so segment filenames don't
+    // collide and the player can switch by playlist swap.
+    public Path packageHlsTier(UUID assetId, Path mp4, LadderTier tier) throws IOException {
+        Path outDir = assetDir(assetId).resolve("program").resolve(tier.label());
+        Files.createDirectories(outDir);
+        Path manifest = outDir.resolve("master.m3u8");
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-i", mp4.toString(),
+            "-c", "copy",
+            "-f", "hls",
+            "-hls_time", String.valueOf(properties.getHlsSegmentSeconds()),
+            "-hls_playlist_type", "vod",
+            "-hls_segment_filename", outDir.resolve("segment_%03d.ts").toString(),
+            manifest.toString()
+        );
+        runFfmpeg(args);
+        return manifest;
+    }
+
+    // Encrypt one tier's HLS using a shared content key + IV across all
+    // tiers — the player can switch tier mid-playback without re-fetching
+    // the license. URI is "../license.key" so the variant playlist (one
+    // level deep under drm/) resolves it back to the shared key at the
+    // drm/ root.
+    public void encryptHlsTier(UUID assetId, Path plainManifest, LadderTier tier,
+                               byte[] keyBytes, byte[] ivBytes) throws IOException {
+        Path drmDir = assetDir(assetId).resolve("drm");
+        Path tierDir = drmDir.resolve(tier.label());
+        Files.createDirectories(tierDir);
+
+        Path keyFile = drmDir.resolve("license.key");
+        if (!Files.exists(keyFile)) {
+            Files.write(keyFile, keyBytes);
+        }
+        String ivHex = HexFormat.of().formatHex(ivBytes);
+
+        // URI is relative-up so it resolves to the shared key. The
+        // PlaybackController rewrites it at request time with the signed
+        // query — see rewriteLicenseUri's path-preserving regex.
+        Path keyInfo = tierDir.resolve("key-info.txt");
+        Files.writeString(keyInfo, "../license.key\n" + keyFile.toAbsolutePath() + "\n" + ivHex + "\n");
+
+        Path encryptedManifest = tierDir.resolve("program.m3u8");
+
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-i", plainManifest.toString(),
+            "-c", "copy",
+            "-f", "hls",
+            "-hls_time", String.valueOf(properties.getHlsSegmentSeconds()),
+            "-hls_playlist_type", "vod",
+            "-hls_key_info_file", keyInfo.toString(),
+            "-hls_segment_filename", tierDir.resolve("segment_%03d.ts").toString(),
+            encryptedManifest.toString()
+        );
+        runFfmpeg(args);
+    }
+
+    // True multi-rendition master playlist with one STREAM-INF per tier
+    // plus the audio + subtitle MEDIA groups from Feature 3. Replaces the
+    // single-tier master written by generateTrueMasterPlaylist().
+    public void generateLadderMasterPlaylist(UUID assetId, List<LadderTier> tiers) throws IOException {
+        Path drmDir = assetDir(assetId).resolve("drm");
+        Files.createDirectories(drmDir);
+
+        StringBuilder sb = new StringBuilder(512);
+        sb.append("#EXTM3U\n");
+        sb.append("#EXT-X-VERSION:6\n");
+        sb.append("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"aud0\",NAME=\"English\",LANGUAGE=\"en\",DEFAULT=YES,AUTOSELECT=YES,CHANNELS=\"2\"\n");
+        sb.append("#EXT-X-MEDIA:TYPE=AUDIO,GROUP-ID=\"aud0\",NAME=\"Espanol\",LANGUAGE=\"es\",AUTOSELECT=YES,CHANNELS=\"2\",URI=\"audio_es/playlist.m3u8\"\n");
+        sb.append("#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"English\",LANGUAGE=\"en\",DEFAULT=YES,AUTOSELECT=YES,URI=\"subs/en/playlist.m3u8\"\n");
+        sb.append("#EXT-X-MEDIA:TYPE=SUBTITLES,GROUP-ID=\"subs\",NAME=\"Espanol\",LANGUAGE=\"es\",AUTOSELECT=YES,URI=\"subs/es/playlist.m3u8\"\n");
+        for (LadderTier t : tiers) {
+            int totalBw = (t.vBitrateKbps() + t.aBitrateKbps()) * 1000;
+            sb.append("#EXT-X-STREAM-INF:BANDWIDTH=").append(totalBw)
+              .append(",CODECS=\"avc1.42c01e,mp4a.40.2\"")
+              .append(",RESOLUTION=").append(t.width()).append('x').append(t.height())
+              .append(",AUDIO=\"aud0\",SUBTITLES=\"subs\"\n");
+            sb.append(t.label()).append("/program.m3u8\n");
+        }
+        Files.writeString(drmDir.resolve("multi-master.m3u8"), sb.toString());
+    }
+
+    // Probe both duration and resolution from a single ffmpeg -i call.
+    // Returns (durationMillis, width, height); width=0/height=0 means
+    // ffmpeg's stderr didn't carry a Video stream line (audio-only input).
+    public ProbeResult probe(Path input) throws IOException {
+        ProcessBuilder pb = new ProcessBuilder(
+            List.of(properties.getFfmpegPath(), "-i", input.toString()))
+            .redirectErrorStream(true);
+        Process p = pb.start();
+        byte[] output;
+        try {
+            output = p.getInputStream().readAllBytes();
+            boolean done = p.waitFor(30, TimeUnit.SECONDS);
+            if (!done) {
+                p.destroyForcibly();
+                throw new IOException("ffmpeg probe timed out");
+            }
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IOException("ffmpeg probe interrupted", e);
+        }
+        String stderr = new String(output);
+
+        Matcher dm = Pattern.compile("Duration:\\s+(\\d+):(\\d+):(\\d+(?:\\.\\d+)?)").matcher(stderr);
+        if (!dm.find()) throw new IOException("could not parse duration");
+        int h = Integer.parseInt(dm.group(1));
+        int mn = Integer.parseInt(dm.group(2));
+        double s = Double.parseDouble(dm.group(3));
+        long durationMs = (long) ((h * 3600 + mn * 60 + s) * 1000);
+
+        int width = 0;
+        int height = 0;
+        // Example match: "Stream #0:0[0x1](und): Video: h264 ... yuv420p(...), 640x360 [SAR 1:1 DAR 16:9]..."
+        Matcher rm = Pattern.compile("Video:[^\\n]*?\\s(\\d{2,5})x(\\d{2,5})").matcher(stderr);
+        if (rm.find()) {
+            width = Integer.parseInt(rm.group(1));
+            height = Integer.parseInt(rm.group(2));
+        }
+        return new ProbeResult(durationMs, width, height);
+    }
+
+    public record ProbeResult(long durationMs, int width, int height) {
+        public java.time.Duration duration() { return java.time.Duration.ofMillis(durationMs); }
+    }
+
     public Path packageHls(UUID assetId, Path mp4) throws IOException {
         Path outDir = assetDir(assetId).resolve("program");
         Files.createDirectories(outDir);

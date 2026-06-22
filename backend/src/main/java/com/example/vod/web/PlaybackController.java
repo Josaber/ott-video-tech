@@ -54,7 +54,10 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/playback")
 public class PlaybackController {
 
-    private static final Pattern KEY_URI = Pattern.compile("URI=\"[^\"]*license\\.key[^\"]*\"");
+    // Capture the optional path prefix in front of license.key so the
+    // rewritten URI preserves e.g. "../" for per-tier variant playlists
+    // that live one directory deep under drm/.
+    private static final Pattern KEY_URI = Pattern.compile("URI=\"([^\"]*?)license\\.key(?:\\?[^\"]*)?\"");
 
     private final VideoAssetRepository assets;
     private final FfmpegMediaProcessor ffmpeg;
@@ -130,12 +133,19 @@ public class PlaybackController {
 
     private String rewriteLicenseUri(String body, UUID assetId, String username) {
         SignedLicense signed = signer.sign(assetId, username, Instant.now().plus(signer.ttl()));
-        // Relative URI; hls.js resolves against the manifest URL.
-        String replacement = "URI=\"license.key?" + signed.toQueryString() + "\"";
-        // replaceAll (not replaceFirst) so future manifests with key rotation
-        // — multiple #EXT-X-KEY lines on the program section — all get rewritten.
         Matcher m = KEY_URI.matcher(body);
-        return m.replaceAll(Matcher.quoteReplacement(replacement));
+        StringBuilder out = new StringBuilder(body.length());
+        // appendReplacement (rather than replaceAll) so we can keep the
+        // original path prefix per match — variant playlists under drm/{tier}/
+        // emit "../license.key" while the single-tier flow emits "license.key".
+        String query = signed.toQueryString();
+        while (m.find()) {
+            String prefix = m.group(1);
+            m.appendReplacement(out,
+                Matcher.quoteReplacement("URI=\"" + prefix + "license.key?" + query + "\""));
+        }
+        m.appendTail(out);
+        return out.toString();
     }
 
     @GetMapping("/{assetId}/license.key")
@@ -187,6 +197,50 @@ public class PlaybackController {
                 .contentType(MediaType.IMAGE_JPEG)
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
                 .body(new FileSystemResource(sprite));
+    }
+
+    @GetMapping(value = "/{assetId}/{tier:[a-z0-9]+}/program.m3u8", produces = "application/vnd.apple.mpegurl")
+    public ResponseEntity<String> tierProgram(@PathVariable UUID assetId,
+                                               @PathVariable String tier,
+                                               @AuthenticationPrincipal Jwt jwt) throws IOException {
+        VideoAssetEntity asset = assets.findById(assetId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        Path drmManifest = ffmpeg.assetDir(assetId).resolve("drm").resolve(tier).resolve("program.m3u8");
+        if (!Files.exists(drmManifest)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "no such rendition");
+        }
+
+        String body;
+        if (asset.getAdId() == null) {
+            body = Files.readString(drmManifest);
+        } else {
+            String adId = asset.getAdId();
+            String adManifestUrl = ssaiProperties.getAdServiceBaseUrl()
+                    + "/ads/" + adId + "/master.m3u8";
+            body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
+        }
+        body = rewriteLicenseUri(body, assetId, jwt.getSubject());
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
+                .header(HttpHeaders.CACHE_CONTROL, "no-store")
+                .body(body);
+    }
+
+    @GetMapping("/{assetId}/{tier:[a-z0-9]+}/{filename:.+}")
+    public ResponseEntity<Resource> tierSegment(@PathVariable UUID assetId,
+                                                @PathVariable String tier,
+                                                @PathVariable String filename) {
+        if (!filename.matches("segment_\\d{3}\\.ts")) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        Path file = ffmpeg.assetDir(assetId).resolve("drm").resolve(tier).resolve(filename);
+        if (!Files.exists(file)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.parseMediaType("video/mp2t"))
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
+                .body(new FileSystemResource(file));
     }
 
     @GetMapping(value = "/{assetId}/audio_es/playlist.m3u8", produces = "application/vnd.apple.mpegurl")

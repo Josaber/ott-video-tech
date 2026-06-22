@@ -151,6 +151,8 @@ export const api = {
   list: () => authedFetch('/api/videos').then(jsonOrThrow<Asset[]>),
   get: (id: string) => authedFetch(`/api/videos/${id}`).then(jsonOrThrow<Asset>),
   jobs: (id: string) => authedFetch(`/api/videos/${id}/jobs`).then(jsonOrThrow<Job[]>),
+  renditions: (id: string) =>
+    authedFetch(`/api/videos/${id}/renditions`).then(jsonOrThrow<Rendition[]>),
   create: (body: { title: string; description?: string }) =>
     authedFetch('/api/videos', {
       method: 'POST',
@@ -186,4 +188,13 @@ export interface WatchProgress {
   positionMs: number
   durationMs: number | null
   updatedAt: string
+}
+
+export interface Rendition {
+  tier: string
+  width: number
+  height: number
+  videoBitrateKbps: number
+  audioBitrateKbps: number
+  vmafScore: number | null
 }

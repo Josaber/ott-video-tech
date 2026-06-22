@@ -4,6 +4,8 @@ import com.example.vod.config.MediaProperties;
 import com.example.vod.dto.AssetResponse;
 import com.example.vod.dto.CreateAssetRequest;
 import com.example.vod.dto.JobResponse;
+import com.example.vod.dto.RenditionResponse;
+import com.example.vod.repository.RenditionRepository;
 import com.example.vod.service.VideoWorkflowService;
 import jakarta.validation.Valid;
 import java.io.IOException;
@@ -28,10 +30,14 @@ public class VideoWorkflowController {
 
     private final VideoWorkflowService service;
     private final MediaProperties media;
+    private final RenditionRepository renditions;
 
-    public VideoWorkflowController(VideoWorkflowService service, MediaProperties media) {
+    public VideoWorkflowController(VideoWorkflowService service,
+                                    MediaProperties media,
+                                    RenditionRepository renditions) {
         this.service = service;
         this.media = media;
+        this.renditions = renditions;
     }
 
     @PostMapping
@@ -57,6 +63,13 @@ public class VideoWorkflowController {
     @GetMapping("/{id}/jobs")
     public List<JobResponse> jobs(@PathVariable UUID id) {
         return service.jobs(id).stream().map(JobResponse::from).toList();
+    }
+
+    @GetMapping("/{id}/renditions")
+    public List<RenditionResponse> renditions(@PathVariable UUID id) {
+        return renditions.findByAssetIdOrderByVideoBitrateKbpsAsc(id).stream()
+                .map(RenditionResponse::from)
+                .toList();
     }
 
     @PostMapping("/{id}/upload")
