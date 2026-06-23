@@ -100,6 +100,18 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (Hls.isSupported()) {
       hls = new Hls({
         debug: false,
+        // CTA-5004 Common Media Client Data. hls.js emits these as query
+        // parameters (e.g. `?CMCD=ot%3Dv%2Cbr%3D2628%2Cbl%3D8500...`) on
+        // every segment request; the cdn-service edge parses them out and
+        // forwards a JSON beacon to /api/cmcd/ingest. Session id is per
+        // HlsPlayer mount; content id binds the beacon to the asset.
+        cmcd: assetId
+          ? {
+              sessionId: `hls-${Math.random().toString(36).slice(2, 10)}`,
+              contentId: assetId,
+              useHeaders: false,
+            }
+          : undefined,
         // Attach the Bearer token only to same-origin (backend) requests so
         // license.key is authenticated. Cross-origin requests (ad-service ts
         // segments) get no header — they don't accept auth anyway and we

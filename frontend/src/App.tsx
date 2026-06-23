@@ -9,12 +9,14 @@ import { ChangePasswordDialog } from './components/ChangePasswordDialog'
 import { ArchitectureDiagram } from './components/ArchitectureDiagram'
 import { Docs } from './components/Docs'
 import { LiveView } from './components/LiveView'
+import { CmcdView } from './components/CmcdView'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 function readView(): View {
   const h = window.location.hash
   if (h.startsWith('#/docs')) return 'docs'
   if (h.startsWith('#/live')) return 'live'
+  if (h.startsWith('#/cmcd')) return 'cmcd'
   return 'console'
 }
 
@@ -37,6 +39,7 @@ export default function App() {
     const target =
       next === 'docs' ? '#/docs/overview'
       : next === 'live' ? '#/live'
+      : next === 'cmcd' ? '#/cmcd'
       : '#/console'
     if (window.location.hash !== target) {
       window.history.pushState(null, '', target)
@@ -127,6 +130,8 @@ export default function App() {
         <Docs />
       ) : view === 'live' ? (
         <LiveView canControl={isAdmin} />
+      ) : view === 'cmcd' ? (
+        <CmcdView />
       ) : (
         <div className="app">
           <div>

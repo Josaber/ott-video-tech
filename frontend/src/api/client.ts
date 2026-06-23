@@ -195,6 +195,8 @@ export const api = {
     }).then(jsonOrThrow<WatchProgress>),
   liveChannels: () =>
     fetch('/api/live/channels').then((r) => r.json() as Promise<LiveChannel[]>),
+  cmcdRecent: () =>
+    authedFetch('/api/cmcd/recent').then(jsonOrThrow<CmcdEvent[]>),
   liveStart: () =>
     authedFetch('/api/live/start', { method: 'POST' }).then(jsonOrThrow<{ running: boolean }>),
   liveStop: () =>
@@ -209,6 +211,13 @@ export interface LiveChannel {
   startedAt: string
   source: string
   manifestUrl: string
+}
+
+export interface CmcdEvent {
+  path: string
+  timestamp: number
+  ingestedAt?: string
+  cmcd: Record<string, string | number | boolean>
 }
 
 export interface WatchProgress {
