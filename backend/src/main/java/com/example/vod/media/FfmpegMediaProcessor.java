@@ -192,6 +192,36 @@ public class FfmpegMediaProcessor {
         Files.writeString(drmDir.resolve("multi-master.m3u8"), sb.toString());
     }
 
+    // Forensic watermark variant. Re-encode the raw input at the top
+    // tier's resolution + bitrate with a small colored patch in a known
+    // position. The patch is small (8x8 px) so it's barely visible but
+    // detectable by frame analysis — the per-session A/B stitching at
+    // playback time emits a unique sequence that ties a leaked stream
+    // back to its viewer.
+    public Path generateWatermarkVariant(UUID assetId, Path rawInput, String label,
+                                          int boxX, int boxY, String color,
+                                          LadderTier topTier) throws IOException {
+        Path outDir = assetDir(assetId).resolve("transcoded");
+        Files.createDirectories(outDir);
+        Path output = outDir.resolve("wm_" + label + ".mp4");
+
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-i", rawInput.toString(),
+            "-vf", "scale=" + topTier.width() + ":" + topTier.height()
+                    + ",drawbox=x=" + boxX + ":y=" + boxY + ":w=8:h=8:color=" + color + ":t=fill",
+            "-c:v", "libx264", "-preset", "ultrafast", "-pix_fmt", "yuv420p",
+            "-b:v", topTier.vBitrateKbps() + "k",
+            "-maxrate", (int) (topTier.vBitrateKbps() * 1.07) + "k",
+            "-bufsize", (topTier.vBitrateKbps() * 2) + "k",
+            "-c:a", "aac", "-b:a", topTier.aBitrateKbps() + "k",
+            "-movflags", "+faststart",
+            output.toString()
+        );
+        runFfmpeg(args);
+        return output;
+    }
+
     // Probe both duration and resolution from a single ffmpeg -i call.
     // Returns (durationMillis, width, height); width=0/height=0 means
     // ffmpeg's stderr didn't carry a Video stream line (audio-only input).

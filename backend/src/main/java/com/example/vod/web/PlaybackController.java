@@ -66,6 +66,7 @@ public class PlaybackController {
     private final LicenseUrlSigner signer;
     private final NonceStore nonceStore;
     private final com.example.vod.service.CdnUrlSigner cdnSigner;
+    private final com.example.vod.repository.RenditionRepository renditions;
 
     public PlaybackController(VideoAssetRepository assets,
                               FfmpegMediaProcessor ffmpeg,
@@ -73,7 +74,8 @@ public class PlaybackController {
                               SsaiProperties ssaiProperties,
                               LicenseUrlSigner signer,
                               NonceStore nonceStore,
-                              com.example.vod.service.CdnUrlSigner cdnSigner) {
+                              com.example.vod.service.CdnUrlSigner cdnSigner,
+                              com.example.vod.repository.RenditionRepository renditions) {
         this.assets = assets;
         this.ffmpeg = ffmpeg;
         this.stitcher = stitcher;
@@ -81,6 +83,73 @@ public class PlaybackController {
         this.signer = signer;
         this.nonceStore = nonceStore;
         this.cdnSigner = cdnSigner;
+        this.renditions = renditions;
+    }
+
+    /**
+     * For the top tier only: replace each program segment line with a
+     * per-session A/B-stamped variant. Bit N of SHA-256(uid) picks
+     * WMA (0) or WMB (1) for segment N. CDN URLs are signed inline since
+     * we know the final path here.
+     *
+     * Each viewer sees a deterministic but unique A/B sequence — a leaked
+     * stream's A/B pattern decodes back to that user's UID hash, tying it
+     * to one viewer.
+     */
+    private String stitchWatermark(String body, UUID assetId, String username, String tier) {
+        if (!hasWatermarkVariants(assetId)) {
+            return rewriteSegmentsToCdn(body, assetId, tier);
+        }
+        byte[] bits = sha256(username);
+        StringBuilder out = new StringBuilder(body.length() + 256);
+        int segIdx = 0;
+        for (String line : body.split("\n", -1)) {
+            String trimmed = line.trim();
+            java.util.regex.Matcher m = SEGMENT_LINE.matcher(trimmed);
+            if (m.find()) {
+                String wm = pickVariant(bits, segIdx);
+                String path = assetId + "/" + wm + "/segment_" + m.group(1) + ".ts";
+                String url = cdnSigner.enabled()
+                    ? cdnSigner.sign(path)
+                    : "../" + wm + "/segment_" + m.group(1) + ".ts";
+                out.append(url).append('\n');
+                segIdx++;
+            } else {
+                out.append(line).append('\n');
+            }
+        }
+        if (out.length() > 0 && out.charAt(out.length() - 1) == '\n') out.setLength(out.length() - 1);
+        return out.toString();
+    }
+
+    private static final java.util.regex.Pattern SEGMENT_LINE =
+        java.util.regex.Pattern.compile("^segment_(\\d{3})\\.ts$");
+
+    private boolean hasWatermarkVariants(UUID assetId) {
+        return java.nio.file.Files.exists(ffmpeg.assetDir(assetId).resolve("drm").resolve("wma").resolve("program.m3u8"))
+            && java.nio.file.Files.exists(ffmpeg.assetDir(assetId).resolve("drm").resolve("wmb").resolve("program.m3u8"));
+    }
+
+    private static String pickVariant(byte[] bits, int segIdx) {
+        int byteIdx = segIdx / 8;
+        int bitIdx = segIdx % 8;
+        if (byteIdx >= bits.length) byteIdx = byteIdx % bits.length;
+        int bit = (bits[byteIdx] >> (7 - bitIdx)) & 1;
+        return bit == 0 ? "wma" : "wmb";
+    }
+
+    private static byte[] sha256(String s) {
+        try {
+            return java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(s.getBytes(java.nio.charset.StandardCharsets.UTF_8));
+        } catch (Exception e) {
+            throw new IllegalStateException("SHA-256 unavailable", e);
+        }
+    }
+
+    private String topTierLabel(UUID assetId) {
+        var rows = renditions.findByAssetIdOrderByVideoBitrateKbpsAsc(assetId);
+        return rows.isEmpty() ? "" : rows.get(rows.size() - 1).getTierLabel();
     }
 
     /**
@@ -246,7 +315,13 @@ public class PlaybackController {
             body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
         }
         body = rewriteLicenseUri(body, assetId, jwt.getSubject());
-        body = rewriteSegmentsToCdn(body, assetId, tier);
+        // Top tier gets per-session A/B watermark stitching. Other tiers go
+        // through the standard CDN URL rewriter only.
+        if (tier.equals(topTierLabel(assetId))) {
+            body = stitchWatermark(body, assetId, jwt.getSubject(), tier);
+        } else {
+            body = rewriteSegmentsToCdn(body, assetId, tier);
+        }
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")

@@ -56,6 +56,20 @@ public class DrmWorker {
             ffmpeg.encryptHlsTier(assetId, plain, t, keyBytes, ivBytes);
         }
 
+        // Forensic watermark variants — same content key as ladder tiers
+        // so the player can swap segment-by-segment without re-licensing.
+        // Skip if TranscodeWorker didn't produce them (older assets).
+        RenditionEntity topRow = rows.get(rows.size() - 1);
+        for (String wm : List.of("wma", "wmb")) {
+            Path wmPlain = ffmpeg.assetDir(assetId).resolve("program")
+                    .resolve(wm).resolve("master.m3u8");
+            if (java.nio.file.Files.exists(wmPlain)) {
+                LadderTier wmTier = new LadderTier(wm, topRow.getWidth(), topRow.getHeight(),
+                        topRow.getVideoBitrateKbps(), topRow.getAudioBitrateKbps());
+                ffmpeg.encryptHlsTier(assetId, wmPlain, wmTier, keyBytes, ivBytes);
+            }
+        }
+
         List<LadderTier> tiers = rows.stream()
             .map(r -> new LadderTier(r.getTierLabel(), r.getWidth(), r.getHeight(),
                     r.getVideoBitrateKbps(), r.getAudioBitrateKbps()))

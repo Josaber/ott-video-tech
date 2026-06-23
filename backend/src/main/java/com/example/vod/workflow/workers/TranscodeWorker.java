@@ -106,6 +106,32 @@ public class TranscodeWorker {
         // (bitrate, VMAF). No-op if any VMAF failed.
         hull.recomputeFor(assetId);
 
+        // Forensic watermark variants at the top tier's resolution. Both
+        // get packaged into program/wma and program/wmb (clear HLS); the
+        // DrmWorker picks them up alongside ladder tiers and encrypts
+        // with the shared content key.
+        List<RenditionEntity> sortedRows = renditions.findByAssetIdOrderByVideoBitrateKbpsAsc(assetId);
+        if (!sortedRows.isEmpty()) {
+            RenditionEntity topRow = sortedRows.get(sortedRows.size() - 1);
+            LadderTier topTier = new LadderTier(topRow.getTierLabel(),
+                topRow.getWidth(), topRow.getHeight(),
+                topRow.getVideoBitrateKbps(), topRow.getAudioBitrateKbps());
+            try {
+                Path wmA = ffmpeg.generateWatermarkVariant(assetId, rawPath, "a", 10, 10, "red", topTier);
+                Path wmB = ffmpeg.generateWatermarkVariant(assetId, rawPath, "b",
+                    topTier.width() - 18, 10, "lime", topTier);
+                LadderTier wmaTier = new LadderTier("wma", topTier.width(), topTier.height(),
+                        topTier.vBitrateKbps(), topTier.aBitrateKbps());
+                LadderTier wmbTier = new LadderTier("wmb", topTier.width(), topTier.height(),
+                        topTier.vBitrateKbps(), topTier.aBitrateKbps());
+                ffmpeg.packageHlsTier(assetId, wmA, wmaTier);
+                ffmpeg.packageHlsTier(assetId, wmB, wmbTier);
+            } catch (IOException e) {
+                log().warn("watermark variant generation failed for asset {}: {}",
+                        assetId, e.getMessage());
+            }
+        }
+
         // Keep the legacy single-string columns pointing at the lowest tier
         // so any code still reading them resolves to something coherent.
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
