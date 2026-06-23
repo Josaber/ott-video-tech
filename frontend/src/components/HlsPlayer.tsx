@@ -64,6 +64,14 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [activeAudio, setActiveAudio] = useState<number>(-1)
   const [subtitleTracks, setSubtitleTracks] = useState<{ id: number; name: string; lang?: string }[]>([])
   const [activeSubtitle, setActiveSubtitle] = useState<number>(-1)
+  const [playerError, setPlayerError] = useState<{
+    kind: string
+    details: string
+    fatal: boolean
+    retryAttempt: number
+  } | null>(null)
+  const networkRetries = useRef<number>(0)
+  const mediaRetries = useRef<number>(0)
   const [levels, setLevels] = useState<{ id: number; label: string }[]>([])
   // User's pin: -1 = Auto (let hls.js's bandwidth-driven picker decide).
   // This drives the dropdown's selected option.
@@ -95,6 +103,9 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     setLevels([])
     setPinnedLevel(-1)
     setPlayingLevel(-1)
+    setPlayerError(null)
+    networkRetries.current = 0
+    mediaRetries.current = 0
 
     let hls: Hls | undefined
     if (Hls.isSupported()) {
@@ -170,6 +181,47 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       // only update playingLevel, NEVER pinnedLevel, so the dropdown
       // doesn't appear to "stick" the user to Auto's last choice.
       hls.on(Hls.Events.LEVEL_SWITCHED, (_e, d) => setPlayingLevel(d.level))
+
+      // Error handling. hls.js classifies into NETWORK / MEDIA / KEY / OTHER.
+      // Standard recovery is: NETWORK fatal → startLoad() to retry; MEDIA
+      // fatal → recoverMediaError() (re-attaches MediaSource); anything else
+      // is fatal and surfaces as a manual-retry overlay.
+      hls.on(Hls.Events.ERROR, (_e, data) => {
+        const h = hlsRef.current
+        if (!h || !data.fatal) return
+        // First-shot recovery: one retry for network errors, one
+        // recoverMediaError for media errors. If no FRAG_LOADED fires
+        // within 5 s (signal of real recovery), escalate the transient
+        // banner to a fatal "Playback failed" overlay with a manual
+        // Try-again button.
+        if (data.type === Hls.ErrorTypes.NETWORK_ERROR && networkRetries.current === 0) {
+          networkRetries.current = 1
+          setPlayerError({ kind: 'network', details: data.details, fatal: false, retryAttempt: 1 })
+          h.startLoad()
+          window.setTimeout(() => {
+            setPlayerError((prev) => (prev && !prev.fatal ? { ...prev, fatal: true } : prev))
+          }, 5000)
+        } else if (data.type === Hls.ErrorTypes.MEDIA_ERROR && mediaRetries.current === 0) {
+          mediaRetries.current = 1
+          setPlayerError({ kind: 'media', details: data.details, fatal: false, retryAttempt: 1 })
+          h.recoverMediaError()
+          window.setTimeout(() => {
+            setPlayerError((prev) => (prev && !prev.fatal ? { ...prev, fatal: true } : prev))
+          }, 5000)
+        } else {
+          setPlayerError({
+            kind: data.type === Hls.ErrorTypes.KEY_SYSTEM_ERROR ? 'key-system' : data.type.toLowerCase(),
+            details: data.details,
+            fatal: true,
+            retryAttempt: data.type === Hls.ErrorTypes.NETWORK_ERROR ? networkRetries.current : mediaRetries.current,
+          })
+        }
+      })
+      // FRAG_LOADED is the cleanest "real progress" signal — clear any
+      // transient error banner the moment a segment lands.
+      hls.on(Hls.Events.FRAG_LOADED, () => {
+        setPlayerError((prev) => (prev && !prev.fatal ? null : prev))
+      })
       hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
         const d = extractAdDuration(data)
         if (d > 0) {
@@ -482,6 +534,16 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (hlsRef.current) hlsRef.current.currentLevel = id
     setPinnedLevel(id)
   }
+  const handleManualRetry = () => {
+    networkRetries.current = 0
+    mediaRetries.current = 0
+    setPlayerError(null)
+    const h = hlsRef.current
+    if (h) {
+      h.recoverMediaError()
+      h.startLoad()
+    }
+  }
 
   if (sessionError) {
     return (
@@ -538,6 +600,21 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
         </div>
       )}
       <div className="video-wrap">
+        {playerError && playerError.fatal && (
+          <div className="player-error-fatal">
+            <strong>Playback failed</strong>
+            <div className="player-error-detail">
+              {playerError.kind} · {playerError.details}
+            </div>
+            <button onClick={handleManualRetry}>Try again</button>
+          </div>
+        )}
+        {playerError && !playerError.fatal && (
+          <div className="player-error-transient">
+            {playerError.kind === 'network' ? 'Network glitch' : 'Decoder hiccup'}
+            <span> · retrying ({playerError.retryAttempt}/{playerError.kind === 'network' ? 3 : 1})</span>
+          </div>
+        )}
         {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
         {resumedFrom != null && (
           <div className="resume-overlay">resumed at {fmt(resumedFrom)}</div>
