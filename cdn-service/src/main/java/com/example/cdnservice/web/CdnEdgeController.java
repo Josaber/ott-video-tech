@@ -55,19 +55,25 @@ public class CdnEdgeController {
 
     @GetMapping("/{assetId}/**")
     public void edge(@PathVariable String assetId,
-                     @RequestParam("exp") long exp,
-                     @RequestParam("sig") String sig,
+                     @RequestParam(value = "exp", required = false) Long exp,
+                     @RequestParam(value = "sig", required = false) String sig,
                      @RequestParam(value = "CMCD", required = false) String cmcdRaw,
                      jakarta.servlet.http.HttpServletRequest request,
                      HttpServletResponse response) throws IOException {
         // Reconstruct the path inside /cdn/ — e.g. "5da5441e/360p/segment_000.ts".
         String fullUri = request.getRequestURI();      // /cdn/{assetId}/...
         String path = fullUri.substring("/cdn/".length());
-        // Hand-decoded so we don't trip on raw `+` in CMCD values (some
-        // clients encode space as `+`; we just leave it alone for now).
-        if (!verifier.verify(path, exp, sig)) {
-            log.info("REJECT {} (exp={}, sig=...): bad-signature-or-expired", path, exp);
-            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "invalid_or_expired_token");
+        // Signature gate applies only to .ts segments (the bulk bytes).
+        // Manifests / VTT / AAC / key URIs proxy through with the user's
+        // Authorization header forwarded — origin enforces per-viewer auth
+        // + per-session mutation there. Mirrors how real CDN configs scope
+        // sig requirements by path or object type.
+        boolean requiresSig = path.endsWith(".ts");
+        if (requiresSig) {
+            if (exp == null || sig == null || !verifier.verify(path, exp, sig)) {
+                log.info("REJECT {} (exp={}, sig=...): bad-signature-or-expired", path, exp);
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "invalid_or_expired_token");
+            }
         }
 
         // CMCD: forward to the origin's collector. Decode once — query
@@ -89,13 +95,27 @@ public class CdnEdgeController {
         // Stream the segment from origin. We use HttpURLConnection rather
         // than RestClient.get().body(InputStream.class) so we can stream
         // through to the client without buffering the whole segment in RAM.
-        String originUrl = properties.getOriginBaseUrl() + "/" + path;
+        //
+        // Forward the FULL query string — the license.key endpoint at origin
+        // expects user/exp/nonce/sig and would reject if they're stripped.
+        // The CDN's own params (exp, sig, CMCD) are extra noise to origin but
+        // ignored cleanly by Spring MVC handlers.
+        String query = request.getQueryString();
+        String originUrl = properties.getOriginBaseUrl() + "/" + path
+            + (query != null && !query.isEmpty() ? "?" + query : "");
         URI uri = URI.create(originUrl);
         HttpURLConnection conn = (HttpURLConnection) uri.toURL().openConnection();
         conn.setRequestMethod("GET");
         conn.setConnectTimeout(5_000);
         conn.setReadTimeout(30_000);
         conn.setInstanceFollowRedirects(true);
+        // Forward the viewer's Bearer to origin so auth-gated endpoints
+        // (master.m3u8, program.m3u8) see the user identity and emit the
+        // right per-viewer license URIs + watermark stitching.
+        String auth = request.getHeader("Authorization");
+        if (auth != null && !auth.isEmpty()) {
+            conn.setRequestProperty("Authorization", auth);
+        }
 
         int upstream = conn.getResponseCode();
         if (upstream >= 400) {

@@ -117,14 +117,18 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
         // segments) get no header — they don't accept auth anyway and we
         // avoid the CORS preflight cost.
         xhrSetup: (xhr, url) => {
-          // Attach the Bearer only to same-origin (backend) requests. We treat
-          // a leading "/" as same-origin too because hls.js does NOT normalize
-          // relative URLs before invoking xhrSetup, and a relative URL like
-          // "/playback/.../master.m3u8" obviously can't start with the
-          // window.location.origin string.
+          // Attach the Bearer to:
+          //   - same-origin requests (backend, including relative "/" paths
+          //     which hls.js does NOT normalize before calling xhrSetup), AND
+          //   - cross-origin CDN edge requests (host:8095 in dev). The edge
+          //     forwards the header to origin so per-viewer manifest mutation
+          //     (license URI rewrite, watermark stitch) sees the right user.
+          //   - NOT the ad-service: those endpoints don't accept Bearer and
+          //     adding it would trigger a preflight per ts segment.
           const token = getToken()
           const sameOrigin = url.startsWith('/') || url.startsWith(window.location.origin)
-          if (token && sameOrigin) {
+          const isCdn = url.includes('/cdn/')
+          if (token && (sameOrigin || isCdn)) {
             xhr.setRequestHeader('Authorization', `Bearer ${token}`)
           }
         },

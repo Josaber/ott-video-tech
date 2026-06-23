@@ -1,6 +1,7 @@
 package com.example.vod.web;
 
 import com.example.vod.config.MediaProperties;
+import com.example.vod.config.CdnProperties;
 import com.example.vod.dto.AssetResponse;
 import com.example.vod.dto.CreateAssetRequest;
 import com.example.vod.dto.JobResponse;
@@ -31,13 +32,20 @@ public class VideoWorkflowController {
     private final VideoWorkflowService service;
     private final MediaProperties media;
     private final RenditionRepository renditions;
+    private final CdnProperties cdn;
 
     public VideoWorkflowController(VideoWorkflowService service,
                                     MediaProperties media,
-                                    RenditionRepository renditions) {
+                                    RenditionRepository renditions,
+                                    CdnProperties cdn) {
         this.service = service;
         this.media = media;
         this.renditions = renditions;
+        this.cdn = cdn;
+    }
+
+    private String cdnBase() {
+        return cdn.enabled() ? cdn.getPublicBaseUrl() : "";
     }
 
     @PostMapping
@@ -45,19 +53,19 @@ public class VideoWorkflowController {
     public ResponseEntity<AssetResponse> create(@Valid @RequestBody CreateAssetRequest req) {
         var asset = service.create(req);
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(AssetResponse.from(asset, media.getPublicBaseUrl()));
+                .body(AssetResponse.from(asset, media.getPublicBaseUrl(), cdnBase()));
     }
 
     @GetMapping
     public List<AssetResponse> list() {
         return service.list().stream()
-                .map(a -> AssetResponse.from(a, media.getPublicBaseUrl()))
+                .map(a -> AssetResponse.from(a, media.getPublicBaseUrl(), cdnBase()))
                 .toList();
     }
 
     @GetMapping("/{id}")
     public AssetResponse get(@PathVariable UUID id) {
-        return AssetResponse.from(service.get(id), media.getPublicBaseUrl());
+        return AssetResponse.from(service.get(id), media.getPublicBaseUrl(), cdnBase());
     }
 
     @GetMapping("/{id}/jobs")
@@ -77,7 +85,7 @@ public class VideoWorkflowController {
     public AssetResponse upload(@PathVariable UUID id,
                                 @RequestParam("file") MultipartFile file) throws IOException {
         var asset = service.upload(id, file);
-        return AssetResponse.from(asset, media.getPublicBaseUrl());
+        return AssetResponse.from(asset, media.getPublicBaseUrl(), cdnBase());
     }
 
     @PostMapping("/{id}/process")

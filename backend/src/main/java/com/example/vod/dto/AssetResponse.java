@@ -20,11 +20,20 @@ public record AssetResponse(
     Instant updatedAt
 ) {
     public static AssetResponse from(VideoAssetEntity e, String publicBaseUrl) {
+        return from(e, publicBaseUrl, "");
+    }
+
+    public static AssetResponse from(VideoAssetEntity e, String publicBaseUrl, String cdnBaseUrl) {
+        // Manifest goes through the CDN edge so every fetch is logged
+        // alongside CMCD and the same signed-URL pipeline serves both
+        // .m3u8 and .ts (sig required only on segments). When CDN is
+        // disabled (empty publicBaseUrl) we fall back to direct origin.
+        String manifestBase = (cdnBaseUrl != null && !cdnBaseUrl.isEmpty()) ? cdnBaseUrl + "/cdn" : publicBaseUrl + "/playback";
         String playback = e.getPlaybackPath() == null
                 ? null
-                : publicBaseUrl + "/playback/" + e.getId() + "/master.m3u8";
-        // Surface the trick-play VTT only once the asset is published —
-        // before then the sprite either doesn't exist or is stale.
+                : manifestBase + "/" + e.getId() + "/master.m3u8";
+        // Trick-play VTT stays on origin — it's small and the sprite asset
+        // is fetched as a plain <img> by the player, also direct to origin.
         String thumbs = e.getPlaybackPath() == null
                 ? null
                 : publicBaseUrl + "/playback/" + e.getId() + "/thumbnails.vtt";
