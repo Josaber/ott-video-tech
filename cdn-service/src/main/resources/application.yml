@@ -1,0 +1,21 @@
+server:
+  port: 8095
+
+spring:
+  application:
+    name: cdn-service
+
+app:
+  cdn:
+    # MUST match backend's app.cdn.signing-secret. Anyone with this secret
+    # can mint segment URLs; rotate in real deployments.
+    signing-secret: ${CDN_SIGNING_SECRET:dev-only-cdn-signing-secret-please-rotate-aaaaaaaaaaaa}
+    # Origin the edge proxies to when a signed URL verifies. Real CDN
+    # would cache the response; this demo just streams through.
+    origin-base-url: ${CDN_ORIGIN_BASE_URL:http://127.0.0.1:8080/playback}
+    # Where the edge POSTs CMCD beacons it collects from the query string.
+    cmcd-sink-url: ${CDN_CMCD_SINK_URL:http://127.0.0.1:8080/api/cmcd/ingest}
+
+logging:
+  level:
+    com.example.cdnservice: INFO

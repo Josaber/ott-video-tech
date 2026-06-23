@@ -50,6 +50,13 @@ app:
   ssai:
     ad-service-base-url: ${AD_SERVICE_BASE_URL:http://127.0.0.1:8090}
     ad-id: ${SSAI_AD_ID:preroll-brand-a}
+  cdn:
+    # Empty = direct (segments served by backend /playback/). Set to a
+    # cdn-service base URL to push segments through the mock edge with
+    # signed URLs + CMCD logging.
+    public-base-url: ${CDN_PUBLIC_BASE_URL:http://127.0.0.1:8095}
+    signing-secret: ${CDN_SIGNING_SECRET:dev-only-cdn-signing-secret-please-rotate-aaaaaaaaaaaa}
+    ttl-minutes: ${CDN_TTL_MINUTES:10}
   temporal:
     mode: ${APP_TEMPORAL_MODE:embedded}
     task-queue: vod-publishing

@@ -65,19 +65,45 @@ public class PlaybackController {
     private final SsaiProperties ssaiProperties;
     private final LicenseUrlSigner signer;
     private final NonceStore nonceStore;
+    private final com.example.vod.service.CdnUrlSigner cdnSigner;
 
     public PlaybackController(VideoAssetRepository assets,
                               FfmpegMediaProcessor ffmpeg,
                               AdManifestStitcher stitcher,
                               SsaiProperties ssaiProperties,
                               LicenseUrlSigner signer,
-                              NonceStore nonceStore) {
+                              NonceStore nonceStore,
+                              com.example.vod.service.CdnUrlSigner cdnSigner) {
         this.assets = assets;
         this.ffmpeg = ffmpeg;
         this.stitcher = stitcher;
         this.ssaiProperties = ssaiProperties;
         this.signer = signer;
         this.nonceStore = nonceStore;
+        this.cdnSigner = cdnSigner;
+    }
+
+    /**
+     * Rewrite each `segment_NNN.ts` reference in the variant playlist to an
+     * absolute signed CDN URL. Skips lines that already contain `://`
+     * (e.g., the ad-service ts URLs the SSAI stitcher injected). No-op
+     * unless app.cdn.public-base-url is set.
+     */
+    private String rewriteSegmentsToCdn(String body, UUID assetId, String tier) {
+        if (!cdnSigner.enabled()) return body;
+        StringBuilder out = new StringBuilder(body.length() + 128);
+        for (String line : body.split("\n", -1)) {
+            String trimmed = line.trim();
+            if (trimmed.matches("segment_\\d{3}\\.ts")) {
+                String path = assetId + "/" + tier + "/" + trimmed;
+                out.append(cdnSigner.sign(path)).append('\n');
+            } else {
+                out.append(line).append('\n');
+            }
+        }
+        // strip one trailing newline we added back at the end.
+        if (out.length() > 0 && out.charAt(out.length() - 1) == '\n') out.setLength(out.length() - 1);
+        return out.toString();
     }
 
     @GetMapping(value = "/{assetId}/master.m3u8", produces = "application/vnd.apple.mpegurl")
@@ -220,6 +246,7 @@ public class PlaybackController {
             body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
         }
         body = rewriteLicenseUri(body, assetId, jwt.getSubject());
+        body = rewriteSegmentsToCdn(body, assetId, tier);
         return ResponseEntity.ok()
                 .contentType(MediaType.parseMediaType("application/vnd.apple.mpegurl"))
                 .header(HttpHeaders.CACHE_CONTROL, "no-store")

@@ -41,6 +41,9 @@ temporal-down:
 ad-service:
 	mvn -f ad-service/pom.xml spring-boot:run
 
+cdn-service:
+	mvn -f cdn-service/pom.xml spring-boot:run
+
 backend:
 	mvn -f backend/pom.xml spring-boot:run
 

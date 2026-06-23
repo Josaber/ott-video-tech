@@ -154,6 +154,10 @@ public class SecurityConfig {
                 .requestMatchers("/playback/*/*/program.m3u8").authenticated()
                 .requestMatchers("/playback/*/license.key").permitAll()
                 .requestMatchers("/playback/**").permitAll()
+                // CMCD ingest is machine-to-machine from cdn-service. No
+                // user auth — the cdn-service edge is the trust boundary
+                // (in real deployments it'd be on a private network).
+                .requestMatchers(HttpMethod.POST, "/api/cmcd/ingest").permitAll()
                 // Live channel manifest + segments are open — no auth, no
                 // license. The /api/live/* control plane (start/stop) stays
                 // under /api/** which requires a token, and /start/stop are
