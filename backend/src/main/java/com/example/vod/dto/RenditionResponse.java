@@ -9,13 +9,14 @@ public record RenditionResponse(
     int height,
     int videoBitrateKbps,
     int audioBitrateKbps,
-    BigDecimal vmafScore
+    BigDecimal vmafScore,
+    Boolean convexHullOptimal
 ) {
     public static RenditionResponse from(RenditionEntity e) {
         return new RenditionResponse(
             e.getTierLabel(), e.getWidth(), e.getHeight(),
             e.getVideoBitrateKbps(), e.getAudioBitrateKbps(),
-            e.getVmafScore()
+            e.getVmafScore(), e.getConvexHullOptimal()
         );
     }
 }

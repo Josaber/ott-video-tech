@@ -144,6 +144,7 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
               <span>video bitrate</span>
               <span>audio bitrate</span>
               <span>VMAF</span>
+              <span>PTE hull</span>
             </div>
             {renditions.map((r) => (
               <div className="ladder-row" key={r.tier}>
@@ -152,6 +153,12 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
                 <span>{r.videoBitrateKbps} kbps</span>
                 <span>{r.audioBitrateKbps} kbps</span>
                 <span>{r.vmafScore != null ? r.vmafScore.toFixed(2) : '—'}</span>
+                <span>
+                  {r.convexHullOptimal == null ? '—'
+                    : r.convexHullOptimal
+                      ? <span className="hull-flag hull-optimal">optimal</span>
+                      : <span className="hull-flag hull-dominated">dominated</span>}
+                </span>
               </div>
             ))}
           </div>

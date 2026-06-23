@@ -7,6 +7,7 @@ import com.example.vod.media.FfmpegMediaProcessor.LadderTier;
 import com.example.vod.media.FfmpegMediaProcessor.ProbeResult;
 import com.example.vod.repository.RenditionRepository;
 import com.example.vod.repository.VideoAssetRepository;
+import com.example.vod.service.ConvexHullLadder;
 import java.io.IOException;
 import java.nio.file.Path;
 import java.time.Duration;
@@ -21,13 +22,16 @@ public class TranscodeWorker {
     private final VideoAssetRepository assets;
     private final RenditionRepository renditions;
     private final FfmpegMediaProcessor ffmpeg;
+    private final ConvexHullLadder hull;
 
     public TranscodeWorker(VideoAssetRepository assets,
                            RenditionRepository renditions,
-                           FfmpegMediaProcessor ffmpeg) {
+                           FfmpegMediaProcessor ffmpeg,
+                           ConvexHullLadder hull) {
         this.assets = assets;
         this.renditions = renditions;
         this.ffmpeg = ffmpeg;
+        this.hull = hull;
     }
 
     @Transactional
@@ -97,6 +101,10 @@ public class TranscodeWorker {
                         assetId, row.getTierLabel(), e.getMessage());
             }
         }
+
+        // PTE convex hull: flag each rendition as on/off the upper hull of
+        // (bitrate, VMAF). No-op if any VMAF failed.
+        hull.recomputeFor(assetId);
 
         // Keep the legacy single-string columns pointing at the lowest tier
         // so any code still reading them resolves to something coherent.

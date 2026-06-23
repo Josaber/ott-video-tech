@@ -234,6 +234,7 @@ export interface Rendition {
   videoBitrateKbps: number
   audioBitrateKbps: number
   vmafScore: number | null
+  convexHullOptimal: boolean | null
 }
 
 export interface PlaybackSession {

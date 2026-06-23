@@ -40,6 +40,9 @@ public class RenditionEntity {
     @Column(name = "vmaf_score", precision = 5, scale = 2)
     private BigDecimal vmafScore;
 
+    @Column(name = "convex_hull_optimal")
+    private Boolean convexHullOptimal;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -64,6 +67,8 @@ public class RenditionEntity {
     public void setAudioBitrateKbps(int audioBitrateKbps) { this.audioBitrateKbps = audioBitrateKbps; }
     public BigDecimal getVmafScore() { return vmafScore; }
     public void setVmafScore(BigDecimal vmafScore) { this.vmafScore = vmafScore; }
+    public Boolean getConvexHullOptimal() { return convexHullOptimal; }
+    public void setConvexHullOptimal(Boolean v) { this.convexHullOptimal = v; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
 }
