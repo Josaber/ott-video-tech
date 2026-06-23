@@ -492,11 +492,6 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
                   <option key={l.id} value={l.id}>{l.label}</option>
                 ))}
               </select>
-              {pinnedLevel === -1 && playingLevel >= 0 && levels[playingLevel] && (
-                <span className="track-playing">
-                  playing: {levels[playingLevel].label}
-                </span>
-              )}
             </label>
           )}
           {audioTracks.length > 1 && (
@@ -530,6 +525,12 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
         {adActive && <div className="ad-overlay">AD · NOT SKIPPABLE</div>}
         {resumedFrom != null && (
           <div className="resume-overlay">resumed at {fmt(resumedFrom)}</div>
+        )}
+        {levels.length > 1 && playingLevel >= 0 && levels[playingLevel] && (
+          <div className="bitrate-overlay">
+            {pinnedLevel === -1 && <span className="bitrate-mode">AUTO</span>}
+            {levels[playingLevel].label}
+          </div>
         )}
         <video ref={videoRef} controls playsInline />
       </div>
