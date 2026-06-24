@@ -903,6 +903,103 @@ video { width: 100%; display: block; }
   gap: 6px;
   pointer-events: none;
 }
+.extra-controls {
+  position: absolute;
+  top: 48px;
+  right: 12px;
+  display: flex;
+  gap: 6px;
+  z-index: 8;
+}
+.extra-btn {
+  background: rgba(2, 6, 23, 0.7);
+  border: 1px solid #334155;
+  color: #cbd5e1;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: ui-monospace, monospace;
+}
+.extra-btn:hover { color: #f1f5f9; border-color: #475569; }
+.stats-overlay {
+  position: absolute;
+  top: 84px;
+  right: 12px;
+  background: rgba(2, 6, 23, 0.85);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 8px 12px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: #cbd5e1;
+  min-width: 180px;
+  pointer-events: none;
+  z-index: 8;
+}
+.stats-row {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 1px 0;
+}
+.stats-row span:first-child {
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  font-size: 10px;
+}
+.stats-row span:last-child {
+  color: #22d3ee;
+  font-weight: 700;
+}
+
+.sub-style-panel {
+  position: absolute;
+  top: 84px;
+  right: 12px;
+  background: rgba(2, 6, 23, 0.92);
+  border: 1px solid #334155;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 240px;
+  z-index: 9;
+}
+.sub-style-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 11px;
+  color: #cbd5e1;
+}
+.sub-style-row label {
+  flex: 0 0 80px;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: 10px;
+}
+.sub-style-row input[type="range"] {
+  flex: 1;
+}
+.sub-style-row input[type="color"] {
+  width: 40px;
+  height: 24px;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  background: transparent;
+  cursor: pointer;
+}
+.sub-style-row span {
+  flex: 0 0 50px;
+  text-align: right;
+  font-family: ui-monospace, monospace;
+  color: #22d3ee;
+}
+
 .bitrate-mode {
   background: #22d3ee;
   color: #0f172a;

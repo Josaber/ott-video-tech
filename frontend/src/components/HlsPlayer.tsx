@@ -67,6 +67,32 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [activeAudio, setActiveAudio] = useState<number>(-1)
   const [subtitleTracks, setSubtitleTracks] = useState<{ id: number; name: string; lang?: string }[]>([])
   const [activeSubtitle, setActiveSubtitle] = useState<number>(-1)
+  const [statsOpen, setStatsOpen] = useState<boolean>(false)
+  const [throttleEndsAt, setThrottleEndsAt] = useState<number | null>(null)
+  const [subStyleOpen, setSubStyleOpen] = useState<boolean>(false)
+  const [subStyle, setSubStyle] = useState<{
+    fontSize: number
+    color: string
+    bgOpacity: number
+  }>(() => {
+    try {
+      const raw = localStorage.getItem('hls-player-cue-style')
+      if (raw) return JSON.parse(raw)
+    } catch { /* fall through */ }
+    return { fontSize: 18, color: '#ffffff', bgOpacity: 0.7 }
+  })
+  const [pipActive, setPipActive] = useState<boolean>(false)
+  const [airplayAvailable, setAirplayAvailable] = useState<boolean>(false)
+  const [stats, setStats] = useState<{
+    bandwidthKbps: number
+    currentLevel: number
+    fragsLoaded: number
+    droppedFrames: number
+    decodedFrames: number
+    bufferAheadSec: number
+    latencySec: number | null
+  } | null>(null)
+  const fragsLoadedRef = useRef<number>(0)
   const [playerError, setPlayerError] = useState<{
     kind: string
     details: string
@@ -221,9 +247,11 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
         }
       })
       // FRAG_LOADED is the cleanest "real progress" signal — clear any
-      // transient error banner the moment a segment lands.
+      // transient error banner the moment a segment lands, and bump the
+      // stats counter.
       hls.on(Hls.Events.FRAG_LOADED, () => {
         setPlayerError((prev) => (prev && !prev.fatal ? null : prev))
+        fragsLoadedRef.current += 1
       })
       const collectAdRegions = (data: unknown) => {
         // hls.js exposes parsed DATERANGEs on data.dateRanges keyed by id.
@@ -364,6 +392,68 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     }
   }, [adRegions, adActive])
 
+  // Inject a `<style>` block applying the user's chosen ::cue styles.
+  // ::cue is the W3C standard pseudo-element for WebVTT cue text; both
+  // text-track cues parsed by hls.js and native <track> cues respect it.
+  // Saved in localStorage so the preference persists across sessions.
+  useEffect(() => {
+    try { localStorage.setItem('hls-player-cue-style', JSON.stringify(subStyle)) } catch { /* swallow */ }
+    const STYLE_ID = 'hls-player-cue-style-tag'
+    let tag = document.getElementById(STYLE_ID) as HTMLStyleElement | null
+    if (!tag) {
+      tag = document.createElement('style')
+      tag.id = STYLE_ID
+      document.head.appendChild(tag)
+    }
+    const bg = `rgba(0, 0, 0, ${subStyle.bgOpacity.toFixed(2)})`
+    tag.textContent = `
+      video::cue {
+        font-size: ${subStyle.fontSize}px;
+        color: ${subStyle.color};
+        background: ${bg};
+        line-height: 1.3;
+        text-shadow: 0 1px 2px rgba(0,0,0,0.85);
+      }
+    `
+  }, [subStyle])
+
+  // PiP enter/leave events come from the DOM, not from our buttons,
+  // since the user can also leave PiP via the OS UI.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const onEnter = () => setPipActive(true)
+    const onLeave = () => setPipActive(false)
+    video.addEventListener('enterpictureinpicture', onEnter)
+    video.addEventListener('leavepictureinpicture', onLeave)
+    return () => {
+      video.removeEventListener('enterpictureinpicture', onEnter)
+      video.removeEventListener('leavepictureinpicture', onLeave)
+    }
+  }, [])
+
+  // AirPlay availability is a Safari-specific event. The button only
+  // renders if a target (Apple TV / HomePod / etc.) is currently visible.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    interface AirPlayEvent extends Event { availability?: string }
+    const handler = (e: Event) => {
+      const av = (e as AirPlayEvent).availability
+      setAirplayAvailable(av === 'available')
+    }
+    type WkVideo = HTMLVideoElement & {
+      webkitShowPlaybackTargetPicker?: () => void
+    }
+    const v = video as WkVideo
+    if ('webkitShowPlaybackTargetPicker' in v) {
+      video.addEventListener('webkitplaybacktargetavailabilitychanged', handler)
+    }
+    return () => {
+      video.removeEventListener('webkitplaybacktargetavailabilitychanged', handler)
+    }
+  }, [])
+
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -413,6 +503,38 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       if (acquiredId) api.closeSession(acquiredId).catch(() => {})
     }
   }, [assetId])
+
+  // Stats overlay tick — only when the user has toggled the panel open.
+  // Reads hls.js's bandwidthEstimate + currentLevel + buffer state, and
+  // the native video element's playback quality counters.
+  useEffect(() => {
+    if (!statsOpen) {
+      setStats(null)
+      return
+    }
+    const id = window.setInterval(() => {
+      const video = videoRef.current
+      const h = hlsRef.current
+      if (!video) return
+      const buffered = video.buffered
+      const tail = buffered.length > 0 ? buffered.end(buffered.length - 1) : video.currentTime
+      const bufferAhead = Math.max(0, tail - video.currentTime)
+      // getVideoPlaybackQuality is the standard cross-browser frame counter.
+      const q = typeof video.getVideoPlaybackQuality === 'function'
+        ? video.getVideoPlaybackQuality()
+        : null
+      setStats({
+        bandwidthKbps: h ? Math.round(h.bandwidthEstimate / 1000) : 0,
+        currentLevel: h ? h.currentLevel : -1,
+        fragsLoaded: fragsLoadedRef.current,
+        droppedFrames: q?.droppedVideoFrames ?? 0,
+        decodedFrames: q?.totalVideoFrames ?? 0,
+        bufferAheadSec: bufferAhead,
+        latencySec: h && h.latency != null ? h.latency : null,
+      })
+    }, 500)
+    return () => window.clearInterval(id)
+  }, [statsOpen])
 
   // Heartbeat every 30 s while the session is open. Backend reaps anything
   // > 90 s stale on the next session-open attempt.
@@ -597,6 +719,53 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (hlsRef.current) hlsRef.current.currentLevel = id
     setPinnedLevel(id)
   }
+  // Quick visual ABR demo: slam the bandwidth estimate way down + pin
+  // currentLevel to the lowest tier, then release after 8 s. The player
+  // visibly drops to 240p, then climbs back to whatever ABR picks
+  // post-release. Doesn't actually throttle the network — that needs
+  // Service Worker or DevTools — but the user-facing UX is the same:
+  // see Auto mode adapt.
+  const simulateSlowNetwork = () => {
+    const h = hlsRef.current
+    if (!h || levels.length === 0) return
+    const DURATION_MS = 8000
+    h.bandwidthEstimate = 200_000
+    h.currentLevel = 0
+    setPinnedLevel(0)
+    const endsAt = Date.now() + DURATION_MS
+    setThrottleEndsAt(endsAt)
+    window.setTimeout(() => {
+      const hh = hlsRef.current
+      if (hh) {
+        hh.currentLevel = -1
+        setPinnedLevel(-1)
+      }
+      setThrottleEndsAt(null)
+    }, DURATION_MS)
+  }
+
+  const togglePip = async () => {
+    const video = videoRef.current
+    if (!video) return
+    try {
+      if (document.pictureInPictureElement) {
+        await document.exitPictureInPicture()
+      } else if (document.pictureInPictureEnabled) {
+        await video.requestPictureInPicture()
+      }
+    } catch {
+      /* user can dismiss; ignore */
+    }
+  }
+  const requestAirplay = () => {
+    type WkVideo = HTMLVideoElement & {
+      webkitShowPlaybackTargetPicker?: () => void
+    }
+    const v = videoRef.current as WkVideo | null
+    v?.webkitShowPlaybackTargetPicker?.()
+  }
+  const pipSupported = typeof document !== 'undefined' && document.pictureInPictureEnabled
+
   const handleManualRetry = () => {
     networkRetries.current = 0
     mediaRetries.current = 0
@@ -686,6 +855,113 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
           <div className="bitrate-overlay">
             {pinnedLevel === -1 && <span className="bitrate-mode">AUTO</span>}
             {levels[playingLevel].label}
+          </div>
+        )}
+        <div className="extra-controls">
+          {pipSupported && (
+            <button
+              type="button"
+              className="extra-btn"
+              title={pipActive ? 'Exit picture-in-picture' : 'Picture-in-picture'}
+              onClick={togglePip}
+            >
+              {pipActive ? '◱ exit pip' : '◰ pip'}
+            </button>
+          )}
+          {airplayAvailable && (
+            <button
+              type="button"
+              className="extra-btn"
+              title="AirPlay"
+              onClick={requestAirplay}
+            >
+              📡 airplay
+            </button>
+          )}
+          {levels.length > 1 && (
+            <button
+              type="button"
+              className="extra-btn"
+              title="Simulate slow network — pin ABR to lowest tier for 8 s"
+              onClick={simulateSlowNetwork}
+              disabled={throttleEndsAt !== null}
+            >
+              {throttleEndsAt !== null ? '🐌 throttling' : '🐌 slow net'}
+            </button>
+          )}
+          {subtitleTracks.length > 0 && (
+            <button
+              type="button"
+              className="extra-btn"
+              title="Subtitle appearance"
+              onClick={() => {
+                setSubStyleOpen((v) => !v)
+                setStatsOpen(false)
+              }}
+            >
+              {subStyleOpen ? '× cc' : '⚙ cc'}
+            </button>
+          )}
+          <button
+            type="button"
+            className="extra-btn"
+            title="Toggle playback stats"
+            onClick={() => {
+              setStatsOpen((v) => !v)
+              setSubStyleOpen(false)
+            }}
+          >
+            {statsOpen ? '× stats' : '📊 stats'}
+          </button>
+        </div>
+        {subStyleOpen && (
+          <div className="sub-style-panel">
+            <div className="sub-style-row">
+              <label>font size</label>
+              <input
+                type="range" min={12} max={32} step={1}
+                value={subStyle.fontSize}
+                onChange={(e) => setSubStyle((s) => ({ ...s, fontSize: parseInt(e.target.value, 10) }))}
+              />
+              <span>{subStyle.fontSize}px</span>
+            </div>
+            <div className="sub-style-row">
+              <label>color</label>
+              <input
+                type="color"
+                value={subStyle.color}
+                onChange={(e) => setSubStyle((s) => ({ ...s, color: e.target.value }))}
+              />
+            </div>
+            <div className="sub-style-row">
+              <label>bg opacity</label>
+              <input
+                type="range" min={0} max={1} step={0.05}
+                value={subStyle.bgOpacity}
+                onChange={(e) => setSubStyle((s) => ({ ...s, bgOpacity: parseFloat(e.target.value) }))}
+              />
+              <span>{Math.round(subStyle.bgOpacity * 100)}%</span>
+            </div>
+            <div className="sub-style-row">
+              <button
+                type="button"
+                className="extra-btn"
+                onClick={() => setSubStyle({ fontSize: 18, color: '#ffffff', bgOpacity: 0.7 })}
+              >reset</button>
+            </div>
+          </div>
+        )}
+        {statsOpen && stats && (
+          <div className="stats-overlay">
+            <div className="stats-row"><span>bandwidth</span><span>{stats.bandwidthKbps} kbps</span></div>
+            <div className="stats-row"><span>tier</span><span>{stats.currentLevel >= 0 && levels[stats.currentLevel] ? levels[stats.currentLevel].label : '?'}</span></div>
+            <div className="stats-row"><span>frags loaded</span><span>{stats.fragsLoaded}</span></div>
+            <div className="stats-row"><span>frames</span><span>{stats.decodedFrames - stats.droppedFrames}/{stats.decodedFrames}</span></div>
+            <div className="stats-row"><span>dropped</span><span>{stats.droppedFrames}</span></div>
+            <div className="stats-row"><span>buffer</span><span>{stats.bufferAheadSec.toFixed(1)} s</span></div>
+            {stats.latencySec != null && (
+              <div className="stats-row"><span>latency</span><span>{stats.latencySec.toFixed(2)} s</span></div>
+            )}
           </div>
         )}
         <video ref={videoRef} controls playsInline />
