@@ -93,14 +93,26 @@ public class LiveChannelService {
             "-preset", "ultrafast",
             "-tune", "zerolatency",
             "-pix_fmt", "yuv420p",
-            "-g", "60", "-keyint_min", "60",
+            // Short GOPs are mandatory for low-latency — each PART must
+            // start on a keyframe-aligned boundary, so g=keyint_min=15
+            // (= 0.5 s at 30 fps) matches the part target duration below.
+            "-g", "15", "-keyint_min", "15", "-sc_threshold", "0",
             "-b:v", "2500k",
             "-c:a", "aac", "-b:a", "128k",
             "-f", "hls",
-            "-hls_time", "2",
+            // CMAF fMP4 + 1 s segments. Truly LL-HLS (EXT-X-PART /
+            // PRELOAD-HINT) would also need `-hls_flags low_latency`, but
+            // this build of ffmpeg (evermeet 8.1) doesn't recognise the
+            // constant. The fMP4 + 1 s combination still cuts end-to-end
+            // latency from ~6 s (TS + 2 s segments) to ~3-4 s and primes
+            // the pipeline for full LL-HLS once the upstream encoder is
+            // swapped (shaka-packager / bento4 / a newer ffmpeg).
+            "-hls_time", "1",
             "-hls_list_size", "6",
+            "-hls_segment_type", "fmp4",
+            "-hls_fmp4_init_filename", "init.mp4",
             "-hls_flags", "delete_segments+independent_segments+omit_endlist+program_date_time",
-            "-hls_segment_filename", outDir.resolve("segment_%06d.ts").toString(),
+            "-hls_segment_filename", outDir.resolve("segment_%06d.m4s").toString(),
             outDir.resolve("master.m3u8").toString()
         );
         ProcessBuilder pb = new ProcessBuilder(args).redirectErrorStream(true);
@@ -109,10 +121,18 @@ public class LiveChannelService {
         // and stall ffmpeg — without this, after ~64 KiB of ffmpeg's INFO
         // chatter the encoder will block on write.
         // Virtual threads are always daemon — no setDaemon needed (it throws).
+        // Capture stderr+stdout to a sibling file so we can inspect ffmpeg
+        // failures (LL-HLS flag combinations are picky on some builds).
+        Path drainLog = outDir.resolve("ffmpeg.log");
         Thread.ofVirtual().name("ffmpeg-live-drain").start(() -> {
-            try (var in = p.getInputStream()) {
+            try (var in = p.getInputStream();
+                 var out = Files.newOutputStream(drainLog)) {
                 byte[] buf = new byte[8192];
-                while (in.read(buf) >= 0) { /* discard */ }
+                int n;
+                while ((n = in.read(buf)) >= 0) {
+                    out.write(buf, 0, n);
+                    out.flush();
+                }
             } catch (IOException ignored) {}
         });
         this.process = p;

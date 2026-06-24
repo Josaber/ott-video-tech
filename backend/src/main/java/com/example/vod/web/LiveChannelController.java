@@ -82,15 +82,23 @@ public class LiveChannelController {
         if (!LiveChannelService.CHANNEL_SLUG.equals(slug)) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
         }
-        if (!filename.matches("segment_\\d{6}\\.ts")) {
+        // LL-HLS uses fMP4 segments (.m4s) + an init.mp4. Legacy TS path
+        // kept for callers still on the old layout (deprecated).
+        boolean fmp4Segment = filename.matches("segment_\\d{6}\\.m4s");
+        boolean initSegment = filename.equals("init.mp4");
+        boolean tsSegment = filename.matches("segment_\\d{6}\\.ts");
+        if (!fmp4Segment && !initSegment && !tsSegment) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
         }
         Path file = live.liveDir().resolve(filename);
         if (!Files.exists(file)) {
             throw new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND);
         }
+        String ct = fmp4Segment ? "video/iso.segment"
+                : initSegment ? "video/mp4"
+                : "video/mp2t";
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType("video/mp2t"))
+                .contentType(MediaType.parseMediaType(ct))
                 .header(HttpHeaders.CACHE_CONTROL, "public, max-age=300")
                 .body(new FileSystemResource(file));
     }
