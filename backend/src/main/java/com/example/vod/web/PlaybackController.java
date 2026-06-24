@@ -211,10 +211,8 @@ public class PlaybackController {
         if (asset.getAdId() == null) {
             body = Files.readString(drmManifest);
         } else {
-            String adId = asset.getAdId();
-            String adManifestUrl = ssaiProperties.getAdServiceBaseUrl()
-                    + "/ads/" + adId + "/master.m3u8";
-            body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
+            body = stitcher.stitchSchedule(drmManifest, ssaiProperties,
+                adId -> ssaiProperties.getAdServiceBaseUrl() + "/ads/" + adId + "/master.m3u8");
         }
 
         body = rewriteLicenseUri(body, assetId, jwt.getSubject());
@@ -309,10 +307,10 @@ public class PlaybackController {
         if (asset.getAdId() == null) {
             body = Files.readString(drmManifest);
         } else {
-            String adId = asset.getAdId();
-            String adManifestUrl = ssaiProperties.getAdServiceBaseUrl()
-                    + "/ads/" + adId + "/master.m3u8";
-            body = stitcher.stitchFromUrl(adManifestUrl, drmManifest, new StitchOptions(adId));
+            // Schedule-aware stitching: preroll pod (configurable size) +
+            // optional mid-roll at app.ssai.midroll-position-fraction.
+            body = stitcher.stitchSchedule(drmManifest, ssaiProperties,
+                adId -> ssaiProperties.getAdServiceBaseUrl() + "/ads/" + adId + "/master.m3u8");
         }
         body = rewriteLicenseUri(body, assetId, jwt.getSubject());
         // Top tier gets per-session A/B watermark stitching. Other tiers go

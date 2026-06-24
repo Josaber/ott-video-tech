@@ -49,7 +49,17 @@ app:
     public-base-url: ${PUBLIC_BASE_URL:http://127.0.0.1:8080}
   ssai:
     ad-service-base-url: ${AD_SERVICE_BASE_URL:http://127.0.0.1:8090}
+    # Legacy single-ad preroll fallback. Used only when preroll-pod is empty.
     ad-id: ${SSAI_AD_ID:preroll-brand-a}
+    # 3-ad preroll pod — the typical OTT pattern (avoids repetition fatigue
+    # by mixing 3 different creatives in one break).
+    preroll-pod:
+      - preroll-brand-a
+      - preroll-brand-b
+      - preroll-brand-c
+    # One mid-roll break at the program halfway point.
+    midroll-ad-id: preroll-brand-a
+    midroll-position-fraction: 0.5
   cdn:
     # Empty = direct (segments served by backend /playback/). Set to a
     # cdn-service base URL to push segments through the mock edge with

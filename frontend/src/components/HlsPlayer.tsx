@@ -45,7 +45,10 @@ const CUE_PATTERN =
 export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const stripRef = useRef<HTMLDivElement>(null)
-  const [adEnd, setAdEnd] = useState<number>(0)
+  // Multi-region: preroll pod + N mid-rolls. Each region carries its own
+  // start, end, and id from EXT-X-DATERANGE. The single adActive flag stays
+  // — it just becomes "in any ad region right now".
+  const [adRegions, setAdRegions] = useState<{ start: number; end: number; id: string }[]>([])
   const [adActive, setAdActive] = useState<boolean>(false)
   const maxWatched = useRef<number>(0)
   const [cues, setCues] = useState<ThumbCue[]>([])
@@ -91,7 +94,7 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (sessionError) return
 
     maxWatched.current = 0
-    setAdEnd(0)
+    setAdRegions([])
     setAdActive(false)
     setDuration(0)
     setCurrentTime(0)
@@ -222,28 +225,66 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       hls.on(Hls.Events.FRAG_LOADED, () => {
         setPlayerError((prev) => (prev && !prev.fatal ? null : prev))
       })
-      hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => {
-        const d = extractAdDuration(data)
-        if (d > 0) {
-          setAdEnd(d)
-          setAdActive(true)
+      const collectAdRegions = (data: unknown) => {
+        // hls.js exposes parsed DATERANGEs on data.dateRanges keyed by id.
+        // Each entry has startDate (Date) and duration (seconds). Preroll
+        // pod has startDate=1970-01-01T00:00:00, midroll-N has the absolute
+        // start time we emitted server-side.
+        const d = data as {
+          dateRanges?: Record<
+            string,
+            { duration?: number; startDate?: Date | string }
+          >
+        } | undefined
+        if (!d?.dateRanges) return
+        const epoch0 = new Date('1970-01-01T00:00:00.000Z').getTime()
+        const regions: { start: number; end: number; id: string }[] = []
+        for (const id of Object.keys(d.dateRanges)) {
+          const dr = d.dateRanges[id]
+          const dur = dr?.duration ?? 0
+          if (dur <= 0) continue
+          const sd = dr?.startDate ? new Date(dr.startDate as Date | string).getTime() : epoch0
+          const start = Math.max(0, (sd - epoch0) / 1000)
+          regions.push({ start, end: start + dur, id })
         }
-      })
+        regions.sort((a, b) => a.start - b.start)
+        if (regions.length > 0) {
+          setAdRegions(regions)
+          // First region might be at t=0 — mark active so the overlay
+          // shows before timeupdate fires.
+          if (regions[0].start === 0) setAdActive(true)
+        }
+      }
+      hls.on(Hls.Events.MANIFEST_PARSED, (_e, data) => collectAdRegions(data))
       hls.on(Hls.Events.LEVEL_LOADED, (_e, data) => {
-        const rawManifest = (data as { details: { fragments: unknown[] } }).details
+        const rawManifest = (data as { details: { fragments: unknown[]; dateRanges?: unknown } }).details
+        // hls.js v1.5+ exposes parsed dateRanges on details — prefer that.
+        if (rawManifest.dateRanges) {
+          collectAdRegions({ dateRanges: rawManifest.dateRanges })
+          return
+        }
+        // Legacy fallback: parse EXT-X-DATERANGE off the fragments' tagList.
         const fragments = rawManifest.fragments as { tagList?: string[][] }[]
-        const dateRange = fragments
-          .flatMap((f) => f.tagList ?? [])
-          .find((t) => Array.isArray(t) && t[0] === 'EXT-X-DATERANGE')
-        if (dateRange) {
-          const match = /DURATION=([0-9.]+)/.exec(dateRange[1] ?? '')
-          if (match) {
-            const d = parseFloat(match[1])
-            if (d > 0) {
-              setAdEnd(d)
-              setAdActive(true)
-            }
-          }
+        const dateRangeTags = fragments.flatMap((f) => f.tagList ?? [])
+            .filter((t) => Array.isArray(t) && t[0] === 'EXT-X-DATERANGE')
+        const epoch0 = new Date('1970-01-01T00:00:00.000Z').getTime()
+        const regions: { start: number; end: number; id: string }[] = []
+        for (const t of dateRangeTags) {
+          const body = t[1] ?? ''
+          const idMatch = /ID="([^"]+)"/.exec(body)
+          const startMatch = /START-DATE="([^"]+)"/.exec(body)
+          const durMatch = /DURATION=([0-9.]+)/.exec(body)
+          if (!durMatch) continue
+          const dur = parseFloat(durMatch[1])
+          if (dur <= 0) continue
+          const id = idMatch ? idMatch[1] : `ad-${regions.length}`
+          const start = startMatch ? Math.max(0, (new Date(startMatch[1]).getTime() - epoch0) / 1000) : 0
+          regions.push({ start, end: start + dur, id })
+        }
+        regions.sort((a, b) => a.start - b.start)
+        if (regions.length > 0) {
+          setAdRegions(regions)
+          if (regions[0].start === 0) setAdActive(true)
         }
       })
     } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
@@ -256,33 +297,55 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
 
   useEffect(() => {
     const video = videoRef.current
-    if (!video || adEnd <= 0) return
+    if (!video || adRegions.length === 0) return
+
+    // Region containing t (currently playing inside an ad).
+    const regionAt = (t: number) =>
+      adRegions.find((r) => t >= r.start && t < r.end)
+    // Earliest ad region that BEGINS between maxWatched and target — i.e.,
+    // an ad the user would skip past with a forward seek. Allows seeking
+    // backwards or forward within already-watched space.
+    const blockingAd = (target: number) =>
+      target > maxWatched.current + 0.5
+        ? adRegions.find((r) => r.start > maxWatched.current && r.start < target)
+        : undefined
 
     const onTime = () => {
-      if (video.currentTime < adEnd) {
-        if (video.currentTime > maxWatched.current) {
-          maxWatched.current = video.currentTime
-        }
-        if (video.playbackRate > 1) {
-          video.playbackRate = 1
-        }
+      if (video.currentTime > maxWatched.current) maxWatched.current = video.currentTime
+      const r = regionAt(video.currentTime)
+      if (r) {
+        if (video.playbackRate > 1) video.playbackRate = 1
         if (!adActive) setAdActive(true)
       } else if (adActive) {
         setAdActive(false)
       }
     }
     const onSeeking = () => {
-      if (video.currentTime < adEnd && video.currentTime > maxWatched.current + 0.5) {
-        video.currentTime = maxWatched.current
+      const r = regionAt(video.currentTime)
+      // Inside an ad region → snap back to where the user actually was
+      // before the seek (maxWatched, capped at region.end so we don't
+      // tunnel past the ad).
+      if (r && video.currentTime > maxWatched.current + 0.5) {
+        video.currentTime = Math.min(maxWatched.current, r.end - 0.1)
+        return
+      }
+      // Forward seek that would skip an un-watched ad → snap to its start.
+      // Advance maxWatched up to the ad start so the next seeking event
+      // (the snap itself) doesn't re-trigger the "inside-ad past-maxWatched"
+      // rule and bounce us back to t=0.
+      const skipped = blockingAd(video.currentTime)
+      if (skipped) {
+        maxWatched.current = Math.max(maxWatched.current, skipped.start)
+        video.currentTime = skipped.start
       }
     }
     const onRateChange = () => {
-      if (video.currentTime < adEnd && video.playbackRate > 1) {
+      if (regionAt(video.currentTime) && video.playbackRate > 1) {
         video.playbackRate = 1
       }
     }
     const onKey = (e: KeyboardEvent) => {
-      if (video.currentTime < adEnd) {
+      if (regionAt(video.currentTime)) {
         if (['ArrowRight', 'ArrowUp', 'l', 'L', '.', '>'].includes(e.key)) {
           e.preventDefault()
           e.stopPropagation()
@@ -299,7 +362,7 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       video.removeEventListener('ratechange', onRateChange)
       video.removeEventListener('keydown', onKey)
     }
-  }, [adEnd, adActive])
+  }, [adRegions, adActive])
 
   useEffect(() => {
     const video = videoRef.current
@@ -663,16 +726,6 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
       )}
     </>
   )
-}
-
-function extractAdDuration(data: unknown): number {
-  const d = data as { dateRanges?: Record<string, { duration?: number }> } | undefined
-  if (!d?.dateRanges) return 0
-  for (const id of Object.keys(d.dateRanges)) {
-    const dr = d.dateRanges[id]
-    if (dr?.duration && dr.duration > 0) return dr.duration
-  }
-  return 0
 }
 
 function hmsToSec(h: string, m: string, s: string): number {
