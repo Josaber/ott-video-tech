@@ -27,6 +27,23 @@ export function ContinueWatching({ onSelect }: Props) {
           const pct = it.durationMs && it.durationMs > 0
             ? Math.min(100, (it.positionMs / it.durationMs) * 100)
             : 0
+          // Sprite mirrors trick-play layout: 160×90 tiles, 10 cols,
+          // one tile every 10 s of source. Pick the cell at the saved
+          // playhead so the card shows exactly the frame the user left on.
+          const SPRITE_INTERVAL_SEC = 10
+          const SPRITE_W = 160
+          const SPRITE_H = 90
+          const SPRITE_COLS = 10
+          const cellIdx = Math.max(0, Math.floor((it.positionMs / 1000) / SPRITE_INTERVAL_SEC))
+          const col = cellIdx % SPRITE_COLS
+          const row = Math.floor(cellIdx / SPRITE_COLS)
+          const spriteStyle = it.spriteUrl
+            ? {
+                backgroundImage: `url(${it.spriteUrl})`,
+                backgroundPosition: `-${col * SPRITE_W}px -${row * SPRITE_H}px`,
+                backgroundRepeat: 'no-repeat' as const,
+              }
+            : undefined
           return (
             <button
               key={it.assetId}
@@ -34,7 +51,9 @@ export function ContinueWatching({ onSelect }: Props) {
               onClick={() => onSelect(it.assetId)}
               title={`Resume at ${fmt(it.positionMs / 1000)}`}
             >
-              <div className="cw-thumb"><PlayCircle size={32} /></div>
+              <div className="cw-thumb" style={spriteStyle}>
+                {!it.spriteUrl && <PlayCircle size={32} />}
+              </div>
               <div className="cw-title">{it.title}</div>
               <div className="cw-progress-track">
                 <div className="cw-progress-fill" style={{ width: `${pct}%` }} />

@@ -10,5 +10,7 @@ public record ContinueWatchingItem(
     AssetStatus status,
     long positionMs,
     Long durationMs,
-    Instant updatedAt
+    Instant updatedAt,
+    /** Sprite sheet URL (Feature 1 trick-play). Null if asset has no sprite. */
+    String spriteUrl
 ) {}

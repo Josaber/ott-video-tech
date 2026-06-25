@@ -245,6 +245,7 @@ export interface ContinueWatchingItem {
   positionMs: number
   durationMs: number | null
   updatedAt: string
+  spriteUrl: string | null
 }
 
 export interface WatchProgress {

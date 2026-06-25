@@ -63,9 +63,15 @@ public class WatchProgressController {
             .findByUserIdAndPositionMsGreaterThanOrderByUpdatedAtDesc(uid, 0L, page)
             .stream()
             .map(p -> assets.findById(p.getAssetId())
-                .map(a -> new com.example.vod.dto.ContinueWatchingItem(
-                    a.getId(), a.getTitle(), a.getStatus(),
-                    p.getPositionMs(), p.getDurationMs(), p.getUpdatedAt()))
+                .map(a -> {
+                    String spriteUrl = a.getPlaybackPath() == null
+                        ? null
+                        : "/playback/" + a.getId() + "/sprite.jpg";
+                    return new com.example.vod.dto.ContinueWatchingItem(
+                        a.getId(), a.getTitle(), a.getStatus(),
+                        p.getPositionMs(), p.getDurationMs(), p.getUpdatedAt(),
+                        spriteUrl);
+                })
                 .orElse(null))
             .filter(java.util.Objects::nonNull)
             .filter(item -> item.status() == com.example.vod.domain.AssetStatus.PUBLISHED)
