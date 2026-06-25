@@ -83,6 +83,9 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   })
   const [pipActive, setPipActive] = useState<boolean>(false)
   const [airplayAvailable, setAirplayAvailable] = useState<boolean>(false)
+  const wrapRef = useRef<HTMLDivElement>(null)
+  const pipPlaceholderRef = useRef<HTMLDivElement | null>(null)
+  const docPipWinRef = useRef<Window | null>(null)
   const [stats, setStats] = useState<{
     bandwidthKbps: number
     currentLevel: number
@@ -744,14 +747,81 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     }, DURATION_MS)
   }
 
+  // Prefer Document Picture-in-Picture (Chrome 116+) — it pops the WHOLE
+  // video-wrap DOM out, so subtitles, the AD overlay, the bitrate
+  // chip, and the stats panel all follow into the floating window.
+  // Falls back to the native `<video>.requestPictureInPicture()` on
+  // older Chromes / Safari, where only the video plane goes — subtitles
+  // and overlays stay behind on the page.
+  type DocPipApi = {
+    requestWindow(opts?: { width?: number; height?: number }): Promise<Window>
+  }
+  const docPip = typeof window !== 'undefined'
+    ? (window as unknown as { documentPictureInPicture?: DocPipApi }).documentPictureInPicture
+    : undefined
+
+  const exitDocPip = () => {
+    const win = docPipWinRef.current
+    if (!win) return
+    win.close()
+  }
+
   const togglePip = async () => {
     const video = videoRef.current
     if (!video) return
     try {
-      if (document.pictureInPictureElement) {
-        await document.exitPictureInPicture()
+      if (docPip) {
+        if (docPipWinRef.current) {
+          exitDocPip()
+          return
+        }
+        const wrap = wrapRef.current
+        if (!wrap || !wrap.parentNode) return
+        const win = await docPip.requestWindow({ width: 640, height: 360 })
+        // Copy stylesheets so the popout window picks up our ::cue rules,
+        // overlays, and trick-play CSS — the popout starts blank.
+        document.head
+          .querySelectorAll('style, link[rel="stylesheet"]')
+          .forEach((node) => win.document.head.appendChild(node.cloneNode(true)))
+        win.document.body.style.margin = '0'
+        win.document.body.style.background = '#000'
+        // Leave a placeholder so we can restore the wrap to the same spot.
+        const placeholder = win.document.createElement('div')
+        pipPlaceholderRef.current = document.createElement('div')
+        wrap.parentNode.insertBefore(pipPlaceholderRef.current, wrap)
+        win.document.body.appendChild(wrap)
+        docPipWinRef.current = win
+        setPipActive(true)
+        const onClose = () => {
+          if (pipPlaceholderRef.current && wrap) {
+            pipPlaceholderRef.current.parentNode?.insertBefore(wrap, pipPlaceholderRef.current)
+            pipPlaceholderRef.current.remove()
+            pipPlaceholderRef.current = null
+          }
+          docPipWinRef.current = null
+          setPipActive(false)
+        }
+        win.addEventListener('pagehide', onClose)
+        // Defensive: also bind unload in case pagehide doesn't fire.
+        win.addEventListener('unload', onClose)
+        // Silence the placeholder var lint (placeholder is created above
+        // for the popout document; we keep it just so Chrome doesn't
+        // empty-render the body on first paint).
+        void placeholder
       } else if (document.pictureInPictureEnabled) {
-        await video.requestPictureInPicture()
+        if (document.pictureInPictureElement) {
+          await document.exitPictureInPicture()
+        } else {
+          // Make sure the active subtitle track is in 'showing' mode —
+          // Chrome's video PiP only renders text tracks that are showing.
+          const tracks = video.textTracks
+          for (let i = 0; i < tracks.length; i++) {
+            if (tracks[i].kind === 'subtitles' && hlsRef.current?.subtitleTrack === i) {
+              tracks[i].mode = 'showing'
+            }
+          }
+          await video.requestPictureInPicture()
+        }
       }
     } catch {
       /* user can dismiss; ignore */
@@ -831,7 +901,7 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
           )}
         </div>
       )}
-      <div className="video-wrap">
+      <div className="video-wrap" ref={wrapRef}>
         {playerError && playerError.fatal && (
           <div className="player-error-fatal">
             <strong>Playback failed</strong>
