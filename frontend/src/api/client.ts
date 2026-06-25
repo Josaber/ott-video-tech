@@ -2,11 +2,15 @@ import { clearSession, getRefreshToken, getToken, setSession } from './auth'
 
 export type AssetStatus = 'UNPUBLISHED' | 'PROCESSING' | 'PUBLISHED' | 'FAILED'
 
+export type EditorialState = 'DRAFT' | 'IN_REVIEW' | 'READY'
+
 export interface Asset {
   id: string
   title: string
   description: string | null
   status: AssetStatus
+  editorialState: EditorialState
+  category: string | null
   rawUploaded: boolean
   playbackUrl: string | null
   thumbnailsUrl: string | null
@@ -182,6 +186,20 @@ export const api = {
     authedFetch(`/api/videos/${id}/process`, { method: 'POST' }).then(jsonOrThrow<void>),
   delete: (id: string) =>
     authedFetch(`/api/videos/${id}`, { method: 'DELETE' }).then(jsonOrThrow<void>),
+  transitionEditorial: (id: string, target: EditorialState) =>
+    authedFetch(`/api/videos/${id}/editorial-state`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ target }),
+    }).then(jsonOrThrow<Asset>),
+  setCategory: (id: string, category: string | null) =>
+    authedFetch(`/api/videos/${id}/category`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ category }),
+    }).then(jsonOrThrow<Asset>),
+  continueWatching: () =>
+    authedFetch('/api/me/progress/recent').then(jsonOrThrow<ContinueWatchingItem[]>),
   getProgress: async (assetId: string): Promise<WatchProgress | null> => {
     const r = await authedFetch(`/api/me/progress/${assetId}`)
     if (r.status === 204 || r.status === 404) return null
@@ -218,6 +236,15 @@ export interface CmcdEvent {
   timestamp: number
   ingestedAt?: string
   cmcd: Record<string, string | number | boolean>
+}
+
+export interface ContinueWatchingItem {
+  assetId: string
+  title: string
+  status: AssetStatus
+  positionMs: number
+  durationMs: number | null
+  updatedAt: string
 }
 
 export interface WatchProgress {

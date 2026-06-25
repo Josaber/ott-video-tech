@@ -1,6 +1,7 @@
 package com.example.vod.dto;
 
 import com.example.vod.domain.AssetStatus;
+import com.example.vod.domain.EditorialState;
 import com.example.vod.domain.VideoAssetEntity;
 import java.time.Instant;
 import java.util.UUID;
@@ -10,6 +11,8 @@ public record AssetResponse(
     String title,
     String description,
     AssetStatus status,
+    EditorialState editorialState,
+    String category,
     boolean rawUploaded,
     String playbackUrl,
     String thumbnailsUrl,
@@ -41,6 +44,7 @@ public record AssetResponse(
                 : e.getDrmKeyId().substring(0, Math.min(8, e.getDrmKeyId().length())) + "…";
         return new AssetResponse(
             e.getId(), e.getTitle(), e.getDescription(), e.getStatus(),
+            e.getEditorialState(), e.getCategory(),
             e.getRawPath() != null, playback, thumbs, keyPreview,
             e.getAdId(), e.getAdDurationMs(),
             e.getCreatedAt(), e.getUpdatedAt()

@@ -28,6 +28,13 @@ public class VideoAssetEntity {
     @Column(nullable = false, length = 32)
     private AssetStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "editorial_state", nullable = false, length = 32)
+    private EditorialState editorialState = EditorialState.DRAFT;
+
+    @Column(length = 64)
+    private String category;
+
     @Column(name = "raw_path", columnDefinition = "text")
     private String rawPath;
 
@@ -75,6 +82,10 @@ public class VideoAssetEntity {
     public void setDescription(String description) { this.description = description; }
     public AssetStatus getStatus() { return status; }
     public void setStatus(AssetStatus status) { this.status = status; }
+    public EditorialState getEditorialState() { return editorialState; }
+    public void setEditorialState(EditorialState editorialState) { this.editorialState = editorialState; }
+    public String getCategory() { return category; }
+    public void setCategory(String category) { this.category = category; }
     public String getRawPath() { return rawPath; }
     public void setRawPath(String rawPath) { this.rawPath = rawPath; }
     public String getTranscodedPath() { return transcodedPath; }

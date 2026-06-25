@@ -6,6 +6,7 @@ import com.example.vod.dto.ProgressRequest;
 import com.example.vod.dto.ProgressResponse;
 import com.example.vod.repository.VideoAssetRepository;
 import com.example.vod.repository.WatchProgressRepository;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -51,6 +52,24 @@ public class WatchProgressController {
                         new ProgressResponse(p.getAssetId(), p.getPositionMs(),
                                 p.getDurationMs(), p.getUpdatedAt())))
                 .orElseGet(() -> ResponseEntity.noContent().build());
+    }
+
+    @GetMapping("/recent")
+    public List<com.example.vod.dto.ContinueWatchingItem> recent(
+            @AuthenticationPrincipal Jwt jwt) {
+        UUID uid = uidOf(jwt);
+        var page = org.springframework.data.domain.PageRequest.of(0, 10);
+        return progress
+            .findByUserIdAndPositionMsGreaterThanOrderByUpdatedAtDesc(uid, 0L, page)
+            .stream()
+            .map(p -> assets.findById(p.getAssetId())
+                .map(a -> new com.example.vod.dto.ContinueWatchingItem(
+                    a.getId(), a.getTitle(), a.getStatus(),
+                    p.getPositionMs(), p.getDurationMs(), p.getUpdatedAt()))
+                .orElse(null))
+            .filter(java.util.Objects::nonNull)
+            .filter(item -> item.status() == com.example.vod.domain.AssetStatus.PUBLISHED)
+            .toList();
     }
 
     @PutMapping("/{assetId}")

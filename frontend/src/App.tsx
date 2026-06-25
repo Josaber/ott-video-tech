@@ -10,6 +10,7 @@ import { ArchitectureDiagram } from './components/ArchitectureDiagram'
 import { Docs } from './components/Docs'
 import { LiveView } from './components/LiveView'
 import { CmcdView } from './components/CmcdView'
+import { ContinueWatching } from './components/ContinueWatching'
 import { AuthSession, getSession, onSessionChange, updateProfile } from './api/auth'
 
 function readView(): View {
@@ -153,8 +154,10 @@ export default function App() {
             {selected ? (
               <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
             ) : (
-              <div className="panel">
-                <h1>Workflow console</h1>
+              <>
+                <ContinueWatching onSelect={setSelected} />
+                <div className="panel">
+                  <h1>Workflow console</h1>
                 <p style={{ fontSize: 14, color: '#cbd5e1', marginTop: 0 }}>
                   Create an asset, upload a raw video, and click <strong>Process &amp; publish</strong>.
                   The backend runs FFmpeg, calls the ad-service over VAST, stitches the ad m3u8 into the
@@ -165,7 +168,8 @@ export default function App() {
                 <div style={{ marginTop: 16 }}>
                   <ArchitectureDiagram />
                 </div>
-              </div>
+                </div>
+              </>
             )}
           </div>
         </div>

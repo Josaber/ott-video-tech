@@ -1,6 +1,8 @@
 import { useEffect, useRef, useState } from 'react'
 import { Upload, Play, RefreshCw, Trash2 } from 'lucide-react'
-import { api, Asset, Job, Rendition } from '../api/client'
+import { api, Asset, EditorialState, Job, Rendition } from '../api/client'
+
+const CATEGORIES = ['Drama', 'Documentary', 'Sports', 'Live', 'Kids', 'Other'] as const
 import { HlsPlayer } from './HlsPlayer'
 import { ConfirmDialog } from './ConfirmDialog'
 
@@ -62,6 +64,28 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
     }
   }
 
+  async function transition(target: EditorialState) {
+    setBusy(true)
+    try {
+      const updated = await api.transitionEditorial(assetId, target)
+      setAsset(updated)
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function changeCategory(value: string) {
+    setBusy(true)
+    try {
+      const updated = await api.setCategory(assetId, value || null)
+      setAsset(updated)
+      onChange()
+    } finally {
+      setBusy(false)
+    }
+  }
+
   async function confirmRemove() {
     setBusy(true)
     try {
@@ -83,11 +107,52 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
         <h1>{asset.title}</h1>
         <div className="meta-row" style={{ marginBottom: 12 }}>
           <span>status: {asset.status}</span>
+          <span className={'editorial-pill editorial-' + asset.editorialState.toLowerCase()}>
+            {asset.editorialState.replace('_', ' ')}
+          </span>
+          {asset.category && <span>category: {asset.category}</span>}
           {asset.adId && <span>ad: {asset.adId} ({(asset.adDurationMs ?? 0) / 1000}s)</span>}
           {asset.drmKeyIdPreview && <span>drm key: {asset.drmKeyIdPreview}</span>}
         </div>
         {asset.description && (
           <p style={{ fontSize: 14, color: '#cbd5e1' }}>{asset.description}</p>
+        )}
+
+        {canWrite && (
+          <div className="editorial-bar">
+            <span className="editorial-label">editorial</span>
+            {asset.editorialState === 'DRAFT' && (
+              <button className="secondary" disabled={busy} onClick={() => transition('IN_REVIEW')}>
+                Submit for review →
+              </button>
+            )}
+            {asset.editorialState === 'IN_REVIEW' && (
+              <>
+                <button className="secondary" disabled={busy} onClick={() => transition('READY')}>
+                  ✓ Approve
+                </button>
+                <button className="secondary" disabled={busy} onClick={() => transition('DRAFT')}>
+                  ← Request changes
+                </button>
+              </>
+            )}
+            {asset.editorialState === 'READY' && (
+              <button className="secondary" disabled={busy} onClick={() => transition('DRAFT')}>
+                ← Un-approve
+              </button>
+            )}
+            <select
+              className="category-select"
+              value={asset.category ?? ''}
+              onChange={(e) => changeCategory(e.target.value)}
+              disabled={busy}
+            >
+              <option value="">(no category)</option>
+              {CATEGORIES.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -113,8 +178,9 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
                 }}
               />
               <button
-                disabled={busy || !asset.rawUploaded || asset.status === 'PROCESSING'}
+                disabled={busy || !asset.rawUploaded || asset.status === 'PROCESSING' || asset.editorialState !== 'READY'}
                 onClick={process}
+                title={asset.editorialState !== 'READY' ? 'Asset must be in READY editorial state' : undefined}
               >
                 <Play size={14} />
                 Process &amp; publish

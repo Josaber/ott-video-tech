@@ -95,6 +95,24 @@ public class VideoWorkflowController {
         return ResponseEntity.accepted().build();
     }
 
+    @org.springframework.web.bind.annotation.PutMapping("/{id}/editorial-state")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AssetResponse transitionEditorial(@PathVariable UUID id,
+                                              @org.springframework.web.bind.annotation.RequestBody
+                                              com.example.vod.dto.EditorialTransitionRequest body) {
+        var asset = service.transitionEditorial(id, body.target());
+        return AssetResponse.from(asset, media.getPublicBaseUrl(), cdnBase());
+    }
+
+    @org.springframework.web.bind.annotation.PutMapping("/{id}/category")
+    @PreAuthorize("hasRole('ADMIN')")
+    public AssetResponse setCategory(@PathVariable UUID id,
+                                      @org.springframework.web.bind.annotation.RequestBody
+                                      com.example.vod.dto.CategoryRequest body) {
+        var asset = service.setCategory(id, body.category());
+        return AssetResponse.from(asset, media.getPublicBaseUrl(), cdnBase());
+    }
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {

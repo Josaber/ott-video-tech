@@ -3,6 +3,7 @@ package com.example.vod.service;
 import com.example.vod.config.MediaProperties;
 import com.example.vod.config.TemporalProperties;
 import com.example.vod.domain.AssetStatus;
+import com.example.vod.domain.EditorialState;
 import com.example.vod.domain.JobStage;
 import com.example.vod.domain.JobStatus;
 import com.example.vod.domain.ProcessingJobEntity;
@@ -82,6 +83,24 @@ public class VideoWorkflowService {
     }
 
     @Transactional
+    public VideoAssetEntity transitionEditorial(UUID assetId, EditorialState target) {
+        VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
+        if (!asset.getEditorialState().canTransitionTo(target)) {
+            throw new IllegalStateException(
+                "cannot transition from " + asset.getEditorialState() + " to " + target);
+        }
+        asset.setEditorialState(target);
+        return assets.save(asset);
+    }
+
+    @Transactional
+    public VideoAssetEntity setCategory(UUID assetId, String category) {
+        VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
+        asset.setCategory((category == null || category.isBlank()) ? null : category.trim());
+        return assets.save(asset);
+    }
+
+    @Transactional
     public VideoAssetEntity upload(UUID assetId, MultipartFile file) throws IOException {
         VideoAssetEntity asset = assets.findById(assetId).orElseThrow();
         if (file == null || file.isEmpty()) {
@@ -122,6 +141,11 @@ public class VideoWorkflowService {
         }
         if (asset.getStatus() == AssetStatus.PROCESSING) {
             throw new IllegalStateException("asset is already being processed");
+        }
+        if (asset.getEditorialState() != EditorialState.READY) {
+            throw new IllegalStateException(
+                "editorial state is " + asset.getEditorialState() +
+                "; only READY assets can be processed (DRAFT → IN_REVIEW → READY)");
         }
         state.markAssetProcessing(assetId);
 
