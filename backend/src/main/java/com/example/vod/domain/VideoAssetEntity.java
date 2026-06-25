@@ -56,6 +56,9 @@ public class VideoAssetEntity {
     @Column(name = "ad_duration_ms")
     private Long adDurationMs;
 
+    @Column(name = "program_duration_ms")
+    private Long programDurationMs;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -100,6 +103,8 @@ public class VideoAssetEntity {
     public void setAdId(String adId) { this.adId = adId; }
     public Long getAdDurationMs() { return adDurationMs; }
     public void setAdDurationMs(Long adDurationMs) { this.adDurationMs = adDurationMs; }
+    public Long getProgramDurationMs() { return programDurationMs; }
+    public void setProgramDurationMs(Long programDurationMs) { this.programDurationMs = programDurationMs; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

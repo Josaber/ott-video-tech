@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { PlayCircle } from 'lucide-react'
+import { PlayCircle, Play } from 'lucide-react'
 import { api, ContinueWatchingItem } from '../api/client'
 
 interface Props {
@@ -53,6 +53,9 @@ export function ContinueWatching({ onSelect }: Props) {
             >
               <div className="cw-thumb" style={spriteStyle}>
                 {!it.spriteUrl && <PlayCircle size={32} />}
+                <span className="cw-play-overlay">
+                  <Play size={20} fill="currentColor" />
+                </span>
               </div>
               <div className="cw-title">{it.title}</div>
               <div className="cw-progress-track">

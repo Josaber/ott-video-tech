@@ -1141,6 +1141,7 @@ video { width: 100%; display: block; }
    pixel-exact, then center via the flex container. Fallback is a
    gradient + play-circle icon, same dimensions. */
 .cw-thumb {
+  position: relative;
   width: 160px;
   height: 90px;
   background-color: #1e293b;
@@ -1150,6 +1151,28 @@ video { width: 100%; display: block; }
   align-items: center;
   justify-content: center;
   color: #22d3ee;
+  overflow: hidden;
+}
+.cw-play-overlay {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(2, 6, 23, 0.75);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #22d3ee;
+  transition: background 120ms, transform 120ms;
+  pointer-events: none;
+}
+.cw-card:hover .cw-play-overlay {
+  background: rgba(34, 211, 238, 0.9);
+  color: #0f172a;
+  transform: translate(-50%, -50%) scale(1.08);
 }
 .cw-title {
   font-size: 13px;

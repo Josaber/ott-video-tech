@@ -134,8 +134,12 @@ public class TranscodeWorker {
 
         // Keep the legacy single-string columns pointing at the lowest tier
         // so any code still reading them resolves to something coherent.
+        // programDurationMs is the RAW program length — needed for trick-play
+        // sprite cell mapping in the continue-watching rail (the saved
+        // playhead is in stitched timeline, sprite is in program timeline).
         VideoAssetEntity fresh = assets.findById(assetId).orElseThrow();
         fresh.setTranscodedPath(lowestTierMezz.toString());
+        fresh.setProgramDurationMs(duration.toMillis());
         assets.save(fresh);
     }
 

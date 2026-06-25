@@ -37,10 +37,14 @@ public class WatchProgressController {
 
     private final WatchProgressRepository progress;
     private final VideoAssetRepository assets;
+    private final com.example.vod.config.SsaiProperties ssai;
 
-    public WatchProgressController(WatchProgressRepository progress, VideoAssetRepository assets) {
+    public WatchProgressController(WatchProgressRepository progress,
+                                    VideoAssetRepository assets,
+                                    com.example.vod.config.SsaiProperties ssai) {
         this.progress = progress;
         this.assets = assets;
+        this.ssai = ssai;
     }
 
     @GetMapping("/{assetId}")
@@ -67,9 +71,30 @@ public class WatchProgressController {
                     String spriteUrl = a.getPlaybackPath() == null
                         ? null
                         : "/playback/" + a.getId() + "/sprite.jpg";
+                    // Map stitched-timeline playhead → program time. The
+                    // saved positionMs is what the player reported (stitched:
+                    // preroll pod + program + any mid-rolls); the sprite was
+                    // generated against the raw mezzanine so cell indexing
+                    // must be done in PROGRAM time. Subtract preroll pod
+                    // duration (single value covers the pod since the demo's
+                    // pod is fixed across assets) and clamp.
+                    long prerollOffsetMs = a.getAdId() == null
+                        ? 0L
+                        : (ssai.getPrerollPod().isEmpty()
+                            ? (a.getAdDurationMs() != null ? a.getAdDurationMs() : 0L)
+                            : ssai.getPrerollPodDurationSeconds() * 1000L);
+                    long programPosMs = Math.max(0L, p.getPositionMs() - prerollOffsetMs);
+                    if (a.getProgramDurationMs() != null) {
+                        programPosMs = Math.min(programPosMs, a.getProgramDurationMs());
+                    }
+                    Long programDurMs = a.getProgramDurationMs() != null
+                        ? a.getProgramDurationMs()
+                        : (p.getDurationMs() != null
+                            ? Math.max(0L, p.getDurationMs() - prerollOffsetMs)
+                            : null);
                     return new com.example.vod.dto.ContinueWatchingItem(
                         a.getId(), a.getTitle(), a.getStatus(),
-                        p.getPositionMs(), p.getDurationMs(), p.getUpdatedAt(),
+                        programPosMs, programDurMs, p.getUpdatedAt(),
                         spriteUrl);
                 })
                 .orElse(null))
