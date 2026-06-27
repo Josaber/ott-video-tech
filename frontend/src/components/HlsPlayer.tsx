@@ -82,7 +82,11 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
   const [statsOpen, setStatsOpen] = useState<boolean>(false)
   const [throttleEndsAt, setThrottleEndsAt] = useState<number | null>(null)
   const [subStyleOpen, setSubStyleOpen] = useState<boolean>(false)
-  const [playbackRate, setPlaybackRate] = useState<number>(1)
+  // The user's CHOSEN speed. Distinct from video.playbackRate because the
+  // ad guard forces 1× during ad regions; without separating intent from
+  // actual rate, picking 1.5× would get nuked on entering a preroll and
+  // never be restored when the ad ends.
+  const [pinnedSpeed, setPinnedSpeed] = useState<number>(1)
   const [audioSyncOpen, setAudioSyncOpen] = useState<boolean>(false)
   const [audioSyncMs, setAudioSyncMs] = useState<number>(() => {
     const raw = localStorage.getItem('hls-player-audio-sync-ms')
@@ -352,51 +356,53 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
     const video = videoRef.current
     if (!video || adRegions.length === 0) return
 
-    // Region containing t (currently playing inside an ad).
     const regionAt = (t: number) =>
       adRegions.find((r) => t >= r.start && t < r.end)
-    // Earliest ad region that BEGINS between maxWatched and target — i.e.,
-    // an ad the user would skip past with a forward seek. Allows seeking
-    // backwards or forward within already-watched space.
-    const blockingAd = (target: number) =>
-      target > maxWatched.current + 0.5
-        ? adRegions.find((r) => r.start > maxWatched.current && r.start < target)
-        : undefined
 
     const onTime = () => {
       if (video.currentTime > maxWatched.current) maxWatched.current = video.currentTime
       const r = regionAt(video.currentTime)
       if (r) {
-        if (video.playbackRate > 1) video.playbackRate = 1
         if (!adActive) setAdActive(true)
       } else if (adActive) {
         setAdActive(false)
       }
     }
+
+    // Unified seek policy for ALL navigation actions (scrub bar, ±10 s
+    // buttons, share-link initial seek, hls.js auto-correction, native
+    // keyboard) — they all flow through this single seeking handler.
+    //
+    // Cases:
+    //   Forward (t > maxWatched): if any ad region sits between
+    //     maxWatched and target whose end is past maxWatched (i.e. still
+    //     un-watched), snap to ad.start so the user must watch it.
+    //   Landing in a WATCHED ad (maxWatched ≥ ad.end): snap to the
+    //     program-side boundary just past the ad — the user typically
+    //     went there from a backward seek and doesn't want to be inside
+    //     an already-played ad.
     const onSeeking = () => {
-      const r = regionAt(video.currentTime)
-      // Inside an ad region → snap back to where the user actually was
-      // before the seek (maxWatched, capped at region.end so we don't
-      // tunnel past the ad).
-      if (r && video.currentTime > maxWatched.current + 0.5) {
-        video.currentTime = Math.min(maxWatched.current, r.end - 0.1)
-        return
+      const t = video.currentTime
+      if (t > maxWatched.current + 0.5) {
+        const blocking = adRegions.find((rg) =>
+          rg.end > maxWatched.current && rg.start < t
+        )
+        if (blocking) {
+          const newPos = Math.max(blocking.start, maxWatched.current)
+          const clamped = Math.min(newPos, blocking.end - 0.1)
+          maxWatched.current = Math.max(maxWatched.current, clamped)
+          video.currentTime = clamped
+          return
+        }
       }
-      // Forward seek that would skip an un-watched ad → snap to its start.
-      // Advance maxWatched up to the ad start so the next seeking event
-      // (the snap itself) doesn't re-trigger the "inside-ad past-maxWatched"
-      // rule and bounce us back to t=0.
-      const skipped = blockingAd(video.currentTime)
-      if (skipped) {
-        maxWatched.current = Math.max(maxWatched.current, skipped.start)
-        video.currentTime = skipped.start
-      }
-    }
-    const onRateChange = () => {
-      if (regionAt(video.currentTime) && video.playbackRate > 1) {
-        video.playbackRate = 1
+      const r = regionAt(t)
+      if (r && maxWatched.current >= r.end - 0.1) {
+        // Inside an ad we've already finished — push to post-ad.
+        const dur = Number.isFinite(video.duration) ? video.duration : r.end + 1
+        video.currentTime = Math.min(dur, r.end + 0.05)
       }
     }
+
     const onKey = (e: KeyboardEvent) => {
       if (regionAt(video.currentTime)) {
         if (['ArrowRight', 'ArrowUp', 'l', 'L', '.', '>'].includes(e.key)) {
@@ -407,15 +413,27 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
     }
     video.addEventListener('timeupdate', onTime)
     video.addEventListener('seeking', onSeeking)
-    video.addEventListener('ratechange', onRateChange)
     video.addEventListener('keydown', onKey)
     return () => {
       video.removeEventListener('timeupdate', onTime)
       video.removeEventListener('seeking', onSeeking)
-      video.removeEventListener('ratechange', onRateChange)
       video.removeEventListener('keydown', onKey)
     }
   }, [adRegions, adActive])
+
+  // Speed picker persistence across ad regions. The video element's
+  // playbackRate is forced to 1 during ads (so ads can't be sped through)
+  // but the user's pinned choice survives — when the ad ends, the rate
+  // restores. Without this split, picking 1.5× would get nuked on the
+  // first preroll and never come back.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const target = adActive ? 1 : pinnedSpeed
+    if (Math.abs(video.playbackRate - target) > 0.01) {
+      video.playbackRate = target
+    }
+  }, [pinnedSpeed, adActive])
 
   // Inject a `<style>` block applying the user's chosen ::cue styles.
   // ::cue is the W3C standard pseudo-element for WebVTT cue text; both
@@ -869,12 +887,9 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
   }
 
   const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    const rate = parseFloat(e.target.value)
-    const video = videoRef.current
-    if (video) {
-      video.playbackRate = rate
-      setPlaybackRate(rate)
-    }
+    // The effect on [pinnedSpeed, adActive] applies it to video.playbackRate
+    // (forcing 1× during ad, restoring on ad exit).
+    setPinnedSpeed(parseFloat(e.target.value))
   }
 
   const restartFromStart = async () => {
@@ -1241,7 +1256,7 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
         <button type="button" className="extra-btn" title="Skip forward 10 s" onClick={() => skip(10)}>10s ⏩</button>
         <label className="action-speed">
           speed
-          <select value={playbackRate} onChange={handleSpeedChange} title="Playback speed">
+          <select value={pinnedSpeed} onChange={handleSpeedChange} title="Playback speed (persists across ad regions)">
             {PLAYBACK_RATES.map((r) => (
               <option key={r} value={r}>{r}×</option>
             ))}
