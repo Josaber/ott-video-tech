@@ -876,10 +876,10 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
     if (hlsRef.current) hlsRef.current.currentLevel = id
     setPinnedLevel(id)
   }
-  // Skip ±N seconds. Respects the ad guard via the seeking listener
-  // (which snaps back into ad regions). For the trick-mode use case (the
-  // user wants to scrub past a slow scene, not skip ads), this is fine.
+  // Skip ±N seconds. Disabled during ads — UI gates this with `disabled`,
+  // handler short-circuits as defense in depth.
   const skip = (deltaSec: number) => {
+    if (adActive) return
     const video = videoRef.current
     if (!video) return
     const target = Math.max(0, Math.min(video.duration || 0, video.currentTime + deltaSec))
@@ -887,12 +887,12 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
   }
 
   const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
-    // The effect on [pinnedSpeed, adActive] applies it to video.playbackRate
-    // (forcing 1× during ad, restoring on ad exit).
+    if (adActive) return
     setPinnedSpeed(parseFloat(e.target.value))
   }
 
   const restartFromStart = async () => {
+    if (adActive) return
     const video = videoRef.current
     if (!video) return
     video.currentTime = 0
@@ -1251,12 +1251,29 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
           </div>
         )}
       </div>
-      <div className="action-controls-bar">
-        <button type="button" className="extra-btn" title="Skip back 10 s" onClick={() => skip(-10)}>⏪ 10s</button>
-        <button type="button" className="extra-btn" title="Skip forward 10 s" onClick={() => skip(10)}>10s ⏩</button>
+      <div className={`action-controls-bar${adActive ? ' is-ad-locked' : ''}`}>
+        <button
+          type="button"
+          className="extra-btn"
+          title={adActive ? 'Disabled during ads' : 'Skip back 10 s'}
+          onClick={() => skip(-10)}
+          disabled={adActive}
+        >⏪ 10s</button>
+        <button
+          type="button"
+          className="extra-btn"
+          title={adActive ? 'Disabled during ads' : 'Skip forward 10 s'}
+          onClick={() => skip(10)}
+          disabled={adActive}
+        >10s ⏩</button>
         <label className="action-speed">
           speed
-          <select value={pinnedSpeed} onChange={handleSpeedChange} title="Playback speed (persists across ad regions)">
+          <select
+            value={pinnedSpeed}
+            onChange={handleSpeedChange}
+            disabled={adActive}
+            title={adActive ? 'Disabled during ads' : 'Playback speed (persists across ad regions)'}
+          >
             {PLAYBACK_RATES.map((r) => (
               <option key={r} value={r}>{r}×</option>
             ))}
@@ -1265,7 +1282,13 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upN
         {assetId && (
           <>
             <button type="button" className="extra-btn" title="Copy share link at current time" onClick={shareAtTimestamp}>🔗 share at t</button>
-            <button type="button" className="extra-btn" title="Restart from beginning" onClick={restartFromStart}>↺ restart</button>
+            <button
+              type="button"
+              className="extra-btn"
+              title={adActive ? 'Disabled during ads' : 'Restart from beginning'}
+              onClick={restartFromStart}
+              disabled={adActive}
+            >↺ restart</button>
           </>
         )}
         <button

@@ -1045,6 +1045,24 @@ video { width: 100%; display: block; }
   font-family: ui-monospace, monospace;
 }
 .extra-btn:hover { color: #f1f5f9; border-color: #475569; }
+.extra-btn:disabled,
+.action-speed select:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+.action-controls-bar.is-ad-locked {
+  border-color: rgba(220, 38, 38, 0.55);
+  background: linear-gradient(to right, rgba(220, 38, 38, 0.08), #0f172a 60%);
+}
+.action-controls-bar.is-ad-locked::before {
+  content: 'AD LOCK';
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  color: #f87171;
+  margin-right: 4px;
+}
 .stats-overlay {
   position: absolute;
   top: 84px;
