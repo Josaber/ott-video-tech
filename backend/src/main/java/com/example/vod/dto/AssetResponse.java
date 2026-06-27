@@ -16,6 +16,7 @@ public record AssetResponse(
     boolean rawUploaded,
     String playbackUrl,
     String thumbnailsUrl,
+    String posterUrl,
     String drmKeyIdPreview,
     String adId,
     Long adDurationMs,
@@ -40,12 +41,15 @@ public record AssetResponse(
         String thumbs = e.getPlaybackPath() == null
                 ? null
                 : publicBaseUrl + "/playback/" + e.getId() + "/thumbnails.vtt";
+        String poster = e.getPlaybackPath() == null
+                ? null
+                : publicBaseUrl + "/playback/" + e.getId() + "/poster.jpg";
         String keyPreview = e.getDrmKeyId() == null ? null
                 : e.getDrmKeyId().substring(0, Math.min(8, e.getDrmKeyId().length())) + "…";
         return new AssetResponse(
             e.getId(), e.getTitle(), e.getDescription(), e.getStatus(),
             e.getEditorialState(), e.getCategory(),
-            e.getRawPath() != null, playback, thumbs, keyPreview,
+            e.getRawPath() != null, playback, thumbs, poster, keyPreview,
             e.getAdId(), e.getAdDurationMs(),
             e.getCreatedAt(), e.getUpdatedAt()
         );

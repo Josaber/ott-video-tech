@@ -80,6 +80,11 @@ public class TranscodeWorker {
             log().warn("thumbnail generation failed for asset {}: {}", assetId, e.getMessage());
         }
         try {
+            ffmpeg.generatePoster(assetId, lowestTierMezz, duration);
+        } catch (IOException e) {
+            log().warn("poster generation failed for asset {}: {}", assetId, e.getMessage());
+        }
+        try {
             ffmpeg.generateAltAudio(assetId, lowestTierMezz, duration);
             ffmpeg.generateSubtitles(assetId, duration);
         } catch (IOException e) {

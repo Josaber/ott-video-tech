@@ -19,6 +19,7 @@ export function CmcdView() {
   const [events, setEvents] = useState<CmcdEvent[]>([])
   const [error, setError] = useState<string | null>(null)
   const [auto, setAuto] = useState(true)
+  const [liveTail, setLiveTail] = useState<boolean>(false)
 
   async function refresh() {
     try {
@@ -36,6 +37,34 @@ export function CmcdView() {
     const t = setInterval(refresh, 2000)
     return () => clearInterval(t)
   }, [auto])
+
+  // WebSocket live tail — every ingested beacon arrives push-style, no
+  // 2s polling delay. Falls back to the polling refresh above if the
+  // socket fails or closes.
+  useEffect(() => {
+    const wsUrl = `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws/cmcd`
+    let ws: WebSocket | null = null
+    try {
+      ws = new WebSocket(wsUrl)
+    } catch {
+      return
+    }
+    ws.onopen = () => setLiveTail(true)
+    ws.onclose = () => setLiveTail(false)
+    ws.onerror = () => setLiveTail(false)
+    ws.onmessage = (msg) => {
+      try {
+        const beacon = JSON.parse(msg.data) as CmcdEvent
+        setEvents((prev) => {
+          const next = [...prev, beacon]
+          // Cap at the same 500 the backend ring buffer caps at.
+          if (next.length > 500) next.shift()
+          return next
+        })
+      } catch { /* ignore malformed frame */ }
+    }
+    return () => { ws?.close() }
+  }, [])
 
   const aggregates = useMemo(() => {
     if (events.length === 0) return null
@@ -75,7 +104,10 @@ export function CmcdView() {
     <div className="app">
       <div>
         <div className="panel">
-          <h1><Activity size={14} /> CMCD telemetry</h1>
+          <h1>
+            <Activity size={14} /> CMCD telemetry
+            {liveTail && <span className="live-tail-badge">LIVE TAIL</span>}
+          </h1>
           <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 0 }}>
             hls.js attaches CTA-5004 CMCD parameters to every segment GET it
             sends to the CDN. The mock cdn-service edge parses the query

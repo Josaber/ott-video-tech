@@ -423,6 +423,29 @@ public class FfmpegMediaProcessor {
 
     public record ThumbnailResult(Path sprite, Path vtt, int count) {}
 
+    // Hero poster: a single ~640x360 JPEG plucked at 25% of program
+    // duration. Avoids opening-black-frame syndrome where the title card
+    // for a continue-watching rail / catalog browse page would show a
+    // black frame from the first 0.5 s of the source.
+    public Path generatePoster(UUID assetId, Path mp4, Duration duration) throws IOException {
+        Path outDir = assetDir(assetId).resolve("poster");
+        Files.createDirectories(outDir);
+        Path poster = outDir.resolve("poster.jpg");
+        long durMs = Math.max(1000, duration.toMillis());
+        double sampleSec = (durMs * 0.25) / 1000.0;
+        List<String> args = List.of(
+            properties.getFfmpegPath(), "-y",
+            "-ss", String.format(java.util.Locale.ROOT, "%.3f", sampleSec),
+            "-i", mp4.toString(),
+            "-frames:v", "1",
+            "-vf", "scale=640:360,format=yuvj420p",
+            "-q:v", "3",
+            poster.toString()
+        );
+        runFfmpeg(args);
+        return poster;
+    }
+
     // ---- Multi-audio + multi-subtitle ----
 
     // Alt audio: pitch-shifted via rubberband, served as a single-segment

@@ -14,6 +14,7 @@ export interface Asset {
   rawUploaded: boolean
   playbackUrl: string | null
   thumbnailsUrl: string | null
+  posterUrl: string | null
   drmKeyIdPreview: string | null
   adId: string | null
   adDurationMs: number | null
@@ -211,6 +212,8 @@ export const api = {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(body),
     }).then(jsonOrThrow<WatchProgress>),
+  deleteProgress: (assetId: string) =>
+    authedFetch(`/api/me/progress/${assetId}`, { method: 'DELETE' }).then(jsonOrThrow<void>),
   liveChannels: () =>
     fetch('/api/live/channels').then((r) => r.json() as Promise<LiveChannel[]>),
   cmcdRecent: () =>
@@ -246,6 +249,7 @@ export interface ContinueWatchingItem {
   durationMs: number | null
   updatedAt: string
   spriteUrl: string | null
+  posterUrl: string | null
 }
 
 export interface WatchProgress {

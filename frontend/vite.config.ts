@@ -12,6 +12,7 @@ export default defineConfig({
       '/auth': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       '/playback': { target: 'http://127.0.0.1:8080', changeOrigin: true },
       '/live': { target: 'http://127.0.0.1:8080', changeOrigin: true },
+      '/ws': { target: 'ws://127.0.0.1:8080', ws: true, changeOrigin: true },
     },
   },
 })

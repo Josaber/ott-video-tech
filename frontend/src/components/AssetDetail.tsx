@@ -1,24 +1,37 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { Upload, Play, RefreshCw, Trash2 } from 'lucide-react'
+import { marked } from 'marked'
+import DOMPurify from 'dompurify'
 import { api, Asset, EditorialState, Job, Rendition } from '../api/client'
-
-const CATEGORIES = ['Drama', 'Documentary', 'Sports', 'Live', 'Kids', 'Other'] as const
 import { HlsPlayer } from './HlsPlayer'
 import { ConfirmDialog } from './ConfirmDialog'
+
+const CATEGORIES = ['Drama', 'Documentary', 'Sports', 'Live', 'Kids', 'Other'] as const
 
 interface Props {
   assetId: string
   onChange: () => void
   canWrite: boolean
+  initialSeekSeconds?: number
+  upNext?: { title: string; posterUrl?: string | null; onPlay: () => void } | null
 }
 
-export function AssetDetail({ assetId, onChange, canWrite }: Props) {
+export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, upNext }: Props) {
   const [asset, setAsset] = useState<Asset | null>(null)
   const [jobs, setJobs] = useState<Job[]>([])
   const [renditions, setRenditions] = useState<Rendition[]>([])
   const [busy, setBusy] = useState(false)
   const [confirmDelete, setConfirmDelete] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  // Render description as markdown (bold/italic/links/lists/code) with
+  // DOMPurify sanitisation so a malicious description can't slip <script>
+  // into the page. Cached per description string.
+  const descriptionHtml = useMemo(() => {
+    if (!asset?.description) return ''
+    const raw = marked.parse(asset.description, { async: false, breaks: true }) as string
+    return DOMPurify.sanitize(raw)
+  }, [asset?.description])
 
   async function refresh() {
     const [a, j, r] = await Promise.all([
@@ -115,7 +128,10 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
           {asset.drmKeyIdPreview && <span>drm key: {asset.drmKeyIdPreview}</span>}
         </div>
         {asset.description && (
-          <p style={{ fontSize: 14, color: '#cbd5e1' }}>{asset.description}</p>
+          <div
+            className="asset-description"
+            dangerouslySetInnerHTML={{ __html: descriptionHtml }}
+          />
         )}
 
         {canWrite && (
@@ -248,7 +264,13 @@ export function AssetDetail({ assetId, onChange, canWrite }: Props) {
       {asset.playbackUrl && asset.status === 'PUBLISHED' && (
         <div className="panel">
           <h1>Playback</h1>
-          <HlsPlayer src={asset.playbackUrl} assetId={asset.id} thumbnailsUrl={asset.thumbnailsUrl} />
+          <HlsPlayer
+            src={asset.playbackUrl}
+            assetId={asset.id}
+            thumbnailsUrl={asset.thumbnailsUrl}
+            initialSeekSeconds={initialSeekSeconds}
+            upNext={upNext}
+          />
           <div className="meta-row" style={{ marginTop: 8 }}>
             <span>{asset.playbackUrl}</span>
           </div>

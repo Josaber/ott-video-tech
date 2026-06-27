@@ -2,12 +2,23 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import Hls from 'hls.js'
 import { getToken } from '../api/auth'
 import { api } from '../api/client'
+import { useToast } from './Toast'
 
 interface Props {
   src: string
   assetId?: string
   thumbnailsUrl?: string | null
+  /** Optional initial seek position in seconds (program time). */
+  initialSeekSeconds?: number
+  /** Optional Up Next teaser shown in the last 15 s of the video. */
+  upNext?: {
+    title: string
+    posterUrl?: string | null
+    onPlay: () => void
+  } | null
 }
+
+const PLAYBACK_RATES = [0.5, 0.75, 1, 1.25, 1.5, 2]
 
 // Resume threshold: ignore stale progress in the first few seconds (avoids
 // jumping ~3 s when the user just started). Also treat "within last N seconds"
@@ -42,7 +53,8 @@ const CUE_PATTERN =
  *   - on hover: looks up the thumbnail cue at that timestamp and renders the sprite tile
  *   - on click: seeks the video (subject to the ad guard above)
  */
-export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
+export function HlsPlayer({ src, assetId, thumbnailsUrl, initialSeekSeconds, upNext }: Props) {
+  const toast = useToast()
   const videoRef = useRef<HTMLVideoElement>(null)
   const stripRef = useRef<HTMLDivElement>(null)
   // Multi-region: preroll pod + N mid-rolls. Each region carries its own
@@ -70,6 +82,16 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
   const [statsOpen, setStatsOpen] = useState<boolean>(false)
   const [throttleEndsAt, setThrottleEndsAt] = useState<number | null>(null)
   const [subStyleOpen, setSubStyleOpen] = useState<boolean>(false)
+  const [playbackRate, setPlaybackRate] = useState<number>(1)
+  const [audioSyncOpen, setAudioSyncOpen] = useState<boolean>(false)
+  const [audioSyncMs, setAudioSyncMs] = useState<number>(() => {
+    const raw = localStorage.getItem('hls-player-audio-sync-ms')
+    return raw ? parseFloat(raw) : 0
+  })
+  const audioCtxRef = useRef<{ ctx: AudioContext; delay: DelayNode } | null>(null)
+  const [upNextActive, setUpNextActive] = useState<boolean>(false)
+  const [upNextCountdown, setUpNextCountdown] = useState<number>(10)
+  const [upNextCancelled, setUpNextCancelled] = useState<boolean>(false)
   const [subStyle, setSubStyle] = useState<{
     fontSize: number
     color: string
@@ -420,6 +442,120 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     `
   }, [subStyle])
 
+  // Up Next: during the last 15 s of program playback, show the teaser
+  // overlay. A 10-second countdown auto-rolls into the next asset unless
+  // the user clicks Cancel. Resets state when the asset changes.
+  useEffect(() => {
+    setUpNextActive(false)
+    setUpNextCancelled(false)
+    setUpNextCountdown(10)
+  }, [src])
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video || !upNext || upNextCancelled) return
+    const onTime = () => {
+      const dur = video.duration
+      if (!Number.isFinite(dur) || dur <= 0) return
+      const remaining = dur - video.currentTime
+      if (remaining <= 15 && !upNextActive) {
+        setUpNextActive(true)
+        setUpNextCountdown(10)
+      } else if (remaining > 15 && upNextActive) {
+        setUpNextActive(false)
+      }
+    }
+    video.addEventListener('timeupdate', onTime)
+    return () => video.removeEventListener('timeupdate', onTime)
+  }, [upNext, upNextActive, upNextCancelled])
+  useEffect(() => {
+    if (!upNextActive || !upNext) return
+    if (upNextCountdown <= 0) {
+      upNext.onPlay()
+      setUpNextActive(false)
+      return
+    }
+    const t = window.setTimeout(() => setUpNextCountdown((n) => n - 1), 1000)
+    return () => window.clearTimeout(t)
+  }, [upNextActive, upNextCountdown, upNext])
+
+  // Volume memory: persist last-used volume + muted state in localStorage.
+  // Browser default is full-volume + unmuted; for users who manually drop
+  // to 30% once, every subsequent asset should remember.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    const raw = localStorage.getItem('hls-player-volume')
+    if (raw) {
+      try {
+        const { v, m } = JSON.parse(raw)
+        if (typeof v === 'number') video.volume = Math.max(0, Math.min(1, v))
+        if (typeof m === 'boolean') video.muted = m
+      } catch { /* ignore */ }
+    }
+    const onVol = () => {
+      localStorage.setItem('hls-player-volume', JSON.stringify({
+        v: video.volume, m: video.muted,
+      }))
+    }
+    video.addEventListener('volumechange', onVol)
+    return () => video.removeEventListener('volumechange', onVol)
+  }, [src])
+
+  // Audio sync offset via Web Audio DelayNode. Positive ms = audio plays
+  // LATER (compensates for video that lags audio). Negative is not
+  // implementable purely on the audio side — would need video delay too,
+  // which the browser doesn't expose; UI is clamped to 0..500 ms.
+  useEffect(() => {
+    const video = videoRef.current
+    if (!video) return
+    if (audioSyncMs <= 0) {
+      // Tear down the audio graph if user reset; the video plays through
+      // its native audio output.
+      if (audioCtxRef.current) {
+        audioCtxRef.current.ctx.close().catch(() => {})
+        audioCtxRef.current = null
+      }
+      return
+    }
+    if (!audioCtxRef.current) {
+      try {
+        const AC: typeof AudioContext =
+          (window as unknown as { AudioContext: typeof AudioContext; webkitAudioContext?: typeof AudioContext })
+            .AudioContext ??
+          (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext
+        const ctx = new AC()
+        const source = ctx.createMediaElementSource(video)
+        const delay = ctx.createDelay(2)
+        source.connect(delay).connect(ctx.destination)
+        audioCtxRef.current = { ctx, delay }
+      } catch {
+        // createMediaElementSource throws if called twice on the same
+        // element. Bail; user will see the slider not work but no crash.
+        return
+      }
+    }
+    audioCtxRef.current.delay.delayTime.value = audioSyncMs / 1000
+    localStorage.setItem('hls-player-audio-sync-ms', String(audioSyncMs))
+  }, [audioSyncMs, src])
+
+  // Initial seek from a share-at-timestamp URL. The value is PROGRAM time
+  // (what the user actually shared); we add the preroll offset (constant
+  // for the demo) to put the playhead in the right spot on the stitched
+  // timeline. Applied once on loadedmetadata.
+  useEffect(() => {
+    if (!initialSeekSeconds || initialSeekSeconds <= 0) return
+    const video = videoRef.current
+    if (!video) return
+    const apply = () => {
+      const PREROLL_OFFSET = 16  // matches SsaiProperties.prerollPodDurationSeconds
+      video.currentTime = initialSeekSeconds + PREROLL_OFFSET
+      maxWatched.current = video.currentTime
+    }
+    if (video.readyState >= 1) apply()
+    video.addEventListener('loadedmetadata', apply, { once: true })
+    return () => video.removeEventListener('loadedmetadata', apply)
+  }, [initialSeekSeconds, src])
+
   // PiP enter/leave events come from the DOM, not from our buttons,
   // since the user can also leave PiP via the OS UI.
   useEffect(() => {
@@ -722,6 +858,51 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
     if (hlsRef.current) hlsRef.current.currentLevel = id
     setPinnedLevel(id)
   }
+  // Skip ±N seconds. Respects the ad guard via the seeking listener
+  // (which snaps back into ad regions). For the trick-mode use case (the
+  // user wants to scrub past a slow scene, not skip ads), this is fine.
+  const skip = (deltaSec: number) => {
+    const video = videoRef.current
+    if (!video) return
+    const target = Math.max(0, Math.min(video.duration || 0, video.currentTime + deltaSec))
+    video.currentTime = target
+  }
+
+  const handleSpeedChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const rate = parseFloat(e.target.value)
+    const video = videoRef.current
+    if (video) {
+      video.playbackRate = rate
+      setPlaybackRate(rate)
+    }
+  }
+
+  const restartFromStart = async () => {
+    const video = videoRef.current
+    if (!video) return
+    video.currentTime = 0
+    maxWatched.current = 0
+    if (assetId) {
+      try { await api.deleteProgress(assetId) } catch { /* swallow */ }
+    }
+    toast.push('success', 'Restarted from beginning')
+  }
+
+  const shareAtTimestamp = async () => {
+    const video = videoRef.current
+    if (!video || !assetId) return
+    // Stitched → program time so the link survives ad-pod changes.
+    const PREROLL_OFFSET = 16
+    const programT = Math.max(0, video.currentTime - PREROLL_OFFSET)
+    const url = `${window.location.origin}/#/console?asset=${assetId}&t=${programT.toFixed(1)}`
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.push('success', 'Share link copied to clipboard')
+    } catch {
+      toast.push('error', 'Could not copy to clipboard')
+    }
+  }
+
   // Quick visual ABR demo: slam the bandwidth estimate way down + pin
   // currentLevel to the lowest tier, then release after 8 s. The player
   // visibly drops to 240p, then climbs back to whatever ABR picks
@@ -1035,7 +1216,69 @@ export function HlsPlayer({ src, assetId, thumbnailsUrl }: Props) {
           </div>
         )}
         <video ref={videoRef} controls playsInline />
+        {upNextActive && upNext && (
+          <div className="upnext-overlay">
+            {upNext.posterUrl && (
+              <img className="upnext-poster" src={upNext.posterUrl} alt="" />
+            )}
+            <div className="upnext-text">
+              <div className="upnext-eyebrow">Up next in {upNextCountdown}s</div>
+              <div className="upnext-title">{upNext.title}</div>
+              <div className="upnext-actions">
+                <button type="button" onClick={() => { upNext.onPlay(); setUpNextActive(false) }}>
+                  Play now
+                </button>
+                <button type="button" className="secondary" onClick={() => { setUpNextCancelled(true); setUpNextActive(false) }}>
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
+      <div className="action-controls-bar">
+        <button type="button" className="extra-btn" title="Skip back 10 s" onClick={() => skip(-10)}>⏪ 10s</button>
+        <button type="button" className="extra-btn" title="Skip forward 10 s" onClick={() => skip(10)}>10s ⏩</button>
+        <label className="action-speed">
+          speed
+          <select value={playbackRate} onChange={handleSpeedChange} title="Playback speed">
+            {PLAYBACK_RATES.map((r) => (
+              <option key={r} value={r}>{r}×</option>
+            ))}
+          </select>
+        </label>
+        {assetId && (
+          <>
+            <button type="button" className="extra-btn" title="Copy share link at current time" onClick={shareAtTimestamp}>🔗 share at t</button>
+            <button type="button" className="extra-btn" title="Restart from beginning" onClick={restartFromStart}>↺ restart</button>
+          </>
+        )}
+        <button
+          type="button"
+          className="extra-btn"
+          title="Audio / video sync offset"
+          onClick={() => setAudioSyncOpen((v) => !v)}
+        >
+          {audioSyncOpen ? '× a/v sync' : '🎧 a/v sync'}
+        </button>
+        {audioSyncMs > 0 && (
+          <span className="action-badge">audio +{audioSyncMs}ms</span>
+        )}
+      </div>
+      {audioSyncOpen && (
+        <div className="audio-sync-panel-bar">
+          <label>
+            delay audio (ms)
+            <input
+              type="range" min={0} max={500} step={10}
+              value={audioSyncMs}
+              onChange={(e) => setAudioSyncMs(parseFloat(e.target.value))}
+            />
+            <span>{audioSyncMs} ms</span>
+          </label>
+          <p>Positive only — delays the audio via Web Audio DelayNode for users whose video lags audio.</p>
+        </div>
+      )}
       {cues.length > 0 && spriteUrl && (
         <div
           ref={stripRef}

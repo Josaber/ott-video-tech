@@ -292,6 +292,18 @@ public class PlaybackController {
                 .body(new FileSystemResource(sprite));
     }
 
+    @GetMapping(value = "/{assetId}/poster.jpg", produces = MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<Resource> poster(@PathVariable UUID assetId) {
+        Path poster = ffmpeg.assetDir(assetId).resolve("poster").resolve("poster.jpg");
+        if (!Files.exists(poster)) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND);
+        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.IMAGE_JPEG)
+                .header(HttpHeaders.CACHE_CONTROL, "public, max-age=3600")
+                .body(new FileSystemResource(poster));
+    }
+
     @GetMapping(value = "/{assetId}/{tier:[a-z0-9]+}/program.m3u8", produces = "application/vnd.apple.mpegurl")
     public ResponseEntity<String> tierProgram(@PathVariable UUID assetId,
                                                @PathVariable String tier,

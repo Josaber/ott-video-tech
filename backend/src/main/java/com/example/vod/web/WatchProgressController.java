@@ -71,6 +71,9 @@ public class WatchProgressController {
                     String spriteUrl = a.getPlaybackPath() == null
                         ? null
                         : "/playback/" + a.getId() + "/sprite.jpg";
+                    String posterUrl = a.getPlaybackPath() == null
+                        ? null
+                        : "/playback/" + a.getId() + "/poster.jpg";
                     // Map stitched-timeline playhead → program time. The
                     // saved positionMs is what the player reported (stitched:
                     // preroll pod + program + any mid-rolls); the sprite was
@@ -95,12 +98,20 @@ public class WatchProgressController {
                     return new com.example.vod.dto.ContinueWatchingItem(
                         a.getId(), a.getTitle(), a.getStatus(),
                         programPosMs, programDurMs, p.getUpdatedAt(),
-                        spriteUrl);
+                        spriteUrl, posterUrl);
                 })
                 .orElse(null))
             .filter(java.util.Objects::nonNull)
             .filter(item -> item.status() == com.example.vod.domain.AssetStatus.PUBLISHED)
             .toList();
+    }
+
+    @org.springframework.web.bind.annotation.DeleteMapping("/{assetId}")
+    public ResponseEntity<Void> reset(@PathVariable UUID assetId,
+                                      @AuthenticationPrincipal Jwt jwt) {
+        UUID uid = uidOf(jwt);
+        progress.findById(new Key(uid, assetId)).ifPresent(progress::delete);
+        return ResponseEntity.noContent().build();
     }
 
     @PutMapping("/{assetId}")

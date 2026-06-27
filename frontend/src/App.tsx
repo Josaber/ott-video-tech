@@ -21,6 +21,19 @@ function readView(): View {
   return 'console'
 }
 
+function readQueryParams(): { assetId?: string; tSec?: number } {
+  const h = window.location.hash
+  const qIdx = h.indexOf('?')
+  if (qIdx < 0) return {}
+  const params = new URLSearchParams(h.substring(qIdx + 1))
+  const assetId = params.get('asset') ?? undefined
+  const t = params.get('t')
+  return {
+    assetId,
+    tSec: t ? parseFloat(t) : undefined,
+  }
+}
+
 export default function App() {
   const [session, setSessionState] = useState<AuthSession | null>(getSession())
   const [assets, setAssets] = useState<Asset[]>([])
@@ -28,9 +41,18 @@ export default function App() {
   const [error, setError] = useState<string | null>(null)
   const [changePassOpen, setChangePassOpen] = useState(false)
   const [view, setView] = useState<View>(readView)
+  const [shareInitialSeek, setShareInitialSeek] = useState<number | undefined>(undefined)
 
   useEffect(() => {
-    const onHash = () => setView(readView())
+    const onHash = () => {
+      setView(readView())
+      const { assetId, tSec } = readQueryParams()
+      if (assetId) {
+        setSelected(assetId)
+        setShareInitialSeek(tSec)
+      }
+    }
+    onHash()  // run once on mount to honour the share-at-timestamp URL
     window.addEventListener('hashchange', onHash)
     return () => window.removeEventListener('hashchange', onHash)
   }, [])
@@ -151,9 +173,27 @@ export default function App() {
             </div>
           </div>
           <div>
-            {selected ? (
-              <AssetDetail assetId={selected} onChange={refresh} canWrite={isAdmin} />
-            ) : (
+            {selected ? (() => {
+              const published = assets.filter((a) => a.status === 'PUBLISHED')
+              const idx = published.findIndex((a) => a.id === selected)
+              const nextAsset = idx >= 0 && idx + 1 < published.length ? published[idx + 1] : null
+              const upNext = nextAsset
+                ? {
+                    title: nextAsset.title,
+                    posterUrl: nextAsset.posterUrl,
+                    onPlay: () => setSelected(nextAsset.id),
+                  }
+                : null
+              return (
+                <AssetDetail
+                  assetId={selected}
+                  onChange={refresh}
+                  canWrite={isAdmin}
+                  initialSeekSeconds={shareInitialSeek}
+                  upNext={upNext}
+                />
+              )
+            })() : (
               <>
                 <ContinueWatching onSelect={setSelected} />
                 <div className="panel">

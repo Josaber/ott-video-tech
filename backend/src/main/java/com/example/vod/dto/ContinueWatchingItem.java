@@ -12,5 +12,7 @@ public record ContinueWatchingItem(
     Long durationMs,
     Instant updatedAt,
     /** Sprite sheet URL (Feature 1 trick-play). Null if asset has no sprite. */
-    String spriteUrl
+    String spriteUrl,
+    /** Hero poster URL — single frame from 25% of program. Null if not generated. */
+    String posterUrl
 ) {}

@@ -31,6 +31,11 @@ public class CmcdController {
     private static final int RING_SIZE = 500;
 
     private final Deque<Map<String, Object>> ring = new ArrayDeque<>(RING_SIZE);
+    private final CmcdWebSocketHandler ws;
+
+    public CmcdController(CmcdWebSocketHandler ws) {
+        this.ws = ws;
+    }
 
     @PostMapping("/ingest")
     public ResponseEntity<Void> ingest(@RequestBody Map<String, Object> body) {
@@ -41,6 +46,9 @@ public class CmcdController {
             ring.addLast(body);
         }
         log.debug("cmcd beacon ingested: {}", body.get("path"));
+        // Push to every connected dashboard so the CMCD view sees the
+        // beacon arriving in real time instead of waiting for its 2 s poll.
+        ws.broadcast(body);
         return ResponseEntity.noContent().build();
     }
 

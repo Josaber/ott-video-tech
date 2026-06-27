@@ -164,6 +164,8 @@ public class SecurityConfig {
                 // additionally @PreAuthorize ADMIN-only.
                 .requestMatchers("/api/live/channels").permitAll()
                 .requestMatchers("/live/**").permitAll()
+                // CMCD live tail — observational data, no auth needed.
+                .requestMatchers("/ws/cmcd").permitAll()
                 .requestMatchers("/api/**").authenticated()
                 .anyRequest().authenticated()
             )
