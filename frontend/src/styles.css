@@ -23,12 +23,14 @@ body { margin: 0; }
   max-width: 720px;
 }
 /* Grid children default to min-width: auto, which honors the child's
-   intrinsic min-content. A long unbroken series title's min-content is
-   wider than the 720px track, so the panel grows past max-width and
-   all the catalog rows render at that inflated width — defeating the
-   .catalog-card-title ellipsis. Letting the grid child shrink to 0
-   restores the constraint and lets the ellipsis fire. */
-.app.catalog-app > .panel { min-width: 0; }
+   intrinsic min-content. A long unbroken word in any child (asset title,
+   series title, drm key chip) is wider than the track and inflates the
+   column past its declared size — defeating downstream ellipsis. Letting
+   each grid item shrink to 0 restores the constraint.
+   Applies to BOTH .app (Asset tab, 360px + 1fr) and .app.catalog-app
+   (Catalog tab, single 1fr). */
+.app > * { min-width: 0; }
+.app .panel { min-width: 0; }
 .app.catalog-app .catalog,
 .app.catalog-app .catalog-list,
 .app.catalog-app .catalog-card,
@@ -1486,6 +1488,17 @@ video { width: 100%; display: block; }
 .hull-optimal { background: rgba(34, 211, 238, 0.15); color: #22d3ee; }
 .hull-dominated { background: rgba(248, 113, 113, 0.15); color: #f87171; }
 
+/* Asset-detail h1 — single-line ellipsis so an over-long user-supplied
+   title doesn't wrap to two or three lines of repeated characters.
+   Full value still reachable via the title= hover tooltip. */
+.asset-title {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+  max-width: 100%;
+}
+
 .meta-row {
   display: flex;
   gap: 8px;
@@ -1762,6 +1775,12 @@ video { width: 100%; display: block; }
   font-size: 12px;
   color: #cbd5e1;
   transition: border-color 120ms ease;
+  /* Cap the chip so a 200-char user-supplied season title doesn't blow
+     the whole grid sideways. Selected text inside truncates via the
+     .catalog-season-title rule below; full value reachable via the
+     title= hover tooltip on the chip wrapper. */
+  max-width: 240px;
+  min-width: 0;
 }
 .catalog-season-chip:hover { border-color: #475569; }
 .catalog-season-num {
@@ -1769,8 +1788,17 @@ video { width: 100%; display: block; }
   font-weight: 700;
   color: #f1f5f9;
   letter-spacing: 0.02em;
+  flex-shrink: 0;
 }
-.catalog-season-title { color: #94a3b8; font-size: 11px; }
+.catalog-season-title {
+  color: #94a3b8;
+  font-size: 11px;
+  /* Single-line ellipsis so an over-long season title fits the chip. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
 
 /* Inline "add season" row — visually distinct from the existing season
    chips so the admin sees it as an action, not a season. */
@@ -1831,10 +1859,22 @@ video { width: 100%; display: block; }
   border-radius: 999px;
   margin-bottom: 12px;
   font-family: ui-monospace, monospace;
+  /* Cap the pill so a super-long series name doesn't run past the panel.
+     The show-name span ellipsises inside; the sep + episode chip never
+     compress so "S2 E5" is always readable. */
+  max-width: 100%;
+  min-width: 0;
 }
-.series-badge-show { font-weight: 700; }
-.series-badge-sep  { opacity: 0.4; }
-.series-badge-ep   { color: #f1f5f9; }
+.series-badge-show {
+  font-weight: 700;
+  /* Single-line ellipsis for the series title. Full value via title= hover. */
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.series-badge-sep  { opacity: 0.4; flex-shrink: 0; }
+.series-badge-ep   { color: #f1f5f9; flex-shrink: 0; }
 
 /* Admin "attach to series" picker — same vibe as editorial-bar but a
    second row so it doesn't fight the category select for horizontal

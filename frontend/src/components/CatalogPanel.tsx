@@ -185,6 +185,7 @@ export function CatalogPanel() {
                     className="catalog-head-main"
                     onClick={() => toggle(s.id)}
                     aria-expanded={isOpen}
+                    title={s.title}
                   >
                     <span className="catalog-chevron">
                       {isOpen ? <ChevronDown size={14} /> : <ChevronRight size={14} />}
@@ -211,7 +212,11 @@ export function CatalogPanel() {
                     ) : (
                       <div className="catalog-season-grid">
                         {seasons.map((sn) => (
-                          <div key={sn.id} className="catalog-season-chip">
+                          <div
+                            key={sn.id}
+                            className="catalog-season-chip"
+                            title={sn.title ? `S${sn.seasonNumber} · ${sn.title}` : `S${sn.seasonNumber}`}
+                          >
                             <span className="catalog-season-num">S{sn.seasonNumber}</span>
                             {sn.title && <span className="catalog-season-title">{sn.title}</span>}
                             <button

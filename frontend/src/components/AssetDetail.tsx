@@ -123,9 +123,12 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
   return (
     <>
       <div className="panel">
-        <h1>{asset.title}</h1>
+        <h1 className="asset-title" title={asset.title}>{asset.title}</h1>
         {asset.seriesTitle && asset.seasonNumber != null && asset.episodeNumber != null && (
-          <div className="series-badge">
+          <div
+            className="series-badge"
+            title={`${asset.seriesTitle} · S${asset.seasonNumber} E${asset.episodeNumber}`}
+          >
             <span className="series-badge-show">{asset.seriesTitle}</span>
             <span className="series-badge-sep">·</span>
             <span className="series-badge-ep">S{asset.seasonNumber} E{asset.episodeNumber}</span>
@@ -138,7 +141,7 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
           </span>
           {asset.category && <span title={asset.category}>category: {asset.category}</span>}
           {asset.adId && <span title={asset.adId}>ad: {asset.adId} ({(asset.adDurationMs ?? 0) / 1000}s)</span>}
-          {asset.drmKeyIdPreview && <span>drm key: {asset.drmKeyIdPreview}</span>}
+          {asset.drmKeyIdPreview && <span title={asset.drmKeyIdPreview}>drm key: {asset.drmKeyIdPreview}</span>}
         </div>
         {asset.description && (
           <div
