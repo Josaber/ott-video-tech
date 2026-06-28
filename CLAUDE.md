@@ -28,10 +28,20 @@ export PUBLIC_BASE_URL=""    # so backend emits relative playback URLs the Vite 
 
 make db-up        # postgres :5432 (host port matches container, no remap)
 make ad-service   # :8090 (separate shell, needs ffmpeg on PATH)
+make cdn-service  # :8095 (separate shell, mock CDN edge for signed URLs + CMCD)
 make backend      # :8080 (separate shell)
 make frontend     # vite :5173 (separate shell)
 make smoke        # end-to-end smoke that boots stack, runs a full publish + asserts
 ```
+
+**Why `cdn-service` is required.** Backend's `app.cdn.public-base-url`
+defaults to `http://127.0.0.1:8095`, so master manifests are rewritten to
+`http://127.0.0.1:8095/cdn/<asset>/master.m3u8` regardless of
+`PUBLIC_BASE_URL`. Without cdn-service running, the player gets
+**Connection refused** on the manifest. To bypass the CDN entirely in
+dev (segments served direct by backend `/playback/`), set
+`CDN_PUBLIC_BASE_URL=""` before `make backend` — manifests then emit
+relative `/playback/...` URLs that the Vite proxy handles.
 
 Default seeded admin: **`admin` / `admin`** (via pgcrypto in `V2__auth.sql`).
 

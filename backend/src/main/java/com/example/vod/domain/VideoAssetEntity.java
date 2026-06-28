@@ -59,6 +59,12 @@ public class VideoAssetEntity {
     @Column(name = "program_duration_ms")
     private Long programDurationMs;
 
+    @Column(name = "season_id")
+    private UUID seasonId;
+
+    @Column(name = "episode_number")
+    private Integer episodeNumber;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -105,6 +111,10 @@ public class VideoAssetEntity {
     public void setAdDurationMs(Long adDurationMs) { this.adDurationMs = adDurationMs; }
     public Long getProgramDurationMs() { return programDurationMs; }
     public void setProgramDurationMs(Long programDurationMs) { this.programDurationMs = programDurationMs; }
+    public UUID getSeasonId() { return seasonId; }
+    public void setSeasonId(UUID seasonId) { this.seasonId = seasonId; }
+    public Integer getEpisodeNumber() { return episodeNumber; }
+    public void setEpisodeNumber(Integer episodeNumber) { this.episodeNumber = episodeNumber; }
     public Instant getCreatedAt() { return createdAt; }
     public void setCreatedAt(Instant createdAt) { this.createdAt = createdAt; }
     public Instant getUpdatedAt() { return updatedAt; }

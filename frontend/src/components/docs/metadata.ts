@@ -1,0 +1,130 @@
+// Reading-experience metadata for the Docs view. Kept separate from the
+// chapter content (which is JSX-heavy and lives in chapters/*.tsx) so
+// these tables can be read at a glance.
+
+export const PARTS: { name: string; slugs: string[] }[] = [
+  {
+    name: 'Foundations',
+    slugs: ['guide', 'overview', 'audio-basics', 'video-basics', 'color-basics', 'time-timestamps', 'crypto-basics', 'networking-basics', 'hls', 'containers', 'codecs', 'manifest'],
+  },
+  {
+    name: 'The publishing pipeline',
+    slugs: ['mezzanine', 'transcode-package', 'qc-vmaf', 'captions', 'ssai'],
+  },
+  {
+    name: 'Delivery & playback',
+    slugs: ['cdn', 'cmcd', 'player', 'trick-play', 'live', 'epg-fast', 'observability', 'devices'],
+  },
+  {
+    name: 'Content & business',
+    slugs: ['metadata', 'cms-editorial', 'catalog', 'search', 'recommendation', 'ad-operations', 'cost', 'payments', 'compliance', 'privacy'],
+  },
+  {
+    name: 'Identity & security',
+    slugs: ['auth', 'identity', 'concurrent-streams', 'drm', 'multi-drm', 'watermarking', 'anti-piracy'],
+  },
+  {
+    name: 'Reference',
+    slugs: ['standards', 'gaps', 'future-enhancements', 'glossary'],
+  },
+]
+
+export const READING_ORDER: string[] = PARTS.flatMap((p) => p.slugs)
+
+// Hand-estimated reading minutes per chapter (rough — based on word count
+// + table density at ~220 wpm). Drives the eyebrow's "~N min read" hint.
+export const READING_MINUTES: Record<string, number> = {
+  guide: 3,
+  overview: 4,
+  'audio-basics': 5,
+  'video-basics': 6,
+  'color-basics': 6,
+  'time-timestamps': 7,
+  'crypto-basics': 7,
+  'networking-basics': 6,
+  hls: 6,
+  containers: 5,
+  codecs: 7,
+  manifest: 8,
+  mezzanine: 6,
+  'transcode-package': 7,
+  'qc-vmaf': 7,
+  captions: 7,
+  ssai: 8,
+  cdn: 7,
+  cmcd: 7,
+  player: 7,
+  'trick-play': 5,
+  live: 7,
+  'epg-fast': 7,
+  observability: 5,
+  devices: 7,
+  metadata: 7,
+  'cms-editorial': 7,
+  catalog: 6,
+  search: 6,
+  recommendation: 9,
+  'ad-operations': 8,
+  cost: 5,
+  payments: 7,
+  compliance: 7,
+  privacy: 7,
+  auth: 7,
+  identity: 7,
+  'concurrent-streams': 7,
+  drm: 8,
+  'multi-drm': 7,
+  watermarking: 7,
+  'anti-piracy': 7,
+  standards: 4,
+  gaps: 5,
+  'future-enhancements': 6,
+  glossary: 6,
+}
+
+// Inter-chapter cross-references. Each chapter lists the slugs of one to
+// three other chapters most worth reading right after it. Reference-only
+// chapters (standards / gaps / glossary) intentionally have no See also.
+export const SEE_ALSO: Record<string, string[]> = {
+  overview: ['guide', 'gaps'],
+  'audio-basics': ['codecs', 'mezzanine'],
+  'video-basics': ['color-basics', 'codecs'],
+  'color-basics': ['video-basics', 'mezzanine'],
+  'time-timestamps': ['live', 'ssai', 'trick-play'],
+  'crypto-basics': ['drm', 'auth', 'anti-piracy'],
+  'networking-basics': ['cdn', 'live', 'player'],
+  hls: ['manifest', 'containers'],
+  containers: ['codecs', 'manifest'],
+  codecs: ['audio-basics', 'video-basics', 'transcode-package'],
+  manifest: ['hls', 'ssai'],
+  mezzanine: ['transcode-package', 'codecs'],
+  'transcode-package': ['qc-vmaf', 'codecs', 'cdn'],
+  'qc-vmaf': ['transcode-package', 'codecs', 'gaps'],
+  captions: ['compliance', 'manifest'],
+  ssai: ['manifest', 'ad-operations', 'live'],
+  cdn: ['cmcd', 'player', 'cost'],
+  cmcd: ['cdn', 'player', 'observability'],
+  player: ['drm', 'trick-play', 'devices'],
+  'trick-play': ['manifest', 'player'],
+  live: ['ssai', 'epg-fast', 'observability'],
+  'epg-fast': ['live', 'ssai', 'ad-operations'],
+  observability: ['player', 'cmcd', 'cdn'],
+  devices: ['player', 'multi-drm'],
+  metadata: ['cms-editorial', 'catalog', 'compliance'],
+  'cms-editorial': ['metadata', 'compliance'],
+  catalog: ['search', 'recommendation', 'metadata'],
+  search: ['catalog', 'recommendation', 'metadata'],
+  recommendation: ['catalog', 'search'],
+  'ad-operations': ['ssai', 'epg-fast', 'privacy'],
+  cost: ['cdn', 'transcode-package'],
+  payments: ['identity', 'compliance'],
+  compliance: ['privacy', 'captions'],
+  privacy: ['compliance', 'identity', 'ad-operations'],
+  auth: ['identity', 'concurrent-streams', 'drm'],
+  identity: ['auth', 'concurrent-streams', 'payments'],
+  'concurrent-streams': ['identity', 'auth', 'multi-drm'],
+  drm: ['multi-drm', 'watermarking', 'anti-piracy'],
+  'multi-drm': ['drm', 'watermarking', 'anti-piracy'],
+  watermarking: ['anti-piracy', 'multi-drm'],
+  'anti-piracy': ['watermarking', 'multi-drm', 'identity'],
+}

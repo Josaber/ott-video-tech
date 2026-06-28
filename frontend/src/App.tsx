@@ -3,6 +3,7 @@ import { api, Asset } from './api/client'
 import { AssetList } from './components/AssetList'
 import { CreateAssetForm } from './components/CreateAssetForm'
 import { AssetDetail } from './components/AssetDetail'
+import { CatalogPanel } from './components/CatalogPanel'
 import { Login } from './components/Login'
 import { Header, View } from './components/Header'
 import { ChangePasswordDialog } from './components/ChangePasswordDialog'
@@ -18,7 +19,8 @@ function readView(): View {
   if (h.startsWith('#/docs')) return 'docs'
   if (h.startsWith('#/live')) return 'live'
   if (h.startsWith('#/cmcd')) return 'cmcd'
-  return 'console'
+  if (h.startsWith('#/catalog')) return 'catalog'
+  return 'asset'
 }
 
 function readQueryParams(): { assetId?: string; tSec?: number } {
@@ -42,6 +44,7 @@ export default function App() {
   const [changePassOpen, setChangePassOpen] = useState(false)
   const [view, setView] = useState<View>(readView)
   const [shareInitialSeek, setShareInitialSeek] = useState<number | undefined>(undefined)
+  const [upNextAsset, setUpNextAsset] = useState<Asset | null>(null)
 
   useEffect(() => {
     const onHash = () => {
@@ -63,7 +66,8 @@ export default function App() {
       next === 'docs' ? '#/docs/overview'
       : next === 'live' ? '#/live'
       : next === 'cmcd' ? '#/cmcd'
-      : '#/console'
+      : next === 'catalog' ? '#/catalog'
+      : '#/asset'
     if (window.location.hash !== target) {
       window.history.pushState(null, '', target)
     }
@@ -137,6 +141,22 @@ export default function App() {
     return () => clearInterval(t)
   }, [refresh, session])
 
+  // Up-next lookup runs on the backend (same-season episode+1, else next
+  // season's first episode). Re-fetch whenever the selected asset changes —
+  // includes the case where the user clicks the up-next card and we
+  // advance to a new asset.
+  useEffect(() => {
+    if (!session || !selected) {
+      setUpNextAsset(null)
+      return
+    }
+    let cancelled = false
+    api.getNextAsset(selected)
+      .then((next) => { if (!cancelled) setUpNextAsset(next) })
+      .catch(() => { if (!cancelled) setUpNextAsset(null) })
+    return () => { cancelled = true }
+  }, [selected, session])
+
   if (!session) return <Login />
 
   const isAdmin = session.role === 'ADMIN'
@@ -146,6 +166,7 @@ export default function App() {
       <Header
         session={session}
         view={view}
+        isAdmin={isAdmin}
         onNavigate={navigate}
         onChangePassword={() => setChangePassOpen(true)}
       />
@@ -155,6 +176,18 @@ export default function App() {
         <LiveView canControl={isAdmin} />
       ) : view === 'cmcd' ? (
         <CmcdView />
+      ) : view === 'catalog' && isAdmin ? (
+        <div className="app catalog-app">
+          <div className="panel">
+            <h1>Catalog</h1>
+            <p style={{ fontSize: 13, color: '#cbd5e1', marginTop: 0 }}>
+              Create series and seasons here, then on the <strong>Asset</strong> tab attach
+              each video to a (series, season, episode). Up Next on the player follows that
+              chain: same season → episode + 1, else next season's first episode.
+            </p>
+            <CatalogPanel />
+          </div>
+        </div>
       ) : (
         <div className="app">
           <div>
@@ -174,14 +207,14 @@ export default function App() {
           </div>
           <div>
             {selected ? (() => {
-              const published = assets.filter((a) => a.status === 'PUBLISHED')
-              const idx = published.findIndex((a) => a.id === selected)
-              const nextAsset = idx >= 0 && idx + 1 < published.length ? published[idx + 1] : null
-              const upNext = nextAsset
+              const upNext = upNextAsset
                 ? {
-                    title: nextAsset.title,
-                    posterUrl: nextAsset.posterUrl,
-                    onPlay: () => setSelected(nextAsset.id),
+                    title: upNextAsset.title,
+                    posterUrl: upNextAsset.posterUrl,
+                    subtitle: upNextAsset.seriesTitle && upNextAsset.seasonNumber != null && upNextAsset.episodeNumber != null
+                      ? `${upNextAsset.seriesTitle} · S${upNextAsset.seasonNumber} E${upNextAsset.episodeNumber}`
+                      : null,
+                    onPlay: () => setSelected(upNextAsset.id),
                   }
                 : null
               return (

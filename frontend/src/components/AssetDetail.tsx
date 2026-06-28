@@ -5,15 +5,21 @@ import DOMPurify from 'dompurify'
 import { api, Asset, EditorialState, Job, Rendition } from '../api/client'
 import { HlsPlayer } from './HlsPlayer'
 import { ConfirmDialog } from './ConfirmDialog'
-
-const CATEGORIES = ['Drama', 'Documentary', 'Sports', 'Live', 'Kids', 'Other'] as const
+import { SeriesAttacher } from './asset/SeriesAttacher'
+import { AbrLadder } from './asset/AbrLadder'
+import { EditorialBar } from './asset/EditorialBar'
 
 interface Props {
   assetId: string
   onChange: () => void
   canWrite: boolean
   initialSeekSeconds?: number
-  upNext?: { title: string; posterUrl?: string | null; onPlay: () => void } | null
+  upNext?: {
+    title: string
+    subtitle?: string | null
+    posterUrl?: string | null
+    onPlay: () => void
+  } | null
 }
 
 export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, upNext }: Props) {
@@ -118,13 +124,20 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
     <>
       <div className="panel">
         <h1>{asset.title}</h1>
+        {asset.seriesTitle && asset.seasonNumber != null && asset.episodeNumber != null && (
+          <div className="series-badge">
+            <span className="series-badge-show">{asset.seriesTitle}</span>
+            <span className="series-badge-sep">·</span>
+            <span className="series-badge-ep">S{asset.seasonNumber} E{asset.episodeNumber}</span>
+          </div>
+        )}
         <div className="meta-row" style={{ marginBottom: 12 }}>
           <span>status: {asset.status}</span>
           <span className={'editorial-pill editorial-' + asset.editorialState.toLowerCase()}>
             {asset.editorialState.replace('_', ' ')}
           </span>
-          {asset.category && <span>category: {asset.category}</span>}
-          {asset.adId && <span>ad: {asset.adId} ({(asset.adDurationMs ?? 0) / 1000}s)</span>}
+          {asset.category && <span title={asset.category}>category: {asset.category}</span>}
+          {asset.adId && <span title={asset.adId}>ad: {asset.adId} ({(asset.adDurationMs ?? 0) / 1000}s)</span>}
           {asset.drmKeyIdPreview && <span>drm key: {asset.drmKeyIdPreview}</span>}
         </div>
         {asset.description && (
@@ -135,40 +148,19 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
         )}
 
         {canWrite && (
-          <div className="editorial-bar">
-            <span className="editorial-label">editorial</span>
-            {asset.editorialState === 'DRAFT' && (
-              <button className="secondary" disabled={busy} onClick={() => transition('IN_REVIEW')}>
-                Submit for review →
-              </button>
-            )}
-            {asset.editorialState === 'IN_REVIEW' && (
-              <>
-                <button className="secondary" disabled={busy} onClick={() => transition('READY')}>
-                  ✓ Approve
-                </button>
-                <button className="secondary" disabled={busy} onClick={() => transition('DRAFT')}>
-                  ← Request changes
-                </button>
-              </>
-            )}
-            {asset.editorialState === 'READY' && (
-              <button className="secondary" disabled={busy} onClick={() => transition('DRAFT')}>
-                ← Un-approve
-              </button>
-            )}
-            <select
-              className="category-select"
-              value={asset.category ?? ''}
-              onChange={(e) => changeCategory(e.target.value)}
-              disabled={busy}
-            >
-              <option value="">(no category)</option>
-              {CATEGORIES.map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
+          <EditorialBar
+            asset={asset}
+            busy={busy}
+            onTransition={transition}
+            onChangeCategory={changeCategory}
+          />
+        )}
+
+        {canWrite && (
+          <SeriesAttacher
+            asset={asset}
+            onChanged={(updated) => { setAsset(updated); onChange() }}
+          />
         )}
 
         <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
@@ -216,36 +208,7 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
         </div>
       </div>
 
-      {renditions.length > 0 && (
-        <div className="panel">
-          <h1>ABR ladder</h1>
-          <div className="ladder-table">
-            <div className="ladder-row ladder-head">
-              <span>tier</span>
-              <span>resolution</span>
-              <span>video bitrate</span>
-              <span>audio bitrate</span>
-              <span>VMAF</span>
-              <span>PTE hull</span>
-            </div>
-            {renditions.map((r) => (
-              <div className="ladder-row" key={r.tier}>
-                <span className="tier">{r.tier}</span>
-                <span>{r.width}×{r.height}</span>
-                <span>{r.videoBitrateKbps} kbps</span>
-                <span>{r.audioBitrateKbps} kbps</span>
-                <span>{r.vmafScore != null ? r.vmafScore.toFixed(2) : '—'}</span>
-                <span>
-                  {r.convexHullOptimal == null ? '—'
-                    : r.convexHullOptimal
-                      ? <span className="hull-flag hull-optimal">optimal</span>
-                      : <span className="hull-flag hull-dominated">dominated</span>}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      <AbrLadder renditions={renditions} />
 
       <div className="panel">
         <h1>Workflow</h1>
@@ -291,3 +254,4 @@ export function AssetDetail({ assetId, onChange, canWrite, initialSeekSeconds, u
     </>
   )
 }
+

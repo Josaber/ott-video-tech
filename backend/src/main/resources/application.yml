@@ -67,6 +67,13 @@ app:
     public-base-url: ${CDN_PUBLIC_BASE_URL:http://127.0.0.1:8095}
     signing-secret: ${CDN_SIGNING_SECRET:dev-only-cdn-signing-secret-please-rotate-aaaaaaaaaaaa}
     ttl-minutes: ${CDN_TTL_MINUTES:10}
+  playback:
+    # Concurrent streams per user. The hard-coded default in
+    # PlaybackProperties is 2 (mirrors a typical OTT plan); dev relaxes
+    # to 10 so multiple browser tabs / windows aren't blocked while
+    # demoing the player. Override per environment with the env var.
+    concurrent-stream-limit: ${PLAYBACK_CONCURRENT_STREAM_LIMIT:10}
+    heartbeat-stale-seconds: ${PLAYBACK_HEARTBEAT_STALE_SECONDS:90}
   temporal:
     mode: ${APP_TEMPORAL_MODE:embedded}
     task-queue: vod-publishing
